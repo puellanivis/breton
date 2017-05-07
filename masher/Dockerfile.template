@@ -1,0 +1,11 @@
+FROM docker.service.audsci.net/asci/ascigo:testing
+MAINTAINER Cassandra Bayer <Cassandra.Bayer@audiencescience.com>
+ARG HEAD="refs/heads/testing"
+ARG BRANCH="testing"
+ARG PROJECT
+ENTRYPOINT [ "/entrypoint.sh" ]
+WORKDIR /tmp
+ENV BINARY $PROJECT \
+    BRANCH $BRANCH
+COPY bin/$PROJECT.linux /bin/$PROJECT
+COPY entrypoint.sh /entrypoint.sh

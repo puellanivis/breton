@@ -1,0 +1,270 @@
+#!/bin/bash
+
+if ! which docker > /dev/null 2>&1 ; then
+	echo Please install docker >&2
+	exit 1
+fi
+
+if [[ -z ${MASHER_ROOT} ]]; then
+	echo Please setup build environment >&2
+	exit 1
+fi
+
+if [[ -n ${bamboo_DOCKER_REGISTRY} ]]; then
+	DOCKER_REGISTRY=${bamboo_DOCKER_REGISTRY}
+	PROD="true"
+fi
+
+if [[ -n ${bamboo_docker_registry} ]]; then
+	DOCKER_REGISTRY=${bamboo_docker_registry}
+	PROD="true"
+fi
+
+PROJECT=${PWD##*/}
+REGISTRY=${DOCKER_REGISTRY}
+
+RUNAS="${UID}"
+if [[ -n ${DOCKER_MACHINE_NAME} ]]; then
+	RUNAS=1000
+fi
+
+LINUX=""
+DARWIN=""
+WINDOWS=""
+if [[ -n "${MASHALL}" ]]; then
+	DARWIN="--darwin"
+	LINUX="--linux"
+	WINDOWS="--windows"
+else
+	case ${OSTYPE} in 
+	linux*)
+		LINUX="--linux"
+	;;
+	darwin*)
+		DARWIN="--darwin"
+	;;
+	cygwin*|msys*)
+		WINDOWS="--windows"
+	;;
+	*) #I don't know, just make them all
+		DARWIN="--darwin"
+		LINUX="--linux"
+		WINDOWS="--windows"
+	;;
+	esac
+fi
+
+while [[ $# -gt 0 ]]; do
+	key="$1"
+	val="${key#*=}"
+
+	case $key in
+	--image=*)
+		IMAGE="$val"
+	;;
+	--registry=*)
+		REGISTRY="$val"
+	;;
+
+	--linux)
+		LINUXFLAG="--linux"
+	;;
+	--darwin)
+		DARWINFLAG="--darwin"
+	;;
+	--windows)
+		WINDOWSFLAG="--windows"
+	;;
+	--all)
+		LINUXFLAG="--linux"
+		DARWINFLAG="--darwin"
+		WINDOWSFLAG="--windows"
+	;;
+
+	--localtest)
+		LOCALTEST="true"
+	;;
+	--proto)
+		DARWIN=""
+		LINUX=""
+		WINDOWS=""
+		NODOCKER="true"
+		PROTO="--proto"
+		TEST="--notest"
+	;;
+	--allprotos)
+		PROTO="--allprotos"
+	;;
+
+	--test)
+		TEST="--test"
+	;;
+	--notest)
+		TEST="--notest"
+	;;
+	--nobuild)
+		BUILD="--nobuild"
+	;;
+	--noproto)
+		PROTO="--noproto"
+	;;
+	--nodocker)
+		NODOCKER="true"
+	;;
+
+	--prod)
+		PROD="true"
+	;;
+
+	--shell)
+		NODOCKER="true"
+		ESCAPE="--shell"
+		FLAGS="-it"
+	;;
+	--)
+		shift
+		break
+	;;
+	--*)
+		echo "unknown flag $1" >&2
+		exit 1
+	;;
+	*)
+		break
+	;;
+	esac
+	shift
+done
+
+if [[ -n ${PROD} ]]; then
+	LINUXFLAG="--linux"
+	DARWINFLAG="--darwin"
+	WINDOWSFLAG="--windows"
+	PROTO="--allprotos"
+	TEST="--notest"
+fi
+
+if [[ -n $REGISTRY ]]; then
+	REGISTRY="${REGISTRY%/}/"
+fi
+
+if [[ -z $IMAGE ]]; then
+	IMAGE="${REGISTRY}${USER}/masher"
+
+	if ! which git > /dev/null 2>&1 ; then
+		echo Please install git >&2
+		exit 1
+	fi
+
+	HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
+	BRANCH=$(basename ${HEAD})
+
+	IMAGE="${IMAGE}:latest"
+fi
+
+if [[ (-n "$LINUXFLAG") || (-n "$DARWINFLAG") || (-n "$WINDOWSFLAG") ]]; then
+	LINUX="$LINUXFLAG"
+	DARWIN="$DARWINFLAG"
+	WINDOWS="$WINDOWSFLAG"
+fi
+
+if [[ (-n "$PROD") && ( $BRANCH = "testing" ) ]]; then
+	# if we're building prod in the testing branch, just build
+	# the linux binary, it's the quickest, and a good test.
+	# if that works, then it will move up the branches, which will
+	# then compile the additional binaries.
+	DARWIN=""
+	WINDOWS=""
+fi
+
+if which go > /dev/null 2>&1 ; then
+	GO_VERSION="$(go version)"
+	GO_VERSION=${GO_VERSION#go version go}
+	GO_VERSION=${GO_VERSION%% *}
+	echo Found Local Go Version: $GO_VERSION
+	case $GO_VERSION in
+		1.7|1.7.*)
+			LOCALTEST="true"
+	esac
+fi
+
+if [[ ("$LOCALTEST" == "true") && ("$TEST" != "--notest") ]] ; then
+	if ls *.go > /dev/null 2>&1 ; then
+		echo running \'go test\' locally first...
+		go test || exit 1
+	fi
+fi
+
+MASHER_ROOT=${MASHER_ROOT%/}
+PRJPATH="${PWD##*${MASHER_ROOT}/}"
+BASE="${PWD%$PRJPATH}"
+
+if [[ -z $BASE ]] ; then
+	BASE="${PWD}"
+	PRJPATH=""
+fi
+
+NAME="masher-${PROJECT}"
+if [[ -z ${ESCAPE} ]]; then
+	NAME="${NAME}-"
+	[[ ${DARWIN} != "" ]] && NAME="${NAME}d"
+	[[ ${LINUX} != "" ]] && NAME="${NAME}l"
+	[[ ${WINDOWS} != "" ]] && NAME="${NAME}w"
+	NAME=${NAME%-}
+fi
+
+echo "NAME='$NAME'"
+echo "BASE='$BASE'"
+echo "PRJPATH='$PRJPATH'"
+echo "PROJECT='$PROJECT'"
+echo "BRANCH='$BRANCH'"
+
+TIMESTAMP=$(date -u +"%Y%m%d.%H%M%S")
+
+echo Using image: $IMAGE
+echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD --timestamp=$TIMESTAMP $@
+
+DOCKER_VERSION="$(docker --version)"
+DOCKER_VERSION=${DOCKER_VERSION%%,*}
+DOCKER_VERSION=${DOCKER_VERSION##* }
+echo Found Docker Version: $DOCKER_VERSION
+
+case $DOCKER_VERSION in
+1.?|1.?.*) ;;
+*)
+	READONLY="--read-only"
+	TMPFS="--tmpfs /tmp:size=1G"
+;;
+esac
+
+EXEC="exec"
+if [[ (-r Dockerfile.tmpl) && (-r Makefile) ]]; then
+	# Unless we've been told not to do docker, and if we are going
+	# to build the linux binaries, we don't want to `exec` the `docker run`.
+	if [[ ($NODOCKER != "true") && (-n $LINUX) ]]; then
+		unset EXEC
+	fi
+fi
+
+[[ -n $MASHER_PREFIX ]] && PREFIX="/${MASHER_PREFIX#/}"
+SRCROOT="/go/src${PREFIX}/${MASHER_ROOT%/}"
+echo ${BASE} "=>" ${SRCROOT}
+
+${EXEC} docker run ${FLAGS} --rm \
+	--name "${NAME}" \
+	--net "host" \
+	${READONLY} \
+	${TMPFS} \
+	--user "${RUNAS}" \
+	--volume "${BASE}:${SRCROOT}:rw" \
+	--volume "${BASE}/lib:/go/src/lib:rw" \
+	--workdir "${SRCROOT}/${PRJPATH}" \
+	${IMAGE} \
+	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD --timestamp=$TIMESTAMP "$@" || exit 1
+
+if [[ $PROD == "true" ]]; then
+	make push || exit 1
+	make clean
+else
+	make image
+fi
