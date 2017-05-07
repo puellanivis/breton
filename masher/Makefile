@@ -10,24 +10,17 @@ USER=$(shell whoami)
 REPO=${REGISTRY}${USER}/${PROJECT}
 BUILDNO=$(shell docker images ${REPO} | grep -c ${TIMESTAMP})
 
-all: Makefile Dockerfile container
+all: container
 
-Dockerfile: Dockerfile.tmpl
-	cp Dockerfile.tmpl Dockerfile
-
-Makefile: Makefile.tmpl
-	mkmakefile
-	exit 1
-
-clean: Makefile
+clean:
 	docker rmi --force `docker images -q ${REPO}`
 
-install: Makefile
+install:
 	mkdir -p $(SNOW_MESH_ROOT)/bin
 	cp masher $(SNOW_MESH_ROOT)/bin/
 
-container: Makefile
+container:
 	docker build --rm --build-arg BRANCH=${BRANCH} --build-arg PROJECT=${PROJECT} --build-arg HEAD=${HEAD} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:${BRANCH} -t ${REPO}:latest .
 
-push: Makefile
+push:
 	docker push ${REPO}:${BRANCH}
