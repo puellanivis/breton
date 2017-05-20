@@ -1,14 +1,9 @@
 # This is a comment
 FROM golang:1.8
-MAINTAINER Cassandra Bayer <Cassandra.Bayer@audiencescience.com>
+MAINTAINER Cassondra Foesch <cfoesch@gmail.com>
 ARG BRANCH="testing"
 ARG HEAD="refs/head/testing"
 ARG PROJECT=
-#COPY apt.conf /etc/apt/apt.conf
-#ENV HTTP_PROXY=http://dc1-utility01.dc01.revsci.net:3128 \
-#    HTTPS_PROXY=http://dc1-utility01.dc01.revsci.net:3128 \
-#    http_proxy=http://dc1-utility01.dc01.revsci.net:3128 \
-#    https_proxy=http://dc1-utility01.dc01.revsci.net:3128
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bsdtar \
     ca-certificates \
@@ -22,8 +17,8 @@ RUN mkdir -p /bin && \
     chmod 755 /bin/protoc
 
 RUN go get -v -u \
-    github.com/puellanivis/protobuf/proto \
-    github.com/puellanivis/protobuf/protoc-gen-go \
+    github.com/golang/protobuf/proto \
+    github.com/golang/protobuf/protoc-gen-go \
     github.com/tealeg/xlsx \
     golang.org/x/crypto/pkcs12 \
     golang.org/x/net/idna \
@@ -33,8 +28,7 @@ RUN go get -v -u \
     golang.org/x/crypto/ssh/agent \
     golang.org/x/crypto/ssh/terminal \
     golang.org/x/net/ipv4 \
-    github.com/puellanivis/grpc-go \
-    google.golang.org/api/adexchangebuyer/v1.4 \
+    google.golang.org/grpc \
     github.com/aws/aws-sdk-go \
     github.com/aws/aws-sdk-go/aws \
     github.com/aws/aws-sdk-go/aws/session \
@@ -42,8 +36,6 @@ RUN go get -v -u \
     github.com/golang/glog \
     github.com/soheilhy/cmux \
     github.com/colinmarc/hdfs \
-    github.com/gopherjs/gopherjs/js \
-    github.com/robertkrimen/otto \
     github.com/fsnotify/fsnotify \
     golang.org/x/net/context # intentionally last
 
