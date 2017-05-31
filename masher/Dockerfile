@@ -1,6 +1,6 @@
 # This is a comment
 FROM golang:1.8
-MAINTAINER Cassondra Foesch <cfoesch@gmail.com>
+MAINTAINER Cassondra Foesch <puellanivis@gmail.com>
 ARG BRANCH="testing"
 ARG HEAD="refs/head/testing"
 ARG PROJECT=
