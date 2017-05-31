@@ -183,7 +183,7 @@ if which go > /dev/null 2>&1 ; then
 	GO_VERSION=${GO_VERSION%% *}
 	echo Found Local Go Version: $GO_VERSION
 	case $GO_VERSION in
-		1.7|1.7.*)
+		1.8|1.8.*)
 			LOCALTEST="true"
 	esac
 fi
