@@ -16,8 +16,8 @@ clean:
 	docker rmi --force `docker images -q ${REPO}`
 
 install:
-	mkdir -p $(SNOW_MESH_ROOT)/bin
-	cp masher $(SNOW_MESH_ROOT)/bin/
+	mkdir -p ~/bin
+	cp masher ~/bin/
 
 container:
 	docker build --rm --build-arg BRANCH=${BRANCH} --build-arg PROJECT=${PROJECT} --build-arg HEAD=${HEAD} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:${BRANCH} -t ${REPO}:latest .
