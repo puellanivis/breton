@@ -248,7 +248,27 @@ fi
 
 [[ -n $MASHER_PREFIX ]] && PREFIX="/${MASHER_PREFIX#/}"
 SRCROOT="/go/src${PREFIX}/${MASHER_ROOT%/}"
-echo ${BASE} "=>" ${SRCROOT}
+
+[[ -n $MASHER_LIBS ]] || MASHER_LIBS="lib"
+LIBS=""
+
+SAVE_IFS=$IFS
+IFS=':'
+for p in $MASHER_LIBS; do
+	l=$(echo $p | cut -d= -f1)
+	t=$(echo $p | cut -d= -f2)
+
+	[[ -n $t ]] || t="$l"
+
+	l="${BASE}$l"
+	t="/go/src/$t"
+
+	if [[ -d $l ]]; then
+		echo "$l => $t"
+		LIBS="$LIBS --volume $l:$t"
+	fi
+done
+IFS=$SAVE_IFS
 
 ${EXEC} docker run ${FLAGS} --rm \
 	--name "${NAME}" \
@@ -257,7 +277,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	${TMPFS} \
 	--user "${RUNAS}" \
 	--volume "${BASE}:${SRCROOT}:rw" \
-	--volume "${BASE}/lib:/go/src/lib:rw" \
+	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
 	${IMAGE} \
 	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD --timestamp=$TIMESTAMP "$@" || exit 1
