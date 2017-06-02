@@ -29,16 +29,7 @@ RUN go get -v -u \
     golang.org/x/net/ipv4 \
     google.golang.org/grpc \
     github.com/golang/glog \
-    github.com/fsnotify/fsnotify
-
-RUN go get -v -u \
-    github.com/tealeg/xlsx \
-    github.com/aws/aws-sdk-go \
-    github.com/aws/aws-sdk-go/aws \
-    github.com/aws/aws-sdk-go/aws/session \
-    github.com/aws/aws-sdk-go/service/s3 \
-    github.com/soheilhy/cmux \
-    github.com/colinmarc/hdfs \
+    github.com/fsnotify/fsnotify \
     golang.org/x/net/context # intentionally last
 
 COPY mash.sh /bin/mash.sh
