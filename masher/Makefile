@@ -4,8 +4,6 @@ ifneq "$(DOCKER_REGISTRY)" ""
 REGISTRY=$(DOCKER_REGISTRY)/
 endif
 PROJECT=$(shell basename "${PWD}")
-HEAD=$(shell git symbolic-ref HEAD 2> /dev/null || git rev-parse HEAD)
-BRANCH=$(shell basename ${HEAD})
 USER=$(shell whoami)
 REPO=${REGISTRY}${USER}/${PROJECT}
 BUILDNO=$(shell docker images ${REPO} | grep -c ${TIMESTAMP})
@@ -16,11 +14,11 @@ clean:
 	docker rmi --force `docker images -q ${REPO}`
 
 install:
-	mkdir -p ~/bin
-	cp masher ~/bin/
+	mkdir -p $(HOME)/bin
+	cp masher $(HOME)/bin/
 
 container:
-	docker build --rm --build-arg BRANCH=${BRANCH} --build-arg PROJECT=${PROJECT} --build-arg HEAD=${HEAD} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:${BRANCH} -t ${REPO}:latest .
+	docker build --rm --build-arg PROJECT=${PROJECT} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:latest .
 
 push:
 	docker push ${REPO}:${BRANCH}
