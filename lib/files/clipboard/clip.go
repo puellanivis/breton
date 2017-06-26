@@ -1,0 +1,91 @@
+package clipboard
+
+import (
+	"context"
+	"net/url"
+	"os"
+	"time"
+
+	"lib/files"
+	"lib/files/wrapper"
+)
+
+type Handler struct{}
+
+func init() {
+	files.RegisterScheme(&Handler{}, "clip", "clipboard")
+}
+
+type Clipboard interface{
+	os.FileInfo
+	Read() ([]byte, error)
+	Write([]byte) error
+}
+
+var clipboards = make(map[string]Clipboard)
+
+func getClip(name string) Clipboard {
+	if len(name) < 1 {
+		// due to design of Go, nil must be explicitly passed here
+		// otherwise it will be a type nil, which != nil.
+		if Default == nil {
+			return nil
+		}
+
+		return Default
+	}
+
+	clip, ok := clipboards[name]
+	if !ok || clip == nil {
+		return nil
+	}
+	return clip
+}
+
+func (h *Handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+	clip := getClip(uri.Opaque)
+	if  clip == nil{
+		return nil, os.ErrNotExist
+	}
+
+	b, err := clip.Read()
+	if err != nil {
+		return nil, err
+	}
+
+	return wrapper.NewReader(uri, b, time.Now()), nil
+}
+
+func (h *Handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+	clip := getClip(uri.Opaque)
+	if clip == nil {
+		return nil, os.ErrNotExist
+	}
+
+	return wrapper.NewWriter(ctx, uri, func(b []byte) error {
+		return clip.Write(b)
+	}), nil
+}
+
+func (h *Handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+	clip := getClip(uri.Opaque)
+	if clip == nil {
+		return nil, os.ErrNotExist
+	}
+
+	if !clip.IsDir() {
+		return []os.FileInfo{clip}, nil
+	}
+
+	if len(clipboards) < 1 {
+		return nil, os.ErrNotExist
+	}
+
+	var ret []os.FileInfo
+
+	for _, clip := range clipboards {
+		ret = append(ret, clip)
+	}
+
+	return ret, nil
+}
