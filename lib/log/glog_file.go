@@ -21,8 +21,8 @@ package log
 import (
 	"errors"
 	"fmt"
-	"os"
 	"lib/os/user"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
