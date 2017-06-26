@@ -48,5 +48,4 @@ func Search(a interface{}, x interface{}) int {
 	}
 
 	panic("sort.Search passed an unknown type")
-	return -1
 }

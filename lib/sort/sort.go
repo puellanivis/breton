@@ -145,5 +145,4 @@ func IsSorted(a interface{}) bool {
 	}
 
 	panic("sort.IsSorted passed an unknown type")
-	return false
 }
