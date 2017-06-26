@@ -21,7 +21,6 @@ package log
 import (
 	"errors"
 	"fmt"
-	"lib/os/user"
 	"os"
 	"path/filepath"
 	"strings"
@@ -29,6 +28,7 @@ import (
 	"time"
 
 	"lib/flag"
+	"lib/os/user"
 )
 
 // MaxSize is the maximum size of a log file in bytes.
