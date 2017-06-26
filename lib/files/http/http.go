@@ -95,7 +95,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, err
 	}
 
-	b, err := files.ReadAndClose(resp.Body)
+	b, err := files.ReadFrom(resp.Body)
 	if err != nil {
 		return nil, err
 	}

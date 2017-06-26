@@ -97,7 +97,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 			return nil, err
 		}
 
-		data, err := files.ReadAndClose(raw)
+		data, err := files.ReadFrom(raw)
 		if err != nil {
 			return nil, err
 		}
