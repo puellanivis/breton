@@ -2,8 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-/*
-	Package flag implements command-line flag parsing compatible with GNU longopts.
+/*	Package flag implements command-line flag parsing compatible with GNU longopts.
 
 	Usage:
 
@@ -790,7 +789,6 @@ func Duration(name string, short rune, value time.Duration, usage string) *time.
 	return CommandLine.Duration(name, short, usage, value)
 }
 
-
 func (f *FlagSet) set(flag *Flag, name string) {
 	if len(name) < 1 {
 		return
@@ -852,7 +850,7 @@ func (f *FlagSet) Copy(flag *Flag) {
 // decompose the comma-separated string into the slice.
 func (f *FlagSet) Var(value Value, name string, short rune, usage string) {
 	// Remember the default value as a string; it won't change.
-	flag := &Flag{ name, short, usage, value, value.String() }
+	flag := &Flag{name, short, usage, value, value.String()}
 	f.set(flag, name)
 	f.setShort(flag, short)
 }
