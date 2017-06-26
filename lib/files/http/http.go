@@ -28,7 +28,7 @@ func elideDefaultPort(uri *url.URL) {
 
 	/* elide default ports  */
 	if defport, ok := schemes[uri.Scheme]; ok {
-		l := len(host)-1
+		l := len(host) - 1
 
 		if defport == host[l] {
 			uri.Host = strings.Join(host[:l], ":")
@@ -73,12 +73,12 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	}
 
 	req := &http.Request{
-		Method: method,
-		URL: uri,
-		Header: make(http.Header),
-		Body: body,
+		Method:        method,
+		URL:           uri,
+		Header:        make(http.Header),
+		Body:          body,
 		ContentLength: l,
-		Cancel: ctx.Done(),
+		Cancel:        ctx.Done(),
 	}
 
 	if ctype != "" {

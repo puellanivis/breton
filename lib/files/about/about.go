@@ -77,7 +77,7 @@ func plugins() ([]byte, error) {
 func about() ([]byte, error) {
 	var list []string
 
-	for name, _ := range aboutMap {
+	for name := range aboutMap {
 		if name == "" {
 			continue
 		}
@@ -91,9 +91,9 @@ func about() ([]byte, error) {
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Opaque == "" {
 		filename := uri.String()
-		if len(uri.Scheme) + 3 < len(filename) {
+		if len(uri.Scheme)+3 < len(filename) {
 			uri.Opaque = filename[len(uri.Scheme)+3:]
-		}		
+		}
 	}
 
 	f, ok := aboutMap[uri.Opaque]
@@ -112,7 +112,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	var list []string
 
-	for name, _ := range aboutMap {
+	for name := range aboutMap {
 		if name == "" || !strings.HasPrefix(name, uri.Opaque) {
 			continue
 		}

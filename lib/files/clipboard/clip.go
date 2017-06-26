@@ -10,29 +10,29 @@ import (
 	"lib/files/wrapper"
 )
 
-type Handler struct{}
+type handler struct{}
 
 func init() {
-	files.RegisterScheme(&Handler{}, "clip", "clipboard")
+	files.RegisterScheme(&handler{}, "clip", "clipboard")
 }
 
-type Clipboard interface{
+type clipboard interface {
 	os.FileInfo
 	Read() ([]byte, error)
 	Write([]byte) error
 }
 
-var clipboards = make(map[string]Clipboard)
+var clipboards = make(map[string]clipboard)
 
-func getClip(name string) Clipboard {
+func getClip(name string) clipboard {
 	if len(name) < 1 {
 		// due to design of Go, nil must be explicitly passed here
 		// otherwise it will be a type nil, which != nil.
-		if Default == nil {
+		if defaultClipboard == nil {
 			return nil
 		}
 
-		return Default
+		return defaultClipboard
 	}
 
 	clip, ok := clipboards[name]
@@ -42,9 +42,9 @@ func getClip(name string) Clipboard {
 	return clip
 }
 
-func (h *Handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	clip := getClip(uri.Opaque)
-	if  clip == nil{
+	if clip == nil {
 		return nil, os.ErrNotExist
 	}
 
@@ -56,7 +56,7 @@ func (h *Handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	return wrapper.NewReader(uri, b, time.Now()), nil
 }
 
-func (h *Handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	clip := getClip(uri.Opaque)
 	if clip == nil {
 		return nil, os.ErrNotExist
@@ -67,7 +67,7 @@ func (h *Handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	}), nil
 }
 
-func (h *Handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	clip := getClip(uri.Opaque)
 	if clip == nil {
 		return nil, os.ErrNotExist

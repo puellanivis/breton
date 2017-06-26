@@ -18,18 +18,21 @@ type line struct {
 	data []byte
 }
 
+// FileStore is a caching structure that holds copies of the content of files.
 type FileStore struct {
 	sync.RWMutex
 
 	cache map[string]*line
 }
 
+// New returns a new caching FileStore, which can be registered into lib/files
 func New() *FileStore {
 	return &FileStore{
 		cache: make(map[string]*line),
 	}
 }
 
+// Default is the default cache attached to the "cache" Scheme
 var Default = New()
 
 func init() {
@@ -59,10 +62,12 @@ func filename(uri *url.URL) string {
 	return filename
 }
 
+// Create implements the files.FileStore Create. At this time, it just returns the files.Create() from the wrapped url.
 func (h *FileStore) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	return files.Create(ctx, filename(uri))
 }
 
+// Open implements the files.FileStore Open. It returns a buffered copy of the files.Reader returned from reading the uri escaped by the "cache:" scheme. Any access within the next ExpireTime set by the context.Context (5 minutes by default) will return a new copy of an bytes.Reader of the same buffer.
 func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	h.Lock()
 	defer h.Unlock()
@@ -103,7 +108,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 		}
 
 		f = &line{
-			data: data,
+			data:     data,
 			FileInfo: info,
 		}
 
@@ -119,6 +124,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 	return wrapper.NewReaderWithInfo(f.FileInfo, f.data), nil
 }
 
+// List implements the files.FileStore List. It does not cache anything and just returns the files.List() from the wrapped url.
 func (h *FileStore) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	return files.List(ctx, filename(uri))
 }

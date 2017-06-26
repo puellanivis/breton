@@ -6,30 +6,30 @@ import (
 
 var (
 	pasteCmd []string
-	copyCmd []string
+	copyCmd  []string
 	selParam []string
 )
 
 var (
-	xclipPaste = []string{"-out" }
-	xclipCopy = []string{"-in" }
+	xclipPaste = []string{"-out"}
+	xclipCopy  = []string{"-in"}
 )
 
 var (
 	xselPaste = []string{"--output"}
-	xselCopy = []string{"--input"}
+	xselCopy  = []string{"--input"}
 )
 
-var Default Clipboard
+var defaultClipboard clipboard
 
 func init() {
 	if cmd, err := exec.LookPath("xclip"); err == nil {
 		pasteCmd = append([]string{cmd}, xclipPaste...)
 		copyCmd = append([]string{cmd}, xclipCopy...)
-		selParam = []string{ "-selection" }
+		selParam = []string{"-selection"}
 
 		newExecClip(".", "clipboard")
-		Default = clipboards["."]
+		defaultClipboard = clipboards["."]
 
 		newExecClip("clipboard")
 		newExecClip("primary")
@@ -47,7 +47,7 @@ func init() {
 	selParam = []string{}
 
 	newExecClip(".", "--clipboard")
-	Default = clipboards["."]
+	defaultClipboard = clipboards["."]
 
 	newExecClip("clipboard", "--clipboard")
 	newExecClip("primary", "--primary")

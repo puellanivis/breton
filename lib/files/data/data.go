@@ -12,13 +12,13 @@ import (
 	"lib/files/wrapper"
 )
 
-type Handler struct{}
+type handler struct{}
 
 func init() {
-	files.RegisterScheme(&Handler{}, "data")
+	files.RegisterScheme(&handler{}, "data")
 }
 
-func (h *Handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	return nil, os.ErrInvalid
 }
 
@@ -26,7 +26,7 @@ func splitByte(b []byte, sep byte) (fields [][]byte) {
 	for {
 		i := bytes.IndexByte(b, sep)
 		if i < 0 {
-			fields = append(fields,b)
+			fields = append(fields, b)
 			return
 		}
 
@@ -35,7 +35,7 @@ func splitByte(b []byte, sep byte) (fields [][]byte) {
 	}
 }
 
-func (h *Handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	q := uri.Opaque
 	if q == "" {
 		q = uri.String()
@@ -81,6 +81,6 @@ func (h *Handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	return wrapper.NewReader(uri, data, time.Now()), nil
 }
 
-func (h *Handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	return nil, os.ErrInvalid
 }

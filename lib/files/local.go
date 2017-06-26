@@ -6,23 +6,27 @@ import (
 	"os"
 )
 
-type LocalFS struct{}
+type localFS struct{}
 
-var Local FileStore = &LocalFS{}
+// Local implements a wrapper from the os functions Open, Create, and Readdir, to the files.FileStore implementation.
+var Local FileStore = &localFS{}
 
 func init() {
 	RegisterScheme(Local, "file")
 }
 
-func (_ *LocalFS) Open(ctx context.Context, uri *url.URL) (Reader, error) {
+// Open opens up a local filesystem file specified in the uri.Path for reading.
+func (h *localFS) Open(ctx context.Context, uri *url.URL) (Reader, error) {
 	return os.Open(uri.Path)
 }
 
-func (_ *LocalFS) Create(ctx context.Context, uri *url.URL) (Writer, error) { 
+// Create opens up a local filesystem file specified in the uri.Path for writing. It will create a new one if it does not exist.
+func (h *localFS) Create(ctx context.Context, uri *url.URL) (Writer, error) {
 	return os.Create(uri.Path)
 }
 
-func (_ *LocalFS) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+// List returns the whole slice of os.FileInfos for a specific local filesystem at uri.Path.
+func (h *localFS) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	f, err := os.Open(uri.Path)
 	if err != nil {
 		return nil, err

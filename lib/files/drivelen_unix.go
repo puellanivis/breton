@@ -4,7 +4,6 @@
 
 package files
 
-import (
-)
+import ()
 
 const localDriveLength = 0

@@ -7,9 +7,9 @@ import (
 )
 
 type execClip struct {
-	name string
+	name  string
 	paste []string
-	copy []string
+	copy  []string
 }
 
 func newExecClip(name string, target ...string) {
@@ -18,9 +18,9 @@ func newExecClip(name string, target ...string) {
 	}
 
 	clipboards[name] = &execClip{
-		name: name,
+		name:  name,
 		paste: append(pasteCmd, append(selParam, target...)...),
-		copy: append(copyCmd, append(selParam, target...)...),
+		copy:  append(copyCmd, append(selParam, target...)...),
 	}
 }
 

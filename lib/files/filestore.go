@@ -8,6 +8,7 @@ import (
 	"sync"
 )
 
+// FileStore defines an interface which implements a system of accessing files for reading (Open) writing (Write) and directly listing (List)
 type FileStore interface {
 	Open(ctx context.Context, filename *url.URL) (Reader, error)
 	Create(ctx context.Context, filename *url.URL) (Writer, error)
@@ -17,8 +18,8 @@ type FileStore interface {
 var fsMap struct {
 	sync.Mutex
 
-	m map[string]FileStore
-	keys []string
+	m      map[string]FileStore
+	keys   []string
 	sorted bool
 }
 
@@ -38,7 +39,14 @@ func getFS(uri *url.URL) (FileStore, bool) {
 	return fs, ok
 }
 
+// RegisterScheme takes a FileStore and attaches to it the given schemes so
+// that files.Open will use that FileStore when a files.Open() is performed
+// with a URL of any of those schemes.
 func RegisterScheme(fs FileStore, schemes ...string) {
+	if len(schemes) < 1 {
+		return
+	}
+
 	fsMap.Lock()
 	defer fsMap.Unlock()
 
@@ -58,6 +66,7 @@ func RegisterScheme(fs FileStore, schemes ...string) {
 	}
 }
 
+// RegisteredSchemes returns a slice of strings that describe all registered schemes.
 func RegisteredSchemes() []string {
 	fsMap.Lock()
 	defer fsMap.Unlock()

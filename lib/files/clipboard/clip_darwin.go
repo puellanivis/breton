@@ -1,19 +1,18 @@
 package clipboard
 
-import (
-)
+import ()
 
 var (
-	pasteCmd = []string{ "/usr/bin/pbpaste" }
-	copyCmd = []string{ "/usr/bin/pbcopy" }
-	selParam = []string{ "-pboard" }
+	pasteCmd = []string{"/usr/bin/pbpaste"}
+	copyCmd  = []string{"/usr/bin/pbcopy"}
+	selParam = []string{"-pboard"}
 )
 
 // special case, easy every time.
 var Default Clipboard = &execClip{
-	name: ".",
+	name:  ".",
 	paste: pasteCmd,
-	copy: copyCmd,
+	copy:  copyCmd,
 }
 
 func init() {

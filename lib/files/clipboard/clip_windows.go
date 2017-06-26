@@ -9,9 +9,9 @@ import (
 )
 
 var (
-	osdir = os.Getenv("SystemRoot") + "\\System32\\"
-	pasteCmd = []string{ osdir + "WindowsPowerShell\\v1.0\\powershell.exe", "Get-Clipboard" }
-	copyCmd = []string{ osdir + "clip.exe" }
+	osdir    = os.Getenv("SystemRoot") + "\\System32\\"
+	pasteCmd = []string{osdir + "WindowsPowerShell\\v1.0\\powershell.exe", "Get-Clipboard"}
+	copyCmd  = []string{osdir + "clip.exe"}
 	selParam = []string{}
 )
 
@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	user32 = syscall.MustLoadDLL("user32")
+	user32           = syscall.MustLoadDLL("user32")
 	openClipboard    = user32.MustFindProc("OpenClipboard")
 	closeClipboard   = user32.MustFindProc("CloseClipboard")
 	getClipboardData = user32.MustFindProc("GetClipboardData")

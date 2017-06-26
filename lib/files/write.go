@@ -5,7 +5,8 @@ import (
 	"io"
 )
 
-func WriteAndClose(w io.WriteCloser, data []byte) error {
+// WriteTo will write the given data to the io.WriteCloser and Close the writer.
+func WriteTo(w io.WriteCloser, data []byte) error {
 	n, err := w.Write(data)
 	if err == nil && n < len(data) {
 		err = io.ErrShortWrite
@@ -16,11 +17,12 @@ func WriteAndClose(w io.WriteCloser, data []byte) error {
 	return err
 }
 
+// WriteFile will Create the given filename with the Context, and write the given data to it.
 func WriteFile(ctx context.Context, filename string, data []byte) error {
 	f, err := Create(ctx, filename)
 	if err != nil {
 		return err
 	}
 
-	return WriteAndClose(f, data)
+	return WriteTo(f, data)
 }

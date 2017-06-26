@@ -7,8 +7,9 @@ import (
 	"context"
 )
 
+// ReadJSONFrom will ReadAndClose the given io.ReadCloser and unmarshal that data into v as per json.Unmarshal.
 func ReadJSONFrom(r io.ReadCloser, v interface{}) error {
-	data, err := ReadAndClose(r)
+	data, err := ReadFrom(r)
 	if err != nil {
 		return err
 	}
@@ -21,6 +22,7 @@ func ReadJSONFrom(r io.ReadCloser, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
+// ReadJSON will open a filename with the given context, and unmarshal that data into v as per json.Unmarshal.
 func ReadJSON(ctx context.Context, filename string, v interface{}) error {
 	f, err := Open(ctx, filename)
 	if err != nil {
@@ -30,24 +32,27 @@ func ReadJSON(ctx context.Context, filename string, v interface{}) error {
 	return ReadJSONFrom(f, v)
 }
 
+// WriteJSONIndentTo writes a value marshalled with indentions as JSON to the given io.WriteCloser.
 func WriteJSONIndentTo(w io.WriteCloser, v interface{}) error {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return WriteAndClose(w, b)
+	return WriteTo(w, b)
 }
 
+// WriteJSONTo writes a value marshalled as JSON to the the given io.WriteCloser.
 func WriteJSONTo(w io.WriteCloser, v interface{}) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
 	}
 
-	return WriteAndClose(w, b)
+	return WriteTo(w, b)
 }
 
+// WriteJSONIndent writes a marshaled JSON with indention to a filename with the given Context.
 func WriteJSONIndent(ctx context.Context, filename string, v interface{}) error {
 	f, err := Create(ctx, filename)
 	if err != nil {
@@ -57,6 +62,7 @@ func WriteJSONIndent(ctx context.Context, filename string, v interface{}) error 
 	return WriteJSONIndentTo(f, v)
 }
 
+// WriteJSON writes a marshaled JSON to a filename with the given Context.
 func WriteJSON(ctx context.Context, filename string, v interface{}) error {
 	f, err := Create(ctx, filename)
 	if err != nil {

@@ -30,7 +30,9 @@ func init() {
 	files.RegisterScheme(&handler{}, "home")
 }
 
-func HomePath(uri *url.URL) (string, error) {
+// Filename takes a given url, and returns a filename that is an absolute path
+// for the specific default user if home:filename, or a specific user if home://user@/filename.
+func Filename(uri *url.URL) (string, error) {
 	if uri.User != nil {
 		u, err := user.Lookup(uri.User.Username())
 		if err != nil {
@@ -42,18 +44,18 @@ func HomePath(uri *url.URL) (string, error) {
 		}
 	}
 
-        if uri.Opaque == "" {
-                filename := uri.String()
-                if len(uri.Scheme) + 3 < len(filename) {
-                        uri.Opaque = filename[len(uri.Scheme)+3:]
-                }
-        }
+	if uri.Opaque == "" {
+		filename := uri.String()
+		if len(uri.Scheme)+3 < len(filename) {
+			uri.Opaque = filename[len(uri.Scheme)+3:]
+		}
+	}
 
 	return userDir + uri.Opaque, nil
 }
 
-func (_ *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	filename, err := HomePath(uri)
+func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+	filename, err := Filename(uri)
 	if err != nil {
 		return nil, err
 	}
@@ -61,8 +63,8 @@ func (_ *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	return os.Open(filename)
 }
 
-func (_ *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) { 
-	filename, err := HomePath(uri)
+func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+	filename, err := Filename(uri)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +72,8 @@ func (_ *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	return os.Create(filename)
 }
 
-func (_ *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	filename, err := HomePath(uri)
+func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+	filename, err := Filename(uri)
 	if err != nil {
 		return nil, err
 	}
