@@ -4,12 +4,34 @@ import (
 	"sort"
 )
 
+func CompareInt64(x, y int64) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return 1
+}
+
 // IntSlice attaches the methods of sort.Interface to []int, sorting in increasing order.
 type IntSlice []int
 
 func (p IntSlice) Len() int           { return len(p) }
 func (p IntSlice) Less(i, j int) bool { return p[i] < p[j] }
 func (p IntSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func (p IntSlice) Compare(i, j int) int {
+	return CompareInt64(int64(p[i]), int64(p[j]))
+}
+func (p IntSlice) CompareFunc(x interface{}) func(int) int {
+	e := int64(x.(int))
+	return func(i int) int {
+		return CompareInt64(int64(p[i]), e)
+	}
+}
 
 func (p IntSlice) RadixRange() (int, int) {
 	var r uint64
@@ -24,13 +46,13 @@ func (p IntSlice) RadixRange() (int, int) {
 	}
 	return uintMSB - int(r), uintMSB
 }
-
 func (p IntSlice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
 			return p[i] >= 0
 		}
 	}
+
 	mask := int(1) << uint(uintMSB-r)
 	return func(i int) bool {
 		return p[i]&mask != 0
@@ -61,6 +83,16 @@ type Int64Slice []int64
 func (p Int64Slice) Len() int           { return len(p) }
 func (p Int64Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func (p Int64Slice) Compare(i, j int) int {
+	return CompareInt64(p[i], p[j])
+}
+func (p Int64Slice) CompareFunc(x interface{}) func(int) int {
+	e := x.(int64)
+	return func(i int) int {
+		return CompareInt64(p[i], e)
+	}
+}
 
 func (p Int64Slice) RadixRange() (int, int) {
 	var r uint64
@@ -112,6 +144,16 @@ func (p Int32Slice) Len() int           { return len(p) }
 func (p Int32Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int32Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+func (p Int32Slice) Compare(i, j int) int {
+	return CompareInt64(int64(p[i]), int64(p[j]))
+}
+func (p Int32Slice) CompareFunc(x interface{}) func(int) int {
+	e := int64(x.(int32))
+	return func(i int) int {
+		return CompareInt64(int64(p[i]), e)
+	}
+}
+
 func (p Int32Slice) RadixRange() (int, int) {
 	var r uint64
 	for _, v := range p {
@@ -162,6 +204,16 @@ func (p Int16Slice) Len() int           { return len(p) }
 func (p Int16Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int16Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+func (p Int16Slice) Compare(i, j int) int {
+	return CompareInt64(int64(p[i]), int64(p[j]))
+}
+func (p Int16Slice) CompareFunc(x interface{}) func(int) int {
+	e := int64(x.(int16))
+	return func(i int) int {
+		return CompareInt64(int64(p[i]), e)
+	}
+}
+
 func (p Int16Slice) RadixRange() (int, int) {
 	var r uint64
 	for _, v := range p {
@@ -211,6 +263,16 @@ type Int8Slice []int8
 func (p Int8Slice) Len() int           { return len(p) }
 func (p Int8Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int8Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func (p Int8Slice) Compare(i, j int) int {
+	return CompareInt64(int64(p[i]), int64(p[j]))
+}
+func (p Int8Slice) CompareFunc(x interface{}) func(int) int {
+	e := int64(x.(int8))
+	return func(i int) int {
+		return CompareInt64(int64(p[i]), e)
+	}
+}
 
 func (p Int8Slice) RadixRange() (int, int) {
 	var r uint64

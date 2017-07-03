@@ -78,5 +78,4 @@ func TestStrings(t *testing.T) {
 	if SearchStrings(l, "zomg") != 4 {
 		t.Error("binary search failed for string list")
 	}
-
 }

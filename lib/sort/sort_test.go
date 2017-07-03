@@ -22,6 +22,25 @@ func TestInt32s(t *testing.T) {
 	}
 }
 
+func TestReverseInt32s(t *testing.T) {
+	a := []int32{42, 5, 7, 2, 3}
+	l := Reverse(a)
+
+	if IsSorted(l) {
+		t.Error("unsorted reverse int32 list reports as sorted")
+	}
+
+	Sort(l)
+
+	if !IsSorted(l) {
+		t.Error("after reverse sorting int32 list reports as not sorted")
+	}
+
+	if got := SearchFor(l, int32(42)); got != 0 {
+		t.Errorf("binary search failed for reversed int32 list got %d wanted 0", got)
+	}
+}
+
 func TestInt64s(t *testing.T) {
 	l := []int64{42, 5, 7, 2, 3}
 
@@ -29,7 +48,7 @@ func TestInt64s(t *testing.T) {
 		t.Error("unsorted int64 list reports as sorted")
 	}
 
-	Int64s(l)
+	Sort(l)
 
 	if !Int64sAreSorted(l) {
 		t.Error("after sorting int64 list reports as not sorted")

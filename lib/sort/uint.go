@@ -2,18 +2,40 @@ package sort
 
 import (
 	"sort"
+	"strconv"
 )
 
-const uintPrototype = ^uint(0)
+var uintMSB = strconv.IntSize
 
-var uintMSB = int(bsr(uint64(uintPrototype)))
+func CompareUint64(x, y uint64) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return 0
+}
 
 // UintSlice attaches the methods of sort.Uinterface to []uint, sorting in increasing order.
 type UintSlice []uint
 
-func (p UintSlice) Len() int           { return len(p) }
-func (p UintSlice) Less(i, j int) bool { return p[i] < p[j] }
-func (p UintSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p UintSlice) Len() int                    { return len(p) }
+func (p UintSlice) Less(i, j int) bool          { return p[i] < p[j] }
+func (p UintSlice) Swap(i, j int)               { p[i], p[j] = p[j], p[i] }
+func (p UintSlice) SearchFor(x interface{}) int { return p.Search(x.(uint)) }
+
+func (p UintSlice) Compare(i, j int) int {
+	return CompareUint64(uint64(p[i]), uint64(p[j]))
+}
+func (p UintSlice) CompareFunc(x interface{}) func(int) int {
+	e := uint64(x.(uint))
+	return func(i int) int {
+		return CompareUint64(uint64(p[i]), e)
+	}
+}
 
 func (p UintSlice) RadixRange() (int, int) {
 	var r uint64
@@ -52,9 +74,20 @@ func UintsAreSorted(a []uint) bool { return sort.IsSorted(UintSlice(a)) }
 // UintSlice attaches the methods of sort.Uinterface to []uint, sorting in increasing order.
 type Uint64Slice []uint64
 
-func (p Uint64Slice) Len() int           { return len(p) }
-func (p Uint64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Uint64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Uint64Slice) Len() int                    { return len(p) }
+func (p Uint64Slice) Less(i, j int) bool          { return p[i] < p[j] }
+func (p Uint64Slice) Swap(i, j int)               { p[i], p[j] = p[j], p[i] }
+func (p Uint64Slice) SearchFor(x interface{}) int { return p.Search(x.(uint64)) }
+
+func (p Uint64Slice) Compare(i, j int) int {
+	return CompareUint64(p[i], p[j])
+}
+func (p Uint64Slice) CompareFunc(x interface{}) func(int) int {
+	e := x.(uint64)
+	return func(i int) int {
+		return CompareUint64(p[i], e)
+	}
+}
 
 func (p Uint64Slice) RadixRange() (int, int) {
 	var r uint64
@@ -93,9 +126,20 @@ func Uint64sAreSorted(a []uint64) bool { return sort.IsSorted(Uint64Slice(a)) }
 // Uint32Slice attaches the methods of sort.Uinterface to []uint32, sorting in increasing order.
 type Uint32Slice []uint32
 
-func (p Uint32Slice) Len() int           { return len(p) }
-func (p Uint32Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Uint32Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Uint32Slice) Len() int                    { return len(p) }
+func (p Uint32Slice) Less(i, j int) bool          { return p[i] < p[j] }
+func (p Uint32Slice) Swap(i, j int)               { p[i], p[j] = p[j], p[i] }
+func (p Uint32Slice) SearchFor(x interface{}) int { return p.Search(x.(uint32)) }
+
+func (p Uint32Slice) Compare(i, j int) int {
+	return CompareUint64(uint64(p[i]), uint64(p[j]))
+}
+func (p Uint32Slice) CompareFunc(x interface{}) func(int) int {
+	e := uint64(x.(uint32))
+	return func(i int) int {
+		return CompareUint64(uint64(p[i]), e)
+	}
+}
 
 func (p Uint32Slice) RadixRange() (int, int) {
 	var r uint64
@@ -134,9 +178,20 @@ func Uint32sAreSorted(a []uint32) bool { return sort.IsSorted(Uint32Slice(a)) }
 // Uint16Slice attaches the methods of sort.Uinterface to []uint16, sorting in increasing order.
 type Uint16Slice []uint16
 
-func (p Uint16Slice) Len() int           { return len(p) }
-func (p Uint16Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Uint16Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Uint16Slice) Len() int                    { return len(p) }
+func (p Uint16Slice) Less(i, j int) bool          { return p[i] < p[j] }
+func (p Uint16Slice) Swap(i, j int)               { p[i], p[j] = p[j], p[i] }
+func (p Uint16Slice) SearchFor(x interface{}) int { return p.Search(x.(uint16)) }
+
+func (p Uint16Slice) Compare(i, j int) int {
+	return CompareUint64(uint64(p[i]), uint64(p[j]))
+}
+func (p Uint16Slice) CompareFunc(x interface{}) func(int) int {
+	e := uint64(x.(uint16))
+	return func(i int) int {
+		return CompareUint64(uint64(p[i]), e)
+	}
+}
 
 func (p Uint16Slice) RadixRange() (int, int) {
 	var r uint64
@@ -175,9 +230,20 @@ func Uint16sAreSorted(a []uint16) bool { return sort.IsSorted(Uint16Slice(a)) }
 // Uint8Slice attaches the methods of sort.Uinterface to []uint8, sorting in increasing order.
 type Uint8Slice []uint8
 
-func (p Uint8Slice) Len() int           { return len(p) }
-func (p Uint8Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Uint8Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Uint8Slice) Len() int                    { return len(p) }
+func (p Uint8Slice) Less(i, j int) bool          { return p[i] < p[j] }
+func (p Uint8Slice) Swap(i, j int)               { p[i], p[j] = p[j], p[i] }
+func (p Uint8Slice) SearchFor(x interface{}) int { return p.Search(x.(uint8)) }
+
+func (p Uint8Slice) Compare(i, j int) int {
+	return CompareUint64(uint64(p[i]), uint64(p[j]))
+}
+func (p Uint8Slice) CompareFunc(x interface{}) func(int) int {
+	e := uint64(x.(uint8))
+	return func(i int) int {
+		return CompareUint64(uint64(p[i]), e)
+	}
+}
 
 func (p Uint8Slice) RadixRange() (int, int) {
 	var r uint64

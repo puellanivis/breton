@@ -1,14 +1,27 @@
 package sort
 
-import ()
+import (
+	"sort"
+)
 
 type Searcher interface {
-	Search(x interface{}) int
+	Interface
+	Comparer
 }
 
-func Search(a interface{}, x interface{}) int {
-	if a == nil {
-		return 0
+type Comparer interface {
+	Compare(i, j int) int
+	CompareFunc(x interface{}) func(int) int
+}
+
+func Search(n int, f func(int) bool) int {
+	return sort.Search(n, f)
+}
+
+func SearchFor(a interface{}, x interface{}) int {
+	if a, ok := a.(Searcher); ok {
+		f := a.CompareFunc(x)
+		return sort.Search(a.Len(), func(i int) bool { return f(i) >= 0 })
 	}
 
 	switch a := a.(type) {
@@ -41,10 +54,10 @@ func Search(a interface{}, x interface{}) int {
 
 	case []string:
 		return SearchStrings(a, x.(string))
-	}
-
-	if a, ok := a.(Searcher); ok {
-		return a.Search(x)
+	case [][]byte:
+		return SearchByteSlices(a, x.([]byte))
+	case [][]rune:
+		return SearchRuneSlices(a, x.([]rune))
 	}
 
 	panic("sort.Search passed an unknown type")

@@ -15,7 +15,7 @@ func Sort(a interface{}) {
 
 func Stable(a interface{}) {
 	if a == nil {
-		return
+		a = sort.Interface(nil)
 	}
 
 	if a, ok := a.(sort.Interface); ok {
@@ -53,59 +53,94 @@ func Stable(a interface{}) {
 
 	case []string:
 		sort.Stable(StringSlice(a))
+	case [][]byte:
+		sort.Stable(ByteSliceSlice(a))
+	case [][]rune:
+		sort.Stable(RuneSliceSlice(a))
 
 	default:
 		panic("sort.Stable passed an unknown type")
 	}
 }
 
-func Reverse(a interface{}) sort.Interface {
-	if a == nil {
-		return nil
-	}
+type reversable interface{
+	RadixInterface
+	Comparer
+}
 
-	if a, ok := a.(sort.Interface); ok {
-		return sort.Reverse(a)
+type reversed struct {
+	reversable
+}
+
+func (a reversed) Less(i, j int) bool {
+	return !a.reversable.Less(i, j)
+}
+
+func (a reversed) Compare(i, j int) int {
+	return -a.reversable.Compare(i, j)
+}
+
+func (a reversed) CompareFunc(x interface{}) func(int) int {
+	f := a.reversable.CompareFunc(x)
+
+	return func(i int) int { return -f(i) }
+}
+
+func (a reversed) RadixFunc(r int) RadixTest {
+	f := a.reversable.RadixFunc(r)
+
+	return func(i int) bool {
+		return !f(i)
+	}
+}
+
+func Reverse(a interface{}) sort.Interface {
+	if a, ok := a.(reversable); ok {
+		return &reversed{a}
 	}
 
 	switch a := a.(type) {
 	case []uint:
-		return sort.Reverse(UintSlice(a))
+		return reversed{UintSlice(a)}
 	case []uint8:
-		return sort.Reverse(Uint8Slice(a))
+		return reversed{Uint8Slice(a)}
 	case []uint16:
-		return sort.Reverse(Uint16Slice(a))
+		return reversed{Uint16Slice(a)}
 	case []uint32:
-		return sort.Reverse(Uint32Slice(a))
+		return reversed{Uint32Slice(a)}
 	case []uint64:
-		return sort.Reverse(Uint64Slice(a))
+		return reversed{Uint64Slice(a)}
 
 	case []int:
-		return sort.Reverse(IntSlice(a))
+		return reversed{IntSlice(a)}
 	case []int8:
-		return sort.Reverse(Int8Slice(a))
+		return reversed{Int8Slice(a)}
 	case []int16:
-		return sort.Reverse(Int16Slice(a))
+		return reversed{Int16Slice(a)}
 	case []int32:
-		return sort.Reverse(Int32Slice(a))
+		return reversed{Int32Slice(a)}
 	case []int64:
-		return sort.Reverse(Int64Slice(a))
+		return reversed{Int64Slice(a)}
 
 	case []float32:
-		return sort.Reverse(Float32Slice(a))
+		return reversed{Float32Slice(a)}
 	case []float64:
-		return sort.Reverse(Float64Slice(a))
+		return reversed{Float64Slice(a)}
 
 	case []string:
-		return sort.Reverse(StringSlice(a))
+		return reversed{StringSlice(a)}
+	case [][]byte:
+		return reversed{ByteSliceSlice(a)}
+	case [][]rune:
+		return reversed{RuneSliceSlice(a)}
 	}
 
-	panic("sort.Reverse passed an unknown type")
+	return sort.Reverse(a.(sort.Interface))
 }
 
 func IsSorted(a interface{}) bool {
 	if a == nil {
-		return false
+		a = sort.Interface(nil)
 	}
 
 	if a, ok := a.(sort.Interface); ok {
@@ -142,6 +177,10 @@ func IsSorted(a interface{}) bool {
 
 	case []string:
 		return sort.IsSorted(StringSlice(a))
+	case [][]byte:
+		return sort.IsSorted(ByteSliceSlice(a))
+	case [][]rune:
+		return sort.IsSorted(RuneSliceSlice(a))
 	}
 
 	panic("sort.IsSorted passed an unknown type")

@@ -10,7 +10,7 @@ type RadixTest func(i int) bool
 type RadixInterface interface {
 	Interface
 
-	// Returns start, end, and increment
+	// Returns start, and end of values to run through for RadixFunc
 	RadixRange() (int, int)
 	RadixFunc(r int) RadixTest
 }
@@ -57,6 +57,8 @@ func Radix(a interface{}) {
 		radix(StringSlice(a))
 
 	default:
+		// none of these fit, but if it implements sort.Interface
+		// then we can just use the built in sort.Sort anyways.
 		if a, ok := a.(sort.Interface); ok {
 			sort.Sort(a)
 			return
@@ -82,19 +84,36 @@ func radixSort(a RadixInterface, start, end, radix, last int) {
 	f := a.RadixFunc(radix)
 
 	for i < j {
-		for (i < j) && !f(i) {
+		// from the start, find the i-th item that satisfies radix.
+		for i < j && !f(i) {
 			i++
 		}
-		if (i < j) && f(j) {
+
+		// from the end, find the j-th item that doesn’t satisfy radix.
+		for i < j && f(j) {
 			j--
+		}
+
+		if j < i {
+			// avoid swapping if they’ve passed each other…
+			// really no big deal if they’re ==, but *shrug*
+			// already doing the test anyways.
+			break
 		}
 
 		a.Swap(i, j)
 	}
 
+	// if the i-th element doesn’t satisfy radix, then
+	// we need to increment it so that i == len(head)
+	// where head is the slice of items not satisfying radix.
 	if !f(i) {
 		i++
 	}
+
+	// if the j-th element doesn’t satisfy radix, then
+	// we need to increment it so that j is the start of tail,
+	// where tail is the slice of items satisfying radix.
 	if !f(j) {
 		j++
 	}

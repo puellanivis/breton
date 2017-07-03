@@ -8,14 +8,36 @@ import (
 // Float64Slice attaches the methods of sort.Interface to []float64, sorting in increasing order.
 type Float64Slice []float64
 
-func (p Float64Slice) Len() int           { return len(p) }
-func (p Float64Slice) Less(i, j int) bool { return p[i] < p[j] || isNaN64(p[i]) && !isNaN64(p[j]) }
-func (p Float64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Float64Slice) Len() int                    { return len(p) }
+func (p Float64Slice) Less(i, j int) bool          { return p[i] < p[j] || isNaN64(p[i]) && !isNaN64(p[j]) }
+func (p Float64Slice) Swap(i, j int)               { p[i], p[j] = p[j], p[i] }
+func (p Float64Slice) SearchFor(x interface{}) int { return p.Search(x.(float64)) }
+
+func (p Float64Slice) cmp(x, y float64) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return 1
+}
+func (p Float64Slice) Compare(i, j int) int {
+	return p.cmp(p[i], p[j])
+}
+func (p Float64Slice) CompareFunc(x interface{}) func(int) int {
+	e := x.(float64)
+
+	return func(i int) int {
+		return p.cmp(p[i], e)
+	}
+}
 
 func (p Float64Slice) RadixRange() (int, int) {
 	return 0, 63
 }
-
 func (p Float64Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -54,14 +76,36 @@ func Float64sAreSorted(a []float64) bool { return sort.IsSorted(Float64Slice(a))
 // Float32Slice attaches the methods of sort.Interface to []float32, sorting in increasing order.
 type Float32Slice []float32
 
-func (p Float32Slice) Len() int           { return len(p) }
-func (p Float32Slice) Less(i, j int) bool { return p[i] < p[j] || isNaN32(p[i]) && !isNaN32(p[j]) }
-func (p Float32Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p Float32Slice) Len() int                    { return len(p) }
+func (p Float32Slice) Less(i, j int) bool          { return p[i] < p[j] || isNaN32(p[i]) && !isNaN32(p[j]) }
+func (p Float32Slice) Swap(i, j int)               { p[i], p[j] = p[j], p[i] }
+func (p Float32Slice) SearchFor(x interface{}) int { return p.Search(x.(float32)) }
+
+func (p Float32Slice) cmp(x, y float32) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return 1
+}
+func (p Float32Slice) Compare(i, j int) int {
+	return p.cmp(p[i], p[j])
+}
+func (p Float32Slice) CompareFunc(x interface{}) func(int) int {
+	e := x.(float32)
+
+	return func(i int) int {
+		return p.cmp(p[i], e)
+	}
+}
 
 func (p Float32Slice) RadixRange() (int, int) {
 	return 0, 31
 }
-
 func (p Float32Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
