@@ -1,6 +1,8 @@
 package sort
 
 import (
+	"crypto/rand"
+	"sort"
 	"testing"
 )
 
@@ -74,5 +76,44 @@ func TestFloat32s(t *testing.T) {
 
 	if SearchFloat32s(l, 42) != 4 {
 		t.Error("binary search failed for int64 list")
+	}
+}
+
+var benchArray []int
+
+func init() {
+	b := make([]byte, 4)
+
+	for i := 0; i < 10000000; i++ {
+		_, err := rand.Read(b)
+		if err != nil {
+			panic(err)
+		}
+
+		var val int
+		for j := 0; j < 4; j++ {
+			val <<= 8
+			val |= int(b[j])
+		}
+
+		benchArray = append(benchArray, val)
+	}
+}
+
+func BenchmarkRadixSort(b *testing.B) {
+	buf := make([]int, len(benchArray))
+
+	for i := 0; i < b.N; i++ {
+		copy(buf, benchArray)
+		Ints(buf)
+	}
+}
+
+func BenchmarkOriginalSort(b *testing.B) {
+	buf := make([]int, len(benchArray))
+
+	for i := 0; i < b.N; i++ {
+		copy(buf, benchArray)
+		sort.Ints(buf)
 	}
 }
