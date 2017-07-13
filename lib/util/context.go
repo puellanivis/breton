@@ -69,14 +69,14 @@ func sigHandler(ctx context.Context) context.Context {
 		}
 	}()
 
-	signal.Notify(sigchan, os.Interrupt, os.Signal(syscall.SIGTERM), os.Signal(syscall.SIGHUP))
+	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
 	go func() {
 		for {
 			select {
 			case sig := <-sigchan:
-				log.Error("received signal:", sig)
 				cancel()
+				log.Error("received signal:", sig)
 
 				select {
 				case killchan <- true:
