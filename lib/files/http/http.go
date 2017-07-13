@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"lib/files"
@@ -23,21 +22,27 @@ var schemes = map[string]string{
 	"https": "443",
 }
 
-func elideDefaultPort(uri *url.URL) {
-	host := strings.Split(uri.Host, ":")
+func init() {
+	var schemeList []string
 
-	/* elide default ports  */
-	if defport, ok := schemes[uri.Scheme]; ok {
-		l := len(host) - 1
-
-		if defport == host[l] {
-			uri.Host = strings.Join(host[:l], ":")
-		}
+	for scheme := range schemes {
+		schemeList = append(schemeList, scheme)
 	}
+
+	files.RegisterScheme(&handler{}, schemeList...)
 }
 
-func init() {
-	files.RegisterScheme(&handler{}, "http", "https")
+func elideDefaultPort(uri *url.URL) *url.URL {
+	port := uri.Port()
+
+	/* elide default ports  */
+	if defport, ok := schemes[uri.Scheme]; ok && defport == port {
+		newuri := *uri
+		newuri.Host = uri.Hostname()
+		return &newuri
+	}
+
+	return uri
 }
 
 func getErr(resp *http.Response) error {
@@ -54,20 +59,18 @@ func getErr(resp *http.Response) error {
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	elideDefaultPort(uri)
+	uri = elideDefaultPort(uri)
 
-	var method string
-	ctype := ""
+	var method, ctype string
 	var body io.ReadCloser
-	var l int64
+	var size int64
 
 	if b, ok := getContent(ctx); ok {
 		method = "POST"
-		l = int64(len(b))
+		size = int64(len(b))
 		body = ioutil.NopCloser(bytes.NewReader(b))
 
-		ctype, ok = getContentType(ctx)
-		if !ok {
+		if ctype, ok = getContentType(ctx); !ok {
 			ctype = http.DetectContentType(b)
 		}
 	}
@@ -77,9 +80,10 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		URL:           uri,
 		Header:        make(http.Header),
 		Body:          body,
-		ContentLength: l,
-		Cancel:        ctx.Done(),
+		ContentLength: size,
 	}
+
+	req = req.WithContext(ctx)
 
 	if ctype != "" {
 		req.Header.Add("Content-Type", ctype)
@@ -117,7 +121,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	elideDefaultPort(uri)
+	uri = elideDefaultPort(uri)
 
 	addr := uri.String()
 
