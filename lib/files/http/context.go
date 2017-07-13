@@ -42,6 +42,7 @@ func getContentType(ctx context.Context) (string, bool) {
 }
 
 // WithContent attaches a byte slice to a Context, which is then used by this library as a body for a POST to any http requests.
+// TODO: this shouldn’t be done as a context function, but rather a call on the file returned by an http open/create.
 func WithContent(ctx context.Context, ctype string, data []byte) context.Context {
 	return context.WithValue(WithContentType(ctx, ctype), contentKey, data)
 }
