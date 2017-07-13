@@ -16,6 +16,10 @@ func Create(ctx context.Context, filename string) (Writer, error) {
 	}
 
 	if uri, err := url.Parse(filename); err == nil {
+		if root, ok := getRoot(ctx); ok {
+			uri = root.ResolveReference(uri)
+		}
+
 		if fs, ok := getFS(uri); ok {
 			return fs.Create(ctx, uri)
 		}

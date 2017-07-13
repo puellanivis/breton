@@ -14,6 +14,10 @@ func Open(ctx context.Context, filename string) (Reader, error) {
 	}
 
 	if uri, err := url.Parse(filename); err == nil {
+		if root, ok := getRoot(ctx); ok {
+			uri = root.ResolveReference(uri)
+		}
+
 		if fs, ok := getFS(uri); ok {
 			return fs.Open(ctx, uri)
 		}
@@ -30,6 +34,10 @@ func List(ctx context.Context, filename string) ([]os.FileInfo, error) {
 	}
 
 	if uri, err := url.Parse(filename); err == nil {
+		if root, ok := getRoot(ctx); ok {
+			uri = root.ResolveReference(uri)
+		}
+
 		if fs, ok := getFS(uri); ok {
 			return fs.List(ctx, uri)
 		}
