@@ -8,15 +8,15 @@ import (
 	"os/user"
 )
 
-type Group struct{user.Group}
-type User struct{user.User}
+type Group struct{ user.Group }
+type User struct{ user.User }
 
 var (
-	LookupGroup = user.LookupGroup
+	LookupGroup   = user.LookupGroup
 	LookupGroupId = user.LookupGroupId
-	Current = user.Current
-	Lookup = user.Lookup
-	LookupId = user.LookupId
+	Current       = user.Current
+	Lookup        = user.Lookup
+	LookupId      = user.LookupId
 )
 
 func CurrentHomeDir() (string, error) {
