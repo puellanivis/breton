@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"sync"
 	"time"
 
 	"lib/files"
@@ -58,199 +57,98 @@ func getErr(resp *http.Response) error {
 	return errors.New(resp.Status)
 }
 
-type Reader struct {
-	sync.Mutex
-
-	filling chan bool
-	cancel func()
-	err error
-
-	req *http.Request
-	r *wrapper.Reader
-}
-
-func (r *Reader) Name() string {
-	return r.req.URL.String()
-}
-
-func (r *Reader) Stat() (os.FileInfo, error) {
-	for <-r.filling {
-	}
-
-	if r.err != nil {
-		return nil, r.err
-	}
-
-	return r.r.Stat()
-}
-
-func (r *Reader) Close() error {
-	r.cancel()
-
-	for <-r.filling {
-	}
-
-	if r.err != nil {
-		return r.err
-	}
-
-	return r.r.Close()
-}
-
-func (r *Reader) Read(b []byte) (n int, err error) {
-	for <-r.filling {
-	}
-
-	if r.err != nil {
-		return 0, r.err
-	}
-
-	return r.r.Read(b)
-}
-
-func (r *Reader) Seek(offset int64, whence int) (int64, error) {
-	for <-r.filling {
-	}
-
-	if r.err != nil {
-		return 0, r.err
-	}
-
-	return r.r.Seek(offset, whence)
-}
-
-func WithQuery(r files.Reader, vals url.Values) error {
-	body := []byte(vals.Encode())
-	return WithContent(r, "application/x-www-form-urlencoded", body)
-}
-
-func WithContent(r files.Reader, ctype string, data []byte) error {
-	rd, ok := r.(*Reader)
-	if !ok {
-		return errors.New("files.Reader is not an http.Reader")
-	}
-
-	rd.Lock()
-	defer rd.Unlock()
-
-	rd.req.Method = "POST"
-	if ctype != "" {
-		rd.req.Header.Add("Content-Type", ctype)
-	}
-	rd.req.ContentLength = int64(len(data))
-	rd.req.Body = ioutil.NopCloser(bytes.NewReader(data))
-	return nil
-}
-
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	ctx, cancel := context.WithCancel(ctx)
-
+func (h *handler) Open(ctx context.Context, uri *url.URL, options ...files.Option) (files.Reader, error) {
 	uri = elideDefaultPort(uri)
 
 	req := &http.Request{
-		URL:           uri,
-		Header:        make(http.Header),
+		URL:    uri,
+		Header: make(http.Header),
 	}
 
 	req = req.WithContext(ctx)
 
-	r := &Reader{
-		filling: make(chan bool),
-		cancel: cancel,
+	r := &request{
 		req: req,
 	}
 
-	go func() {
-		defer close(r.filling)
-
-		select {
-		case r.filling <- true:
-		case <-ctx.Done():
-			r.err = ctx.Err()
-			return
+	for _, opt := range options {
+		if _, err := opt(r); err != nil {
+			return nil, err
 		}
-
-		r.Lock()
-		defer r.Unlock()
-
-		cl, ok := getClient(ctx)
-		if !ok {
-			cl = http.DefaultClient
-		}
-
-		resp, err := cl.Do(req)
-		if err != nil {
-			r.err = err
-			return
-		}
-
-		b, err := files.ReadFrom(resp.Body)
-		if err != nil {
-			r.err = err
-			return
-		}
-
-		if err := getErr(resp); err != nil {
-			r.err = err
-			return
-		}
-
-		var t time.Time
-		if lastmod := resp.Header.Get("Last-Modified"); lastmod != "" {
-			if t1, err := http.ParseTime(lastmod); err == nil {
-				t = t1
-			}
-		} else {
-			t = time.Now()
-		}
-
-		r.r = wrapper.NewReader(uri, b, t)
-	}()
-
-	return r, nil
-}
-
-type Writer struct {
-	sync.Mutex
-
-	ctype string
-	*wrapper.Writer
-}
-
-func WithContentType(w files.Writer, ctype string) error {
-	wr, ok := w.(*Writer)
-	if !ok {
-		return errors.New("files.Writer is not an http.Writer")
 	}
 
-	wr.Lock()
-	defer wr.Unlock()
-
-	wr.ctype = ctype
-	return nil
-}
-
-func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	uri = elideDefaultPort(uri)
-
-	addr := uri.String()
+	if ua, ok := getUserAgent(ctx); ok {
+		r.req.Header.Set("User-Agent", ua)
+	}
 
 	cl, ok := getClient(ctx)
 	if !ok {
 		cl = http.DefaultClient
 	}
 
-	w := new(Writer)
+	resp, err := cl.Do(req)
+	if err != nil {
+		return nil, err
+	}
 
-	w.Writer = wrapper.NewWriter(ctx, uri, func(b []byte) error {
-		w.Lock()
-		defer w.Unlock()
+	b, err := files.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-		if w.ctype == "" {
-			w.ctype = http.DetectContentType(b)
+	if err := getErr(resp); err != nil {
+		return nil, err
+	}
+
+	var t time.Time
+	if lastmod := resp.Header.Get("Last-Modified"); lastmod != "" {
+		if t1, err := http.ParseTime(lastmod); err == nil {
+			t = t1
+		}
+	} else {
+		t = time.Now()
+	}
+
+	return wrapper.NewReader(uri, b, t), nil
+}
+
+func (h *handler) Create(ctx context.Context, uri *url.URL, options ...files.Option) (files.Writer, error) {
+	uri = elideDefaultPort(uri)
+
+	cl, ok := getClient(ctx)
+	if !ok {
+		cl = http.DefaultClient
+	}
+
+	req := &http.Request{
+		Method: "POST",
+		URL:    uri,
+		Header: make(http.Header),
+	}
+	req = req.WithContext(ctx)
+
+	r := &request{
+		req: req,
+	}
+
+	for _, opt := range options {
+		if _, err := opt(r); err != nil {
+			return nil, err
+		}
+	}
+
+	return wrapper.NewWriter(ctx, uri, func(b []byte) error {
+		if ua, ok := getUserAgent(ctx); ok {
+			r.req.Header.Set("User-Agent", ua)
 		}
 
-		resp, err := cl.Post(addr, w.ctype, bytes.NewReader(b))
+		if r.req.Header.Get("Content-Type") == "" {
+			r.req.Header.Set("Content-Type", http.DetectContentType(b))
+		}
+
+		r.req.Body = ioutil.NopCloser(bytes.NewReader(b))
+
+		resp, err := cl.Do(r.req)
 		if err != nil {
 			return err
 		}
@@ -260,11 +158,9 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		}
 
 		return getErr(resp)
-	})
-
-	return w, nil
+	}), nil
 }
 
-func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (h *handler) List(ctx context.Context, uri *url.URL, options ...files.Option) ([]os.FileInfo, error) {
 	return nil, os.ErrInvalid
 }
