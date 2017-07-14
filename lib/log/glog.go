@@ -397,8 +397,8 @@ type flushSyncWriter interface {
 }
 
 func init() {
-	flag.BoolVar(&logging.toStderr, "logtostderr", "log to standard error instead of files", false)
-	flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", "log to standard error as well as files", false)
+	flag.BoolVar(&logging.toStderr, "logtostderr", false, "log to standard error instead of files")
+	flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
 	flag.Var(&logging.verbosity, "verbosity", "log `level` for V logs")
 	flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this `threshold` go to stderr")
 	flag.Var(&logging.vmodule, "vmodule", "`comma-separated list of pattern=N` settings for file-filtered logging")

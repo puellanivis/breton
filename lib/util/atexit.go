@@ -13,7 +13,7 @@ import (
 
 var (
 	// Go libraries should not set flags themselves, this is an exception.
-	profile = flag.String("profile", "write cpu profile to `filename`.prof and heap profile to filename.mprof", "")
+	profile = flag.String("profile", "", "write cpu profile to `filename`.prof and heap profile to filename.mprof")
 )
 
 // AtExitFunc is a function type that can be deferred for execution at the time of the program's exit. (Will NOT work if you call os.Exit(), you must call util.Exit())
