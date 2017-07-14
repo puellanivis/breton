@@ -9,7 +9,7 @@ import (
 
 var (
 	// Go libraries should not set flags themselves, this is an exception.
-	debugFlag = flag.Func("debug", 0, "turns on a lot of messages that we don't normally need or want", func() {
+	debugFlag = flag.Func("debug", "turns on a lot of messages that we don't normally need or want", func() {
 		// TODO: set log.V(5) or something
 	})
 )

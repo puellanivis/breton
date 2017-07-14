@@ -39,29 +39,29 @@
 // This package provides several flags that modify this behavior.
 // As a result, flag.Parse must be called before any logging is done.
 //
-//	-logtostderr=false
+//	--logtostderr=false
 //		Logs are written to standard error instead of to files.
-//	-alsologtostderr=false
+//	--alsologtostderr=false
 //		Logs are written to standard error as well as to files.
-//	-stderrthreshold=ERROR
+//	--stderrthreshold=ERROR
 //		Log events at or above this severity are logged to standard
 //		error as well as to files.
-//	-log_dir=""
+//	--log_dir=""
 //		Log files will be written to this directory instead of the
 //		default temporary directory.
 //
 //	Other flags provide aids to debugging.
 //
-//	-log_backtrace_at=""
+//	--log_backtrace_at=""
 //		When set to a file and line number holding a logging statement,
 //		such as
 //			-log_backtrace_at=gopherflakes.go:234
 //		a stack trace will be written to the Info log whenever execution
 //		hits that statement. (Unlike with -vmodule, the ".go" must be
 //		present.)
-//	-v=0
+//	--verbosity=0
 //		Enable V-leveled logging at the specified level.
-//	-vmodule=""
+//	--vmodule=""
 //		The syntax of the argument is a comma-separated list of pattern=N,
 //		where pattern is a literal file name (minus the ".go" suffix) or
 //		"glob" pattern and N is a V level. For instance,
@@ -397,12 +397,12 @@ type flushSyncWriter interface {
 }
 
 func init() {
-	flag.BoolVar(&logging.toStderr, "logtostderr", 0, "log to standard error instead of files", false)
-	flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", 0, "log to standard error as well as files", false)
-	flag.Var(&logging.verbosity, "verbosity", 0, "log `level` for V logs")
-	flag.Var(&logging.stderrThreshold, "stderrthreshold", 0, "logs at or above this `threshold` go to stderr")
-	flag.Var(&logging.vmodule, "vmodule", 0, "`comma-separated list of pattern=N` settings for file-filtered logging")
-	flag.Var(&logging.traceLocation, "log_backtrace_at", 0, "when logging hits line `file:N`, emit a stack trace")
+	flag.BoolVar(&logging.toStderr, "logtostderr", "log to standard error instead of files", false)
+	flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", "log to standard error as well as files", false)
+	flag.Var(&logging.verbosity, "verbosity", "log `level` for V logs")
+	flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this `threshold` go to stderr")
+	flag.Var(&logging.vmodule, "vmodule", "`comma-separated list of pattern=N` settings for file-filtered logging")
+	flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line `file:N`, emit a stack trace")
 
 	// Default stderrThreshold is ERROR.
 	logging.stderrThreshold = errorLog
@@ -421,11 +421,11 @@ type loggingT struct {
 	// Boolean flags. Not handled atomically because the flag.Value interface
 	// does not let us avoid the =true, and that shorthand is necessary for
 	// compatibility. TODO: does this matter enough to fix? Seems unlikely.
-	toStderr     bool // The -logtostderr flag.
-	alsoToStderr bool // The -alsologtostderr flag.
+	toStderr     bool // The --logtostderr flag.
+	alsoToStderr bool // The --alsologtostderr flag.
 
 	// Level flag. Handled atomically.
-	stderrThreshold severity // The -stderrthreshold flag.
+	stderrThreshold severity // The --stderrthreshold flag.
 
 	// freeList is a list of byte buffers, maintained under freeListMu.
 	freeList *buffer
@@ -448,12 +448,12 @@ type loggingT struct {
 	// than zero, it means vmodule is enabled. It may be read safely
 	// using sync.LoadInt32, but is only modified under mu.
 	filterLength int32
-	// traceLocation is the state of the -log_backtrace_at flag.
+	// traceLocation is the state of the --log_backtrace_at flag.
 	traceLocation traceLocation
 	// These flags are modified only under lock, although verbosity may be fetched
 	// safely using atomic.LoadInt32.
-	vmodule   moduleSpec // The state of the -vmodule flag.
-	verbosity Level      // V logging level, the value of the -v flag/
+	vmodule   moduleSpec // The state of the --vmodule flag.
+	verbosity Level      // V logging level, the value of the --verbosity flag/
 }
 
 // buffer holds a byte Buffer for reuse. The zero value is ready for use.
