@@ -63,7 +63,7 @@ func Stable(a interface{}) {
 	}
 }
 
-type reversable interface{
+type reversable interface {
 	RadixInterface
 	Comparer
 }
