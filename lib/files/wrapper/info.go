@@ -11,6 +11,7 @@ type Info struct {
 	name string
 	uri  *url.URL
 	sz   int64
+	mode os.FileMode
 	t    time.Time
 }
 
@@ -36,7 +37,12 @@ func (fi *Info) Size() int64 {
 
 // Mode returns a very basic 0644.
 func (fi *Info) Mode() os.FileMode {
-	return os.FileMode(0644)
+	return fi.mode
+}
+
+func (fi *Info) Chmod(mode os.FileMode) error {
+	fi.mode = mode
+	return nil
 }
 
 // ModTime returns the modification time declared in the Info.
@@ -46,19 +52,20 @@ func (fi *Info) ModTime() time.Time {
 
 // IsDir returns false. No Info object should be a directory.
 func (fi *Info) IsDir() bool {
-	return false
+	return fi.mode&os.ModeDir != 0
 }
 
 // Sys returns nil, it could potentially later hold the actual underyling buffer...
 func (fi *Info) Sys() interface{} {
-	return nil
+	return fi
 }
 
 // NewInfo returns a new Info set with the url, size and time specified.
 func NewInfo(uri *url.URL, size int, t time.Time) *Info {
 	return &Info{
-		uri: uri,
-		sz:  int64(size),
-		t:   t,
+		uri:  uri,
+		sz:   int64(size),
+		mode: os.FileMode(0644),
+		t:    t,
 	}
 }
