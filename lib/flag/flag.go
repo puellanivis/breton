@@ -495,7 +495,8 @@ func (f *FlagSet) Var(value Value, name string, usage string, options ...Option)
 	}
 
 	for _, opt := range options {
-		opt(flag)
+		// during initialization we discard all reversing functionality
+		_ = opt(flag)
 	}
 
 	f.set(flag, name)
