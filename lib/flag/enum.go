@@ -14,7 +14,7 @@ type EnumValue struct {
 }
 
 // NewEnumValue returns an EnumValue that will only accept the given strings.
-func NewEnumValue(valid ...string) *EnumValue {
+func NewEnumValue(valid []string) *EnumValue {
 	e := &EnumValue{
 		indices: make(map[string]int),
 		valid:   valid,
@@ -82,23 +82,23 @@ func (e *EnumValue) Get() interface{} {
 }
 
 // EnumVar defines an enum flag with specified name, short flagname, usage, and default value. The argument p points to an EnumValue in which to store the value of the flag.
-func (f *FlagSet) EnumVar(p *EnumValue, name string, short rune, usage string, value string) {
-	f.Var(newEnumValue(value, p), name, short, usage)
+func (f *FlagSet) EnumVar(p *EnumValue, name string, usage string, value string, options ...Option) {
+	f.Var(newEnumValue(value, p), name, usage, options...)
 }
 
 // EnumVar defines an enum flag with specified name, short flagname, usage, and default value. The argument p points to an EnumValue in which to store the value of the flag.
-func EnumVar(p *EnumValue, name string, short rune, usage string, value string) {
-	CommandLine.Var(newEnumValue(value, p), name, short, usage)
+func EnumVar(p *EnumValue, name string, usage string, value string, options ...Option) {
+	CommandLine.Var(newEnumValue(value, p), name, usage, options...)
 }
 
 // Enum defines an enum flag with specified name, shortname, usage, default value, and a list of additional valid values. The return value is the address of an EnumValue variable that stores the value of the flag.
-func (f *FlagSet) Enum(name string, short rune, usage string, value string, valid ...string) *EnumValue {
-	e := NewEnumValue(valid...)
-	f.EnumVar(e, name, short, usage, value)
+func (f *FlagSet) Enum(name string, usage string, value string, valid []string, options ...Option) *EnumValue {
+	e := NewEnumValue(valid)
+	f.EnumVar(e, name, usage, value, options...)
 	return e
 }
 
 // Enum defines an enum flag with specified name, shortname, usage, default value, and a list of additional valid values. The return value is the address of an EnumValue variable that stores the value of the flag.
-func Enum(name string, short rune, usage string, value string, valid ...string) *EnumValue {
-	return CommandLine.Enum(name, short, usage, value, valid...)
+func Enum(name string, usage string, value string, valid []string, options ...Option) *EnumValue {
+	return CommandLine.Enum(name, usage, value, valid, options...)
 }
