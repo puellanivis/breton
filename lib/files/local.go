@@ -9,7 +9,7 @@ import (
 type localFS struct{}
 
 // Local implements a wrapper from the os functions Open, Create, and Readdir, to the files.FileStore implementation.
-var Local FileStore = &localFS{}
+var Local FileStoreWithOptions = &fsWrapper{fs: &localFS{}}
 
 func init() {
 	RegisterScheme(Local, "file")
