@@ -24,26 +24,26 @@ func (f *float64Value) String() string { return strconv.FormatFloat(float64(*f),
 
 // FloatVar defines a float64 flag with specified name, default value, and usage string.
 // The argument p points to a float64 variable in which to store the value of the flag.
-func (f *FlagSet) FloatVar(p *float64, name string, usage string, value float64, options ...Option) {
+func (f *FlagSet) FloatVar(p *float64, name string, value float64, usage string, options ...Option) {
 	f.Var(newFloat64Value(value, p), name, usage, options...)
 }
 
 // FloatVar defines a float64 flag with specified name, default value, and usage string.
 // The argument p points to a float64 variable in which to store the value of the flag.
-func FloatVar(p *float64, name string, usage string, value float64, options ...Option) {
+func FloatVar(p *float64, name string, value float64, usage string, options ...Option) {
 	CommandLine.Var(newFloat64Value(value, p), name, usage, options...)
 }
 
 // Float defines a float64 flag with specified name, default value, and usage string.
 // The return value is the address of a float64 variable that stores the value of the flag.
-func (f *FlagSet) Float(name string, usage string, value float64, options ...Option) *float64 {
+func (f *FlagSet) Float(name string, value float64, usage string, options ...Option) *float64 {
 	p := new(float64)
-	f.FloatVar(p, name, usage, value, options...)
+	f.FloatVar(p, name, value, usage, options...)
 	return p
 }
 
 // Float defines a float64 flag with specified name, default value, and usage string.
 // The return value is the address of a float64 variable that stores the value of the flag.
-func Float(name string, usage string, value float64, options ...Option) *float64 {
-	return CommandLine.Float(name, usage, value, options...)
+func Float(name string, value float64, usage string, options ...Option) *float64 {
+	return CommandLine.Float(name, value, usage, options...)
 }

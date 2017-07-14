@@ -33,26 +33,26 @@ type boolFlag interface {
 
 // BoolVar defines a bool flag with specified name, default value, and usage string.
 // The argument p points to a bool variable in which to store the value of the flag.
-func (f *FlagSet) BoolVar(p *bool, name string, usage string, value bool, options ...Option) {
+func (f *FlagSet) BoolVar(p *bool, name string, value bool, usage string, options ...Option) {
 	f.Var(newBoolValue(value, p), name, usage, options...)
 }
 
 // BoolVar defines a bool flag with specified name, default value, and usage string.
 // The argument p points to a bool variable in which to store the value of the flag.
-func BoolVar(p *bool, name string, usage string, value bool, options ...Option) {
+func BoolVar(p *bool, name string, value bool, usage string, options ...Option) {
 	CommandLine.Var(newBoolValue(value, p), name, usage, options...)
 }
 
 // Bool defines a bool flag with specified name, default value, and usage string.
 // The return value is the address of a bool variable that stores the value of the flag.
-func (f *FlagSet) Bool(name string, usage string, value bool, options ...Option) *bool {
+func (f *FlagSet) Bool(name string, value bool, usage string, options ...Option) *bool {
 	p := new(bool)
-	f.BoolVar(p, name, usage, value, options...)
+	f.BoolVar(p, name, value, usage, options...)
 	return p
 }
 
 // Bool defines a bool flag with specified name, default value, and usage string.
 // The return value is the address of a bool variable that stores the value of the flag.
-func Bool(name string, usage string, value bool, options ...Option) *bool {
-	return CommandLine.Bool(name, usage, value, options...)
+func Bool(name string, value bool, usage string, options ...Option) *bool {
+	return CommandLine.Bool(name, value, usage, options...)
 }

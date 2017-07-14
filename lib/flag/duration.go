@@ -25,23 +25,23 @@ func (d *durationValue) String() string { return (*time.Duration)(d).String() }
 // DurationVar defines a time.Duration flag with specified name, default value, and usage string.
 // The argument p points to a time.Duration variable in which to store the value of the flag.
 // The flag accepts a value acceptable to time.ParseDuration.
-func (f *FlagSet) DurationVar(p *time.Duration, name string, usage string, value time.Duration, options ...Option) {
+func (f *FlagSet) DurationVar(p *time.Duration, name string, value time.Duration, usage string, options ...Option) {
 	f.Var(newDurationValue(value, p), name, usage, options...)
 }
 
 // DurationVar defines a time.Duration flag with specified name, default value, and usage string.
 // The argument p points to a time.Duration variable in which to store the value of the flag.
 // The flag accepts a value acceptable to time.ParseDuration.
-func DurationVar(p *time.Duration, name string, usage string, value time.Duration, options ...Option) {
+func DurationVar(p *time.Duration, name string, value time.Duration, usage string, options ...Option) {
 	CommandLine.Var(newDurationValue(value, p), name, usage, options...)
 }
 
 // Duration defines a time.Duration flag with specified name, default value, and usage string.
 // The return value is the address of a time.Duration variable that stores the value of the flag.
 // The flag accepts a value acceptable to time.ParseDuration.
-func (f *FlagSet) Duration(name string, usage string, value time.Duration, options ...Option) *time.Duration {
+func (f *FlagSet) Duration(name string, value time.Duration, usage string, options ...Option) *time.Duration {
 	p := new(time.Duration)
-	f.DurationVar(p, name, usage, value, options...)
+	f.DurationVar(p, name, value, usage, options...)
 	return p
 }
 
@@ -49,5 +49,5 @@ func (f *FlagSet) Duration(name string, usage string, value time.Duration, optio
 // The return value is the address of a time.Duration variable that stores the value of the flag.
 // The flag accepts a value acceptable to time.ParseDuration.
 func Duration(name string, value time.Duration, usage string, options ...Option) *time.Duration {
-	return CommandLine.Duration(name, usage, value, options...)
+	return CommandLine.Duration(name, value, usage, options...)
 }

@@ -22,26 +22,26 @@ func (s *stringValue) String() string { return string(*s) }
 
 // StringVar defines a string flag with specified name, default value, and usage string.
 // The argument p points to a string variable in which to store the value of the flag.
-func (f *FlagSet) StringVar(p *string, name string, usage string, value string, options ...Option) {
+func (f *FlagSet) StringVar(p *string, name string, value string, usage string, options ...Option) {
 	f.Var(newStringValue(value, p), name, usage, options...)
 }
 
 // StringVar defines a string flag with specified name, default value, and usage string.
 // The argument p points to a string variable in which to store the value of the flag.
-func StringVar(p *string, name string, usage string, value string, options ...Option) {
+func StringVar(p *string, name string, value string, usage string, options ...Option) {
 	CommandLine.Var(newStringValue(value, p), name, usage, options...)
 }
 
 // String defines a string flag with specified name, default value, and usage string.
 // The return value is the address of a string variable that stores the value of the flag.
-func (f *FlagSet) String(name string, usage string, value string, options ...Option) *string {
+func (f *FlagSet) String(name string, value string, usage string, options ...Option) *string {
 	p := new(string)
-	f.StringVar(p, name, usage, value, options...)
+	f.StringVar(p, name, value, usage, options...)
 	return p
 }
 
 // String defines a string flag with specified name, default value, and usage string.
 // The return value is the address of a string variable that stores the value of the flag.
-func String(name string, usage string, value string, options ...Option) *string {
-	return CommandLine.String(name, usage, value, options...)
+func String(name string, value string, usage string, options ...Option) *string {
+	return CommandLine.String(name, value, usage, options...)
 }

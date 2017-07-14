@@ -54,35 +54,35 @@ func (f *FuncValue) IsBoolFlag() bool {
 }
 
 // FuncVar defines a function flag with specified name, shortname, and usage string. The argument p points to a FuncValue in which to store the function to call.
-func (f *FlagSet) FuncVar(fn *FuncValue, name string, usage string, options ...Option) {
+func (f *FlagSet) FuncVar(fn *FuncValue, name, usage string, options ...Option) {
 	f.Var(fn, name, usage, options...)
 }
 
 // FuncVar defines a function flag with specified name, shortname, and usage string. The argument p points to a FuncValue in which to store the function to call.
-func FuncVar(fn *FuncValue, name string, usage string, options ...Option) {
+func FuncVar(fn *FuncValue, name, usage string, options ...Option) {
 	CommandLine.Var(fn, name, usage, options...)
 }
 
 // Func defines a function flag with specified name, shortname, and usage string. It returns a pointer to a new FuncValue in which the function to call is stored.
-func (f *FlagSet) Func(name string, usage string, value func(), options ...Option) *FuncValue {
+func (f *FlagSet) Func(name, usage string, value func(), options ...Option) *FuncValue {
 	fn := NewFunc(name, value)
 	f.FuncVar(fn, name, usage, options...)
 	return fn
 }
 
 // FuncWithArg defines a function flag with specified name, shortname, and usage string. It returns a pointer to a new FuncValue in which the function to call is stored.
-func (f *FlagSet) FuncWithArg(name string, usage string, value SetterFunc, options ...Option) *FuncValue {
+func (f *FlagSet) FuncWithArg(name, usage string, value SetterFunc, options ...Option) *FuncValue {
 	fn := NewFuncWithArg(name, value)
 	f.FuncVar(fn, name, usage, options...)
 	return fn
 }
 
 // Func defines a function flag with specified name, shortname, and usage string. It returns a pointer to a new FuncValue in which the function to call is stored.
-func Func(name string, usage string, value func(), options ...Option) *FuncValue {
+func Func(name, usage string, value func(), options ...Option) *FuncValue {
 	return CommandLine.Func(name, usage, value, options...)
 }
 
 // FuncWithArg defines a function flag with specified name, shortname, and usage string. It returns a pointer to a new FuncValue in which the function to call is stored.
-func FuncWithArg(name string, usage string, value SetterFunc, options ...Option) *FuncValue {
+func FuncWithArg(name, usage string, value SetterFunc, options ...Option) *FuncValue {
 	return CommandLine.FuncWithArg(name, usage, value, options...)
 }

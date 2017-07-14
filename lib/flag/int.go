@@ -41,52 +41,52 @@ func (i *int64Value) Get() interface{} { return int64(*i) }
 func (i *int64Value) String() string { return strconv.FormatInt(int64(*i), 10) }
 // IntVar defines an int flag with specified name, default value, and usage string.
 // The argument p points to an int variable in which to store the value of the flag.
-func (f *FlagSet) IntVar(p *int, name string, usage string, value int, options ...Option) {
+func (f *FlagSet) IntVar(p *int, name string, value int, usage string, options ...Option) {
 	f.Var(newIntValue(value, p), name, usage)
 }
 
 // IntVar defines an int flag with specified name, default value, and usage string.
 // The argument p points to an int variable in which to store the value of the flag.
-func IntVar(p *int, name string, usage string, value int, options ...Option) {
+func IntVar(p *int, name string, value int, usage string, options ...Option) {
 	CommandLine.Var(newIntValue(value, p), name, usage)
 }
 
 // Int defines an int flag with specified name, default value, and usage string.
 // The return value is the address of an int variable that stores the value of the flag.
-func (f *FlagSet) Int(name string, usage string, value int, options ...Option) *int {
+func (f *FlagSet) Int(name string, value int, usage string, options ...Option) *int {
 	p := new(int)
-	f.IntVar(p, name, usage, value)
+	f.IntVar(p, name, value, usage)
 	return p
 }
 
 // Int defines an int flag with specified name, default value, and usage string.
 // The return value is the address of an int variable that stores the value of the flag.
-func Int(name string, usage string, value int, options ...Option) *int {
-	return CommandLine.Int(name, usage, value)
+func Int(name string, value int, usage string, options ...Option) *int {
+	return CommandLine.Int(name, value, usage)
 }
 
 // Int64Var defines an int64 flag with specified name, default value, and usage string.
 // The argument p points to an int64 variable in which to store the value of the flag.
-func (f *FlagSet) Int64Var(p *int64, name string, usage string, value int64, options ...Option) {
+func (f *FlagSet) Int64Var(p *int64, name string, value int64, usage string, options ...Option) {
 	f.Var(newInt64Value(value, p), name, usage)
 }
 
 // Int64Var defines an int64 flag with specified name, default value, and usage string.
 // The argument p points to an int64 variable in which to store the value of the flag.
-func Int64Var(p *int64, name string, usage string, value int64, options ...Option) {
+func Int64Var(p *int64, name string, value int64, usage string, options ...Option) {
 	CommandLine.Var(newInt64Value(value, p), name, usage)
 }
 
 // Int64 defines an int64 flag with specified name, default value, and usage string.
 // The return value is the address of an int64 variable that stores the value of the flag.
-func (f *FlagSet) Int64(name string, usage string, value int64, options ...Option) *int64 {
+func (f *FlagSet) Int64(name string, value int64, usage string, options ...Option) *int64 {
 	p := new(int64)
-	f.Int64Var(p, name, usage, value)
+	f.Int64Var(p, name, value, usage)
 	return p
 }
 
 // Int64 defines an int64 flag with specified name, default value, and usage string.
 // The return value is the address of an int64 variable that stores the value of the flag.
-func Int64(name string, usage string, value int64, options ...Option) *int64 {
-	return CommandLine.Int64(name, usage, value)
+func Int64(name string, value int64, usage string, options ...Option) *int64 {
+	return CommandLine.Int64(name, value, usage)
 }
