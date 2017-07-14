@@ -10,11 +10,11 @@
 
 	This declares an integer flag, --flagname, with short flagname -f stored in the pointer ip, with type *int.
 		import "flag"
-		var ip = flag.Int("flagname", 'f', "help message for flagname", 1234)
+		var ip = flag.Int("flagname", 1234, "help message for flagname", flag.WithShort('f'))
 	If you like, you can bind the flag to a variable using the Var() functions.
 		var flagvar int
 		func init() {
-			flag.IntVar(&flagvar, "flagname", 'f', "help message for flagname", 1234)
+			flag.IntVar(&flagvar, "flagname", 1234, "help message for flagname", flag.WithShort('f'))
 		}
 	Or you can create custom flags that satisfy the Value interface (with
 	pointer receivers) and couple them to flag parsing by
@@ -47,7 +47,7 @@
 	use the --flag=false or -f=false form to turn off a boolean flag.
 
 	Flag parsing stops just before the first non-flag argument
-	("-" is a non-flag argument) or after the terminator "--".
+	("-" is a non-flag argument) or just after the terminator "--".
 
 	Integer flags accept 1234, 0664, 0x1234 and may be negative.
 	Boolean flags may be:
