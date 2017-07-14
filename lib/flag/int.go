@@ -39,6 +39,7 @@ func (i *int64Value) Set(s string) error {
 func (i *int64Value) Get() interface{} { return int64(*i) }
 
 func (i *int64Value) String() string { return strconv.FormatInt(int64(*i), 10) }
+
 // IntVar defines an int flag with specified name, default value, and usage string.
 // The argument p points to an int variable in which to store the value of the flag.
 func (f *FlagSet) IntVar(p *int, name string, value int, usage string, options ...Option) {

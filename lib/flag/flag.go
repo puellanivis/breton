@@ -112,12 +112,12 @@ type FlagSet struct {
 	// a custom error handler.
 	Usage func()
 
-	name          string
-	parsed        bool
+	name   string
+	parsed bool
 
-	actual        map[string]*Flag
-	formal        map[string]*Flag
-	short         map[rune]*Flag
+	actual map[string]*Flag
+	formal map[string]*Flag
+	short  map[rune]*Flag
 
 	args          []string // arguments after flags
 	errorHandling ErrorHandling
@@ -488,9 +488,9 @@ func (f *FlagSet) Copy(flag *Flag) {
 func (f *FlagSet) Var(value Value, name string, usage string, options ...Option) {
 	// Remember the default value as a string; it won't change.
 	flag := &Flag{
-		Name: name,
-		Usage: usage,
-		Value: value,
+		Name:     name,
+		Usage:    usage,
+		Value:    value,
 		DefValue: value.String(),
 	}
 

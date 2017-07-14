@@ -6,7 +6,7 @@ package flag
 import ()
 
 // SetterFunc describes a function that takes a string from the command-line and performs some function that returns an error state.
-type SetterFunc	func(string) error
+type SetterFunc func(string) error
 
 // FuncValue describes a flag which will call a func(string) error when specified as a flag.
 type FuncValue struct {

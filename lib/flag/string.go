@@ -1,7 +1,6 @@
 package flag
 
-import (
-)
+import ()
 
 // -- string Value
 type stringValue string
