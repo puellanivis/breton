@@ -17,16 +17,22 @@ type request struct {
 	files.File
 
 	body []byte
+
 	// this is what we really care about
 	req *http.Request
 }
 
+// WithForm returns a files.Option that that will add to the underlying HTTP
+// request the url.Values given as a POST request. (A GET request can always
+// be composed through the URL string itself.
 func WithForm(vals url.Values) files.Option {
 	body := []byte(vals.Encode())
 	return WithContent("POST", "application/x-www-form-urlencoded", body)
 }
 
-func WithContent(method, ctype string, data []byte) files.Option {
+// WithContent returns a files.Option that will set the Method, Body and
+// Content-Type of the underlying HTTP request to the given values.
+func WithContent(method, contentType string, data []byte) files.Option {
 	return func(f files.File) (files.Option, error) {
 		r, ok := f.(*request)
 		if !ok {
@@ -38,7 +44,7 @@ func WithContent(method, ctype string, data []byte) files.Option {
 		dataSave := r.body
 
 		r.req.Method = "POST"
-		r.req.Header.Set("Content-Type", ctype)
+		r.req.Header.Set("Content-Type", contentType)
 		r.req.ContentLength = int64(len(data))
 
 		r.body = data
@@ -54,7 +60,11 @@ func WithContent(method, ctype string, data []byte) files.Option {
 	}
 }
 
-func WithContentType(ctype string) files.Option {
+// WithContentType returns a files.Option that sets the Content-Type of the
+// underlying HTTP request to be the given value. (This is intended to allow
+// setting a specific type during a files.Create() and not have it auto-detect
+// during the eventual commit of the request at Sync() or Close().)
+func WithContentType(contentType string) files.Option {
 	return func(f files.File) (files.Option, error) {
 		r, ok := f.(*request)
 		if !ok {
