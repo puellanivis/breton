@@ -35,11 +35,12 @@ func (fi *Info) Size() int64 {
 	return fi.sz
 }
 
-// Mode returns a very basic 0644.
+// Mode returns the last value set via Chmod(), this defaults to os.FileMode(0644)
 func (fi *Info) Mode() os.FileMode {
 	return fi.mode
 }
 
+// Chmod sets the os.FileMode to be returned from Mode().
 func (fi *Info) Chmod(mode os.FileMode) error {
 	fi.mode = mode
 	return nil
