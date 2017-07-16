@@ -5,6 +5,13 @@ import (
 	"os"
 )
 
+// ErrNotSupported should be returned when a specific file.File given to an
+// Option does not support the Option specified.
+var ErrNotSupported = errors.New("option not supported")
+
+// Option is a function that applies a specific option to a files.File, it
+// returns an Option and and error. If error is not nil, then the Option
+// returned will revert the option that was set.
 type Option func(File) (Option, error)
 
 // applyOptions is a helper function to apply a range of options on an os.File
@@ -19,8 +26,7 @@ func applyOptions(f File, opts []Option) error {
 	return nil
 }
 
-var ErrNotSupported = errors.New("option not supported")
-
+// WithFileMode returns an Option that will set the files.File.Stat().FileMode() to the given os.FileMode.
 func WithFileMode(mode os.FileMode) Option {
 	type chmoder interface {
 		Chmod(os.FileMode) error
