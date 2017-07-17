@@ -73,7 +73,7 @@ func WithContentType(contentType string) files.Option {
 
 		save := r.req.Header.Get("Content-Type")
 
-		r.req.Header.Set("Content-Type", ctype)
+		r.req.Header.Set("Content-Type", contentType)
 
 		return WithContentType(save), nil
 	}
