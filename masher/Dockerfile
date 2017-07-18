@@ -32,5 +32,9 @@ RUN go get -v -u \
     github.com/fsnotify/fsnotify \
     golang.org/x/net/context # intentionally last
 
+RUN go get -v -u \
+	github.com/prometheus/client_golang/prometheus \
+	github.com/prometheus/client_golang/prometheus/promhttp
+
 COPY mash.sh /bin/mash.sh
 WORKDIR /go/src
