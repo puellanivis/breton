@@ -33,3 +33,14 @@ func ReadFile(ctx context.Context, filename string) ([]byte, error) {
 
 	return ReadFrom(f)
 }
+
+// ReadTo reads the entire content of a filename into an io.Writer
+func ReadTo(ctx context.Context, w io.Writer, filename string) (n int64, err error) {
+	f, err := Open(ctx, filename)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	return io.Copy(w, f)
+}

@@ -26,3 +26,14 @@ func WriteFile(ctx context.Context, filename string, data []byte) error {
 
 	return WriteTo(f, data)
 }
+
+// WriteFrom writes the entire contents of an io.Reader into the filename
+func WriteFrom(ctx context.Context, filename string, r io.Reader) (n int64, err error) {
+	f, err := Create(ctx, filename)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+
+	return io.Copy(f, r)
+}
