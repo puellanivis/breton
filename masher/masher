@@ -119,7 +119,8 @@ while [[ $# -gt 0 ]]; do
 	--shell)
 		NODOCKER="true"
 		ESCAPE="--shell"
-		FLAGS="-it"
+		FLAGS="-it"	
+		TEST="--notest"
 	;;
 	--)
 		shift
@@ -266,6 +267,9 @@ for p in $MASHER_LIBS; do
 	if [[ -d $l ]]; then
 		echo "$l => $t"
 		LIBS="$LIBS --volume $l:$t"
+	else
+		echo "couldn’t find $l!" >&2
+		exit 1
 	fi
 done
 IFS=$SAVE_IFS
