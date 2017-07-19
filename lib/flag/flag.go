@@ -71,6 +71,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // ErrHelp is the error returned if the --help or -? flag is invoked
@@ -83,6 +84,10 @@ var ErrHelp = errors.New("flag: help requested")
 // If a Value has an IsBoolFlag() bool method returning true,
 // the command-line parser makes --name equivalent to --name=true
 // rather than using the next command-line argument.
+//
+// Additionally, if the flag has a WithShort() alternative, then
+// -f is equilvalent to -f=true, and can appear in the non-last
+// position of a -shortFlagSeries.
 //
 // Set is called once, in command line order, for each flag present.
 // The flag package may call the String method with a zero-valued receiver,
@@ -136,16 +141,20 @@ type Flag struct {
 // sortFlags returns the flags as a slice in lexicographical sorted order.
 func sortFlags(flags map[string]*Flag) []*Flag {
 	list := make(sort.StringSlice, len(flags))
+
 	i := 0
-	for _, f := range flags {
-		list[i] = f.Name
+	for name := range flags {
+		list[i] = name
 		i++
 	}
+
 	list.Sort()
+
 	result := make([]*Flag, len(list))
 	for i, name := range list {
 		result[i] = flags[name]
 	}
+
 	return result
 }
 
@@ -192,15 +201,17 @@ func Visit(fn func(*Flag)) {
 
 // Lookup returns the Flag structure of the named flag, returning nil if none exists.
 func (f *FlagSet) Lookup(name string) *Flag {
-	// len(string) gives the length in bytes, we want the length in runes.
-	r := []rune(name)
-	switch len(r) {
-	case 0:
-		return nil
-	case 1:
-		return f.short[r[0]]
+	if flag, ok := f.formal[name]; ok {
+		return flag
 	}
-	return f.formal[name]
+
+	// if the first rune in a string is the same length as a string in bytes,
+	// then we have a single rune as the string.
+	if r, n := utf8.DecodeRuneInString(name), n == len(name) {
+		return f.short[r]
+	}
+
+	return nil
 }
 
 // Lookup returns the Flag structure of the named command-line flag,
@@ -213,14 +224,27 @@ func Lookup(name string) *Flag {
 func (f *FlagSet) Set(name, value string) error {
 	flag, ok := f.formal[name]
 	if !ok {
-		return fmt.Errorf("no such flag -%v", name)
+		r, n := utf8.DecodeRuneInString(name)
+
+		// if the length of a string in bytes is > the length of the first rune, then it’s multiple-runes.
+		if n < len(name) {
+			return fmt.Errorf("no such flag --%v", name)
+		}
+
+		flag, ok = f.short[r]
+		if !ok {
+			return fmt.Errorf("no such flag -%v", name)
+		}
 	}
+
 	if err := flag.Value.Set(value); err != nil {
 		return err
 	}
+
 	if f.actual == nil {
 		f.actual = make(map[string]*Flag)
 	}
+
 	f.actual[name] = flag
 	return nil
 }
@@ -238,11 +262,13 @@ func isZeroValue(flag *Flag, value string) bool {
 	// This works unless the Value type is itself an interface type.
 	typ := reflect.TypeOf(flag.Value)
 	var z reflect.Value
+
 	if typ.Kind() == reflect.Ptr {
 		z = reflect.New(typ.Elem())
 	} else {
 		z = reflect.Zero(typ)
 	}
+
 	if value == z.Interface().(Value).String() {
 		return true
 	}
@@ -255,11 +281,8 @@ func isZeroValue(flag *Flag, value string) bool {
 	case "0":
 		return true
 	}
-	return false
-}
 
-type valueTyper interface {
-	ValueType() string
+	return false
 }
 
 // UnquoteUsage extracts a back-quoted name from the usage
@@ -268,6 +291,10 @@ type valueTyper interface {
 // If there are no back quotes, the name is an educated guess of the
 // type of the flag's value, or the empty string if the flag is boolean.
 func UnquoteUsage(flag *Flag) (name string, usage string) {
+	type valueTyper interface {
+		ValueType() string
+	}
+
 	// Look for a back-quoted name, but avoid the strings package.
 	usage = flag.Usage
 	for i := 0; i < len(usage); i++ {
@@ -301,6 +328,7 @@ func UnquoteUsage(flag *Flag) (name string, usage string) {
 	case *uintValue, *uint64Value:
 		name = "uint"
 	}
+
 	return
 }
 
@@ -309,28 +337,39 @@ func UnquoteUsage(flag *Flag) (name string, usage string) {
 // the global function PrintDefaults for more information.
 func (f *FlagSet) PrintDefaults() {
 	f.VisitAll(func(flag *Flag) {
-		// This function is rarely ever called, as such, we can afford to
-		// keep just += a string, and keep things simple.
-		s := " --" + flag.Name
-		if flag.Short != 0 {
-			s += " | -" + string(flag.Short)
+		// This function is rarely called, as such, we can afford to
+		// just += a string, and keep things simple.
+		var s string
+
+		_, n := utf8.DecodeRuneInString(flag.Name)
+
+		switch {
+		// special case: flag.Name is one rune long, so it is only short
+		case n == len(flag.Name):
+			s = " -" + flag.Name
+
+		default:
+			s = " --" + flag.Name
+
+			if flag.Short != 0 {
+				s += " | -" + string(flag.Short)
+			}
 		}
 
 		name, usage := UnquoteUsage(flag)
 		if len(name) > 0 {
 			s += " <" + name + ">"
 		}
-		// Boolean flags of one ASCII letter are so common we
-		// treat them specially, putting their usage on the same line.
-		if len(s) <= 7 { // space, space, '-', 'x'.
-			s += "\t"
-		} else {
+
+		// If the flag signature is longer than a tab, put its usage on the next line
+		// BUG: we want to use the display width, not the rune-length (there are zero-width runes)
+		if utf8.RuneCountInString(s) > 7 {
 			// Four spaces before the tab triggers good alignment
 			// for both 4- and 8-space tab stops.
-			s += "\n  \t"
+			s += "\n    "
 		}
 
-		s += usage
+		s += "\t" + usage
 
 		if !isZeroValue(flag, flag.DefValue) {
 			if _, ok := flag.Value.(*stringValue); ok {
@@ -347,9 +386,12 @@ func (f *FlagSet) PrintDefaults() {
 // PrintDefaults prints, to standard error unless configured otherwise,
 // a usage message showing the default settings of all defined
 // command-line flags.
-// For an integer valued flag x, the default output has the form
-//	-x int
-//		usage-message-for-x (default 7)
+// For an integer-valued flag named "flag" with short-name "f", the default output has the form:
+//	--flag | -f <int>
+//		usage-message-for-flag (default 42)
+// For an integer-valued flag named "f" (automatically short) the default output has the form:
+//	-f <int>
+//		usage-message-for-f (default 42)
 // The usage message will appear on a separate line for anything but
 // a bool flag with a one-byte name. For bool flags, the type is
 // omitted and if the flag name is one byte the usage message appears
@@ -361,7 +403,7 @@ func (f *FlagSet) PrintDefaults() {
 // the message when displayed. For instance, given
 //	flag.String("I", "", "search `directory` for include files")
 // the output will be
-//	-I directory
+//	-I <directory>
 //		search directory for include files.
 func PrintDefaults() {
 	CommandLine.PrintDefaults()
@@ -434,17 +476,21 @@ func (f *FlagSet) set(flag *Flag, name string) {
 	if f.formal == nil {
 		f.formal = make(map[string]*Flag)
 	}
+
 	_, alreadythere := f.formal[name]
 	if alreadythere {
 		var msg string
-		if f.name == "" {
-			msg = fmt.Sprintf("longflag redefined: %q", name)
-		} else {
-			msg = fmt.Sprintf("%s longflag redefined: %q", f.name, name)
+
+		if f.name != "" {
+			msg = f.name + " "
 		}
+
+		msg += fmt.Sprintf("longflag redefined: %q", name)
+
 		fmt.Fprintln(f.out(), msg)
 		panic(msg) // Happens only if flags are declared with identical names
 	}
+
 	f.formal[name] = flag
 }
 
@@ -456,14 +502,17 @@ func (f *FlagSet) setShort(flag *Flag, name rune) {
 	if f.short == nil {
 		f.short = make(map[rune]*Flag)
 	}
+
 	_, alreadythere := f.short[name]
 	if alreadythere {
 		var msg string
-		if f.name == "" {
-			msg = fmt.Sprintf("shortflag redefined: %q", name)
-		} else {
-			msg = fmt.Sprintf("%s shortflag redefined: %q", f.name, name)
+
+		if f.name != "" {
+			msg = f.name + " "
 		}
+
+		msg += fmt.Sprintf("shortflag redefined: %q", string(name))
+
 		fmt.Fprintln(f.out(), msg)
 		panic(msg) // Happens only if flags are declared with identical names
 	}
@@ -471,12 +520,22 @@ func (f *FlagSet) setShort(flag *Flag, name rune) {
 	f.short[name] = flag
 }
 
-// Copy defines a flag as a copy of an existing flag. Using the already given name, short, usage, and default. Will obviously panic if you attempt to copy it into a FlagSet where it is already defined.
+// Copy defines a flag as a copy of an existing flag. Using the already given name, short, usage, and default.
+// It will panic if you attempt to copy it into a FlagSet where it is already defined.
 //	fs := flag.NewFlagSet("example", flag.ExitOnError)
 //	fs.Copy(flag.Lookup("output"))
 func (f *FlagSet) Copy(flag *Flag) {
 	f.set(flag, flag.Name)
 	f.setShort(flag, flag.Short)
+}
+
+// CopyFrom copies the flag named from the given FlagSet into this FlagSet. defines a flag as a copy of an existing flag.
+// Using the already given name, short, usage, and default.
+// It will panic if you attempt to copy it into a FlagSet where it is already defined.
+//	fs := flag.NewFlagSet("example", flag.ExitOnError)
+//	fs.CopyFrom(flag.CommandLine, "output")
+func (f *FlagSet) CopyFrom(from *FlagSet, name string) {
+	f.Copy(from.Lookup(name))
 }
 
 // Var defines a flag with the specified name and usage string. The type and
@@ -486,12 +545,18 @@ func (f *FlagSet) Copy(flag *Flag) {
 // of strings by giving the slice the methods of Value; in particular, Set would
 // decompose the comma-separated string into the slice.
 func (f *FlagSet) Var(value Value, name string, usage string, options ...Option) {
-	// Remember the default value as a string; it won't change.
+	// Remember the default value is a string; it won't change.
+	// Well, unless a WithDefault Option is passed…
 	flag := &Flag{
 		Name:     name,
 		Usage:    usage,
 		Value:    value,
 		DefValue: value.String(),
+	}
+
+	// if name is only one rune long, then alias it as a short-flag name.
+	if r, n := utf8.DecodeRuneInString(name); n == len(name) {
+		flag.Short = r
 	}
 
 	for _, opt := range options {
@@ -532,6 +597,16 @@ func (f *FlagSet) usage() {
 	}
 }
 
+func (f *FlagSet) undefinedShortFlag(name rune) (bool, error) {
+	if name == '?' {
+		// special case for nice help message.
+		f.usage()
+		return false, ErrHelp
+	}
+
+	return false, f.failf("flag provided but not defined: -%c", name)
+}
+
 func (f *FlagSet) undefinedFlag(name string) (bool, error) {
 	if name == "help" || name == "?" {
 		// special case for nice help message.
@@ -539,7 +614,7 @@ func (f *FlagSet) undefinedFlag(name string) (bool, error) {
 		return false, ErrHelp
 	}
 
-	return false, f.failf("flag provided but not defined: -%s", name)
+	return false, f.failf("flag provided but not defined: --%s", name)
 }
 
 // parseOne parses one flag. It reports whether a flag was seen.
@@ -548,8 +623,12 @@ func (f *FlagSet) parseOne() (bool, error) {
 		return false, nil
 	}
 
+	// we’re accepting em-dash and en-dash as aliases for "--", so
+	// we need to convert things into runes to deal with things properly.
 	r := []rune(f.args[0])
 
+	// if the argument is only one character long, it cannot be
+	// any form of flag whatsoever, so we stop parsing.
 	if len(r) < 2 {
 		return false, nil
 	}
@@ -560,37 +639,44 @@ func (f *FlagSet) parseOne() (bool, error) {
 	case '–', '—':
 		long = true
 	case '-':
-		// short form flag
+		// for now, assume short form flag
 	default:
 		return false, nil
 	}
 
 	numMinuses := 1
 
-	if r[1] == '-' {
+	// this allows [em-dash, en-dash], hyphen, but… eh, whatever
+	if r[1] == '-' { // oh, it is a long form flag after all
 		long = true
 		numMinuses++
 	}
 
-	// if we're all minuses, terminate the flags
+	// if we're all minuses, terminate flag parsing, and pass over this terminator
 	if len(r) <= numMinuses {
 		f.args = f.args[1:]
 		return false, nil
 	}
 
 	switch r[numMinuses] {
-	case '-', '–', '—', '=':
+	// we’re not supposed to be having any dashes at this point.
+	case '-', '–', '—':
 		return false, f.failf("bad flag syntax: %s", string(r))
+	// likewise, no '='.
+	case '=':
+		return false, f.failf("no flag name given: %s", string(r))
 	}
 
+	// ok, _now_ we have the name we’re going to use.
 	name := string(r[numMinuses:])
 
-	// it's a flag. does it have an argument?
+	// ok, it’s a flag, so shift the arguments
 	f.args = f.args[1:]
 
 	var hasValue bool
 	var value string
 
+	// now, let’s check to see if we have an argument
 	if i := strings.IndexByte(name, '='); i > 0 {
 		value = name[i+1:]
 		hasValue = true
@@ -598,38 +684,58 @@ func (f *FlagSet) parseOne() (bool, error) {
 	}
 
 	if long {
-		flag, alreadythere := f.formal[name] // BUG
-		if !alreadythere {
+		flag, ok := f.formal[name] // BUG: [explanation needed]
+		if !ok {
 			return f.undefinedFlag(name)
 		}
+
 		return f.doFlag(flag, name, value, hasValue)
 	}
 
-	r = []rune(name)
+	return f.parseShort(name, value, hasValue)
+}
 
+func (f *FlagSet) parseShort(name, value string, hasValue bool) (bool, error) {
+	// we need to not only range over the runes of name, but we
+	// need to be able to ensure we know we’re on the last rune
+	// of the series. And then, we need to potentially convert the rune
+	// series into a value for a flag. (à la -m"git message here")
+	r := []rune(name)
 	last := len(r) - 1
-	if last > 0 {
-		for _, c := range r[:last] {
-			flag, ok := f.short[c] // BUG
-			if !ok {
-				return f.undefinedFlag(string(c))
-			}
 
-			// only the last short arg can have a value
-			_, err := f.doFlag(flag, string(c), "", false)
-			if err != nil {
-				return false, err
-			}
+	for i, n := range r {
+		flag, ok := f.short[n] // BUG: [explanation needed]
+		if !ok {
+			return f.undefinedShortFlag(n)
 		}
+
+		// easy, -…n[=value]
+		if i == last {
+			// support things like: cut -d= -f1
+			if hasValue && value == "" {
+				return f.doFlag(flag, string(n), "=", true)
+			}
+
+			return f.doFlag(flag, string(n), value, hasValue)
+		}
+
+		// allowed: -…n…[=value], if flag.IsBoolFlag() == true
+		if fv, ok := flag.Value.(boolFlag); ok && fv.IsBoolFlag() {
+			// hasValue == true to be extra sure about preventing
+			//  accidentally pulling the next argument in as the value.
+			return f.doFlag(flag, string(n), "true", true)
+		}
+
+		// not allowed: -…n…=value, if flag requires a value
+		if hasValue {
+			return false, f.failf("bad flag format -%c requires an argument, but does not appear at the end: -%s=%s", n, name, value)
+		}
+
+		// allowed: -…n"value here, like -m flag in git"
+		return f.doFlag(flag, string(n), string(r[i+1:]), true)
 	}
 
-	c := r[last]
-
-	flag, ok := f.short[c] // BUG
-	if !ok {
-		return f.undefinedFlag(string(c))
-	}
-	return f.doFlag(flag, string(c), value, hasValue)
+	panic("unreachable code reached")
 }
 
 func (f *FlagSet) doFlag(flag *Flag, name string, value string, hasValue bool) (bool, error) {
@@ -638,6 +744,12 @@ func (f *FlagSet) doFlag(flag *Flag, name string, value string, hasValue bool) (
 	}
 	f.actual[name] = flag
 
+	var prefix = "--"
+	// if the first rune is the length of the whole string, then RuneCount == 1
+	if _, n := utf8.DecodeRuneInString(name); n == len(name) {
+		prefix = "-"
+	}
+
 	if fv, ok := flag.Value.(boolFlag); ok && fv.IsBoolFlag() {
 		// special case: doesn't need an arg
 		if !hasValue {
@@ -645,7 +757,7 @@ func (f *FlagSet) doFlag(flag *Flag, name string, value string, hasValue bool) (
 		}
 
 		if err := fv.Set(value); err != nil {
-			return false, f.failf("invalid boolean value %q for -%s: %v", value, name, err)
+			return false, f.failf("invalid boolean value %q for %s%s: %v", value, prefix, name, err)
 		}
 
 		return true, nil
@@ -654,7 +766,7 @@ func (f *FlagSet) doFlag(flag *Flag, name string, value string, hasValue bool) (
 	// It must have a value, which might be the next argument.
 	if !hasValue {
 		if len(f.args) < 1 {
-			return false, f.failf("flag needs an argument: -%s", name)
+			return false, f.failf("flag needs an argument: %s%s", prefix, name)
 		}
 
 		// value is the next arg
@@ -662,7 +774,7 @@ func (f *FlagSet) doFlag(flag *Flag, name string, value string, hasValue bool) (
 	}
 
 	if err := flag.Value.Set(value); err != nil {
-		return false, f.failf("invalid value %q for flag -%s: %v", value, name, err)
+		return false, f.failf("invalid value %q for flag %s%s: %v", value, prefix, name, err)
 	}
 
 	return true, nil
@@ -671,12 +783,12 @@ func (f *FlagSet) doFlag(flag *Flag, name string, value string, hasValue bool) (
 // Parse parses flag definitions from the argument list, which should not
 // include the command name. Must be called after all flags in the FlagSet
 // are defined and before flags are accessed by the program.
-// The return value will be ErrHelp if -help or -h were set but not defined.
+// The return value will be ErrHelp if --help or -? were set but not defined.
 func (f *FlagSet) Parse(arguments []string) error {
 	f.parsed = true
 	f.args = arguments
 
-	if len(f.args) == 0 {
+	if len(f.args) < 1 {
 		return nil
 	}
 
@@ -688,6 +800,7 @@ func (f *FlagSet) Parse(arguments []string) error {
 		if err == nil {
 			break
 		}
+
 		switch f.errorHandling {
 		case ContinueOnError:
 			return err
@@ -697,6 +810,7 @@ func (f *FlagSet) Parse(arguments []string) error {
 			panic(err)
 		}
 	}
+
 	return nil
 }
 
