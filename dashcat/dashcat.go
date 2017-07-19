@@ -22,7 +22,7 @@ import (
 var mimeTypes []string
 
 var (
-	_ = flag.FuncWithArg("mime-type", "which mime-type(s) to stream",
+	_ = flag.FuncWithArg("mime-type", "which mime-type(s) to stream (default\"video/mp4\" alone)",
 		func(s string) error {
 			mimeTypes = append(mimeTypes, s)
 			return nil
