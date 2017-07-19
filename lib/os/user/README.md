@@ -1,4 +1,4 @@
-= Why?
+# Why?
 
 The internal golang "os/user" library will try a domain lookup, to fill in some user information, even if cached information is available.
 
