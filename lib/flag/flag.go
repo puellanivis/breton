@@ -207,7 +207,7 @@ func (f *FlagSet) Lookup(name string) *Flag {
 
 	// if the first rune in a string is the same length as a string in bytes,
 	// then we have a single rune as the string.
-	if r, n := utf8.DecodeRuneInString(name), n == len(name) {
+	if r, n := utf8.DecodeRuneInString(name); n == len(name) {
 		return f.short[r]
 	}
 
