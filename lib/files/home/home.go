@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"lib/files"
-	"lib/os/user"
+	"github.com/puellanivis/breton/lib/files"
+	"github.com/puellanivis/breton/lib/os/user"
 )
 
 var userDir string

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"lib/files"
+	"github.com/puellanivis/breton/lib/files"
 )
 
 // REST is a convenience function, that marshals the send parameter into JSON, uses it as an attached content to read the uri, and then unmarshals the JSON received into the recv parameter.

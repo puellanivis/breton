@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"lib/flag"
+	"github.com/puellanivis/breton/lib/flag"
 )
 
 var (

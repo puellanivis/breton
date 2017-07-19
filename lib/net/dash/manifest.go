@@ -8,10 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"lib/files"
-	"lib/log"
-	"lib/net/dash/mpd"
-	//"github.com/zencoder/go-dash/mpd"
+	"github.com/puellanivis/breton/lib/files"
+	"github.com/puellanivis/breton/lib/log"
+	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
 type adaptation struct {

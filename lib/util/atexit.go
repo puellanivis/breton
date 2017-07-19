@@ -1,14 +1,13 @@
 package util
 
 import (
+	"context"
 	"os"
 	"runtime/pprof"
 	"sync"
 
-	"lib/flag"
-	"lib/log"
-
-	"context"
+	"github.com/puellanivis/breton/lib/flag"
+	"github.com/puellanivis/breton/lib/log"
 )
 
 var (

@@ -1,9 +1,8 @@
 package cachefiles
 
 import (
-	"time"
-
 	"context"
+	"time"
 )
 
 type key int

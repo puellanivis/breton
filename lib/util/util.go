@@ -1,7 +1,7 @@
 package util
 
 import (
-	"lib/sort"
+	"github.com/puellanivis/breton/lib/sort"
 )
 
 // Nope does nothing, but "uses" a variable

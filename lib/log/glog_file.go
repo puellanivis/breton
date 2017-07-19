@@ -27,8 +27,8 @@ import (
 	"sync"
 	"time"
 
-	"lib/flag"
-	"lib/os/user"
+	"github.com/puellanivis/breton/lib/flag"
+	"github.com/puellanivis/breton/lib/os/user"
 )
 
 // MaxSize is the maximum size of a log file in bytes.

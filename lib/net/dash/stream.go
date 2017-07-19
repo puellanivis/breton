@@ -8,12 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"lib/files"
-	"lib/log"
-	"lib/metrics"
-	"lib/net/dash/mpd"
-	//"lib/util"
-	//"github.com/zencoder/go-dash/mpd"
+	"github.com/puellanivis/breton/lib/files"
+	"github.com/puellanivis/breton/lib/log"
+	"github.com/puellanivis/breton/lib/metrics"
+	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
 var (

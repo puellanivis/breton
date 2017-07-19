@@ -1,7 +1,7 @@
 package dash
 
 import (
-	"lib/net/dash/mpd"
+	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
 // A PickRepFunc takes two DASH MPD Representations, and returns true

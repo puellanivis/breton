@@ -1,4 +1,4 @@
-package sort // import "lib/sort"
+package sort // import "github.com/puellanivis/breton/lib/sort"
 
 import (
 	"sort"

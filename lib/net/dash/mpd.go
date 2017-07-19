@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"lib/files"
-	"lib/net/dash/mpd"
+	"github.com/puellanivis/breton/lib/files"
+	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
 func readMPD(ctx context.Context, manifest string) (*mpd.MPD, error) {

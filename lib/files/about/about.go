@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"lib/files"
-	"lib/files/wrapper"
-	"lib/sort"
-	"lib/util"
+	"github.com/puellanivis/breton/lib/files"
+	"github.com/puellanivis/breton/lib/files/wrapper"
+	"github.com/puellanivis/breton/lib/sort"
+	"github.com/puellanivis/breton/lib/util"
 )
 
 type handler struct{}

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"lib/files"
+	"github.com/puellanivis/breton/lib/files"
 )
 
 type request struct {

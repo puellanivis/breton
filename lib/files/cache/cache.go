@@ -1,15 +1,14 @@
 package cachefiles
 
 import (
+	"context"
 	"net/url"
 	"os"
 	"sync"
 	"time"
 
-	"lib/files"
-	"lib/files/wrapper"
-
-	"context"
+	"github.com/puellanivis/breton/lib/files"
+	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
 type line struct {

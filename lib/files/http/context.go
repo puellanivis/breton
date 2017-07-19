@@ -1,9 +1,8 @@
 package http
 
 import (
-	"net/http"
-
 	"context"
+	"net/http"
 )
 
 type key int

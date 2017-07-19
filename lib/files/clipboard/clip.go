@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"lib/files"
-	"lib/files/wrapper"
+	"github.com/puellanivis/breton/lib/files"
+	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
 type handler struct{}

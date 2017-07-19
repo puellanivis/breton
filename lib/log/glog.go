@@ -86,7 +86,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"lib/flag"
+	"github.com/puellanivis/breton/lib/flag"
 )
 
 // severity identifies the sort of log: info, warning etc. It also implements
