@@ -1,5 +1,5 @@
 # This is a comment
-FROM golang:1.8
+FROM golang:1.9
 MAINTAINER Cassondra Foesch <puellanivis@gmail.com>
 ARG BRANCH="testing"
 ARG HEAD="refs/head/testing"
@@ -10,11 +10,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /bin && \
-    cd /bin && \
-    curl -sS -L https://github.com/google/protobuf/releases/download/v3.0.0-beta-3/protoc-3.0.0-beta-3-linux-x86_64.zip | \
+RUN mkdir -p /usr/bin && \
+    cd /usr && \
+    curl -sS -L https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip | \
         bsdtar -xvf- --exclude=readme.txt && \
-    chmod 755 /bin/protoc
+    chmod 755 /usr/bin/protoc
 
 RUN go get -v -u \
     github.com/golang/protobuf/proto \
