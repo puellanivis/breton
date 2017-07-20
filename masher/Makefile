@@ -21,4 +21,5 @@ container:
 	docker build --rm --build-arg PROJECT=${PROJECT} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:latest .
 
 push:
-	docker push ${REPO}:${BRANCH}
+	[ -n "${BRANCH}" ] && docker push ${REPO}:${BRANCH} || true
+	docker push ${REPO}:latest
