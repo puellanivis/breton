@@ -7,5 +7,5 @@ import (
 	_ "github.com/puellanivis/breton/lib/files/clipboard"
 	_ "github.com/puellanivis/breton/lib/files/data"
 	_ "github.com/puellanivis/breton/lib/files/home"
-	_ "github.com/puellanivis/breton/lib/files/http"
+	_ "github.com/puellanivis/breton/lib/files/httpfiles"
 )
