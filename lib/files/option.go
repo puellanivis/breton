@@ -11,14 +11,16 @@ var ErrNotSupported = errors.New("option not supported")
 
 // Option is a function that applies a specific option to a files.File, it
 // returns an Option and and error. If error is not nil, then the Option
-// returned will revert the option that was set.
+// returned will revert the option that was set. Since errors returned by
+// Option arguments are discarded by Open(), and Create(), if you
+// care about the error status of an Option you must apply it yourself
+// after Open() or Create()
 type Option func(File) (Option, error)
 
 // applyOptions is a helper function to apply a range of options on an os.File
 func applyOptions(f File, opts []Option) error {
 	for _, opt := range opts {
-		_, err := opt(f)
-		if err != nil {
+		if _, err := opt(f); err != nil {
 			return err
 		}
 	}

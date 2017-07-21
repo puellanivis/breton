@@ -15,56 +15,16 @@ type FileStore interface {
 	List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 }
 
-// FileStoreWithOptions defines an interface which implements a system of accessing files for reading (Open) writing (Write) and directly listing (List)
-type FileStoreWithOptions interface {
-	Open(ctx context.Context, uri *url.URL, options ...Option) (Reader, error)
-	Create(ctx context.Context, uri *url.URL, options ...Option) (Writer, error)
-	List(ctx context.Context, uri *url.URL, options ...Option) ([]os.FileInfo, error)
-}
-
 var fsMap struct {
 	sync.Mutex
 
-	m      map[string]FileStoreWithOptions
+	m      map[string]FileStore
 	keys   []string
 	sorted bool
 }
 
-type fsWrapper struct {
-	fs FileStore
-}
 
-func (fs *fsWrapper) Open(ctx context.Context, uri *url.URL, options ...Option) (Reader, error) {
-	f, err := fs.fs.Open(ctx, uri)
-
-	if err == nil && len(options) > 0 {
-		return f, ErrNotSupported
-	}
-
-	return f, err
-}
-
-func (fs *fsWrapper) Create(ctx context.Context, uri *url.URL, options ...Option) (Writer, error) {
-	f, err := fs.fs.Create(ctx, uri)
-
-	if err == nil && len(options) > 0 {
-		return f, ErrNotSupported
-	}
-
-	return f, err
-}
-
-func (fs *fsWrapper) List(ctx context.Context, uri *url.URL, options ...Option) ([]os.FileInfo, error) {
-	list, err := fs.fs.List(ctx, uri)
-
-	if err == nil && len(options) > 0 {
-		return list, ErrNotSupported
-	}
-
-	return list, err
-}
-
-func getFS(uri *url.URL) (FileStoreWithOptions, bool) {
+func getFS(uri *url.URL) (FileStore, bool) {
 	fsMap.Lock()
 	defer fsMap.Unlock()
 
@@ -83,11 +43,7 @@ func getFS(uri *url.URL) (FileStoreWithOptions, bool) {
 // RegisterScheme takes a FileStore and attaches to it the given schemes so
 // that files.Open will use that FileStore when a files.Open() is performed
 // with a URL of any of those schemes.
-func RegisterScheme(fs interface{}, schemes ...string) {
-	if towrap, ok := fs.(FileStore); ok {
-		fs = &fsWrapper{fs: towrap}
-	}
-
+func RegisterScheme(fs FileStore, schemes ...string) {
 	if len(schemes) < 1 {
 		return
 	}
@@ -96,7 +52,7 @@ func RegisterScheme(fs interface{}, schemes ...string) {
 	defer fsMap.Unlock()
 
 	if fsMap.m == nil {
-		fsMap.m = make(map[string]FileStoreWithOptions)
+		fsMap.m = make(map[string]FileStore)
 	}
 	fsMap.sorted = false
 
@@ -106,7 +62,7 @@ func RegisterScheme(fs interface{}, schemes ...string) {
 			continue
 		}
 
-		fsMap.m[scheme] = fs.(FileStoreWithOptions)
+		fsMap.m[scheme] = fs
 		fsMap.keys = append(fsMap.keys, scheme)
 	}
 }

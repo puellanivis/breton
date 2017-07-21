@@ -6,18 +6,27 @@ import (
 	"os"
 )
 
-// Create takes a context and a filename (which may be a URL) and returns a files.Writer that allows writing data to that local filename or URL.
+// Create takes a context and a filename (which may be a URL) and returns a
+// files.Writer that allows writing data to that local filename or URL. All
+// errors and reversion functions returned by Option arguments are discarded.
 func Create(ctx context.Context, filename string, options ...Option) (Writer, error) {
+	f, err := create(ctx, filename)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, opt := range options {
+		_, _ = opt(f)
+	}
+
+	return f, nil
+}
+
+func create(ctx context.Context, filename string) (Writer, error) {
 	switch filename {
 	case "", "-", "/dev/stdout":
-		if err := applyOptions(os.Stdout, options); err != nil {
-			return nil, err
-		}
 		return os.Stdout, nil
 	case "/dev/stderr":
-		if err := applyOptions(os.Stderr, options); err != nil {
-			return nil, err
-		}
 		return os.Stderr, nil
 	}
 
@@ -27,19 +36,9 @@ func Create(ctx context.Context, filename string, options ...Option) (Writer, er
 		}
 
 		if fs, ok := getFS(uri); ok {
-			return fs.Create(ctx, uri, options...)
+			return fs.Create(ctx, uri)
 		}
 	}
 
-	f, err := os.Create(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := applyOptions(f, options); err != nil {
-		f.Close()
-		return nil, err
-	}
-
-	return f, nil
+	return os.Create(filename)
 }

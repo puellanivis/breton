@@ -2,17 +2,30 @@ package files
 
 import (
 	"context"
+	"io/ioutil"
 	"net/url"
 	"os"
 )
 
-// Open takes a Context and a filename (which may be a URL) and returns a files.Reader which will read the contents of that filename or URL.
+// Open takes a Context and a filename (which may be a URL) and returns a
+// files.Reader which will read the contents of that filename or URL. All
+// errors and reversion functions returned by Option arguments are discarded.
 func Open(ctx context.Context, filename string, options ...Option) (Reader, error) {
+	f, err := open(ctx, filename)
+	if err != nil {
+		return nil, err
+	}  
+
+	for _, opt := range options {
+		_, _ = opt(f)
+	}
+
+	return f, nil
+}
+
+func open(ctx context.Context, filename string) (Reader, error) {
 	switch filename {
 	case "", "-", "/dev/stdin":
-		if err := applyOptions(os.Stdin, options); err != nil {
-			return nil, err
-		}
 		return os.Stdin, nil
 	}
 
@@ -22,30 +35,18 @@ func Open(ctx context.Context, filename string, options ...Option) (Reader, erro
 		}
 
 		if fs, ok := getFS(uri); ok {
-			return fs.Open(ctx, uri, options...)
+			return fs.Open(ctx, uri)
 		}
 	}
 
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := applyOptions(f, options); err != nil {
-		f.Close()
-		return nil, err
-	}
-
-	return f, nil
+	return os.Open(filename)
 }
 
-// List takes a Context and a filename (which may be a URL) and returns a list of os.FileInfo that describes the files contained in the directory or listing.
-func List(ctx context.Context, filename string, options ...Option) ([]os.FileInfo, error) {
+// List takes a Context and a filename (which may be a URL) and returns a list
+// of os.FileInfo that describes the files contained in the directory or listing.
+func List(ctx context.Context, filename string) ([]os.FileInfo, error) {
 	switch filename {
 	case "", "-", "/dev/stdin":
-		if err := applyOptions(os.Stdin, options); err != nil {
-			return nil, err
-		}
 		return os.Stdin.Readdir(0)
 	}
 
@@ -55,19 +56,9 @@ func List(ctx context.Context, filename string, options ...Option) ([]os.FileInf
 		}
 
 		if fs, ok := getFS(uri); ok {
-			return fs.List(ctx, uri, options...)
+			return fs.List(ctx, uri)
 		}
 	}
 
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	if err := applyOptions(f, options); err != nil {
-		return nil, err
-	}
-
-	return f.Readdir(0)
+	return ioutil.ReadDir(filename)
 }

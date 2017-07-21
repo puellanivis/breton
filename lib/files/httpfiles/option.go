@@ -1,26 +1,10 @@
 package httpfiles
 
 import (
-	"bytes"
-	"io"
-	"io/ioutil"
-	"net/http"
 	"net/url"
 
 	"github.com/puellanivis/breton/lib/files"
 )
-
-type request struct {
-	// we tuck this in here, so that go says this is a files.File
-	// so that it can be passed through files.Option functions, _but_
-	// we never actually _define_ this value
-	files.File
-
-	body []byte
-
-	// this is what we really care about
-	req *http.Request
-}
 
 // WithForm returns a files.Option that that will add to the underlying HTTP
 // request the url.Values given as a POST request. (A GET request can always
@@ -33,30 +17,54 @@ func WithForm(vals url.Values) files.Option {
 // WithContent returns a files.Option that will set the Method, Body and
 // Content-Type of the underlying HTTP request to the given values.
 func WithContent(method, contentType string, data []byte) files.Option {
+	type methodSetter interface {
+		SetMethod(string) string
+	}
+
+	type ctypeSetter interface {
+		SetContentType(string) string
+	}
+
+	type bodySetter interface {
+		SetBody([]byte) []byte
+	}
+
 	return func(f files.File) (files.Option, error) {
-		r, ok := f.(*request)
-		if !ok {
-			return nil, files.ErrNotSupported
+		var methodSave, ctypeSave string
+		var dataSave []byte
+
+		if r, ok := f.(methodSetter); ok {
+			methodSave = r.SetMethod(method)
 		}
 
-		methodSave := r.req.Method
-		ctypeSave := r.req.Header.Get("Content-Type")
-		dataSave := r.body
-
-		r.req.Method = "POST"
-		r.req.Header.Set("Content-Type", contentType)
-		r.req.ContentLength = int64(len(data))
-
-		r.body = data
-		r.req.GetBody = func() (io.ReadCloser, error) {
-			return ioutil.NopCloser(bytes.NewReader(data)), nil
+		if r, ok := f.(ctypeSetter); ok {
+			ctypeSave = r.SetContentType(contentType)
 		}
 
-		// we know this http.Request.GetBody won’t throw an error
-		r.req.Body, _ = r.req.GetBody()
+		if r, ok := f.(bodySetter); ok {
+			dataSave = r.SetBody(data)
+		}
 
 		// option is not reversible
 		return WithContent(methodSave, ctypeSave, dataSave), nil
+	}
+}
+
+// WithMethod returns a files.Option that sets the Method of the
+// underlying HTTP request to be the given value.
+func WithMethod(method string) files.Option {
+	type methodSetter interface {
+		SetMethod(string) string
+	}
+
+	return func(f files.File) (files.Option, error) {
+		var save string
+
+		if r, ok := f.(methodSetter); ok {
+			save = r.SetMethod(method)
+		}
+
+		return WithMethod(save), nil
 	}
 }
 
@@ -65,15 +73,16 @@ func WithContent(method, contentType string, data []byte) files.Option {
 // setting a specific type during a files.Create() and not have it auto-detect
 // during the eventual commit of the request at Sync() or Close().)
 func WithContentType(contentType string) files.Option {
+	type ctypeSetter interface {
+		SetContentType(string) string
+	}
+
 	return func(f files.File) (files.Option, error) {
-		r, ok := f.(*request)
-		if !ok {
-			return nil, files.ErrNotSupported
+		var save string
+
+		if r, ok := f.(ctypeSetter); ok {
+			save = r.SetContentType(contentType)
 		}
-
-		save := r.req.Header.Get("Content-Type")
-
-		r.req.Header.Set("Content-Type", contentType)
 
 		return WithContentType(save), nil
 	}
