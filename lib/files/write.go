@@ -17,8 +17,8 @@ func WriteTo(w io.WriteCloser, data []byte) error {
 	return err
 }
 
-// WriteFile will Create the given filename with the Context, and write the given data to it.
-func WriteFile(ctx context.Context, filename string, data []byte) error {
+// Write will Create the given filename with the Context, and write the given data to it.
+func Write(ctx context.Context, filename string, data []byte) error {
 	f, err := Create(ctx, filename)
 	if err != nil {
 		return err
@@ -27,7 +27,7 @@ func WriteFile(ctx context.Context, filename string, data []byte) error {
 	return WriteTo(f, data)
 }
 
-// WriteFrom writes the entire contents of an io.Reader into the filename
+// WriteFrom writes the entire contents of an io.Reader into the filename.
 func WriteFrom(ctx context.Context, filename string, r io.Reader) (n int64, err error) {
 	f, err := Create(ctx, filename)
 	if err != nil {

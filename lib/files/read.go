@@ -24,8 +24,8 @@ func Discard(r io.ReadCloser) error {
 	return r.Close()
 }
 
-// ReadFile takes a context and a filename and reads the entire content into a byte-slice which it returns.
-func ReadFile(ctx context.Context, filename string) ([]byte, error) {
+// Read takes a Context and a filename and reads the entire content into a byte-slice which it returns.
+func Read(ctx context.Context, filename string) ([]byte, error) {
 	f, err := Open(ctx, filename)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func ReadFile(ctx context.Context, filename string) ([]byte, error) {
 	return ReadFrom(f)
 }
 
-// ReadTo reads the entire content of a filename into an io.Writer
+// ReadTo reads the entire content of a filename into an io.Writer.
 func ReadTo(ctx context.Context, w io.Writer, filename string) (n int64, err error) {
 	f, err := Open(ctx, filename)
 	if err != nil {

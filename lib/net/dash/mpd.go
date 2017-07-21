@@ -11,7 +11,7 @@ import (
 )
 
 func readMPD(ctx context.Context, manifest string) (*mpd.MPD, error) {
-	b, err := files.ReadFile(ctx, manifest)
+	b, err := files.Read(ctx, manifest)
 	if err != nil {
 		return nil, err
 	}
