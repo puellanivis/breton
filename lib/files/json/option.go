@@ -8,10 +8,10 @@ type config struct {
 	compact bool
 }
 
-type option func(*config) option
+type Option func(*config) Option
 
-func Indent(prefix, indent string) option {
-	return func(c *config) option {
+func Indent(prefix, indent string) Option {
+	return func(c *config) Option {
 		psave, isave := c.prefix, c.indent
 
 		c.prefix, c.indent = prefix, indent
@@ -20,8 +20,8 @@ func Indent(prefix, indent string) option {
 	}
 }
 
-func Compact(value bool) option {
-	return func(c *config) option {
+func Compact(value bool) Option {
+	return func(c *config) Option {
 		save := c.compact
 
 		c.compact = value

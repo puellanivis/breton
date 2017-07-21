@@ -35,7 +35,7 @@ func Read(ctx context.Context, filename string, v interface{}) error {
 }
 
 // WriteTo writes a value marshalled as JSON to the the given io.WriteCloser.
-func WriteTo(w io.WriteCloser, v interface{}, opts ...option) error {
+func WriteTo(w io.WriteCloser, v interface{}, opts ...Option) error {
 	c := new(config)
 
 	for _, opt := range opts {
@@ -67,7 +67,7 @@ func WriteTo(w io.WriteCloser, v interface{}, opts ...option) error {
 }
 
 // Write writes a marshaled JSON to a filename with the given Context.
-func Write(ctx context.Context, filename string, v interface{}, opts ...option) error {
+func Write(ctx context.Context, filename string, v interface{}, opts ...Option) error {
 	f, err := files.Create(ctx, filename)
 	if err != nil {
 		return err
