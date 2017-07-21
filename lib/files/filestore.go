@@ -23,7 +23,6 @@ var fsMap struct {
 	sorted bool
 }
 
-
 func getFS(uri *url.URL) (FileStore, bool) {
 	fsMap.Lock()
 	defer fsMap.Unlock()

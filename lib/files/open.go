@@ -14,7 +14,7 @@ func Open(ctx context.Context, filename string, options ...Option) (Reader, erro
 	f, err := open(ctx, filename)
 	if err != nil {
 		return nil, err
-	}  
+	}
 
 	for _, opt := range options {
 		_, _ = opt(f)
