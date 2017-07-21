@@ -34,8 +34,9 @@ func Read(ctx context.Context, filename string, v interface{}) error {
 	return ReadFrom(f, v)
 }
 
-// WriteTo writes a value marshalled as JSON to the the given io.WriteCloser.
-func WriteTo(w io.WriteCloser, v interface{}, opts ...Option) error {
+// Marshal is a wrapper around encoding/json.Marshal that will optionally apply
+// Indent or Compact options.
+func Marshal(v interface{}, opts ...Option) ([]byte, error) {
 	c := new(config)
 
 	for _, opt := range opts {
@@ -44,13 +45,13 @@ func WriteTo(w io.WriteCloser, v interface{}, opts ...Option) error {
 
 	b, err := json.Marshal(v)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if c.prefix != "" || c.indent != "" {
 		var buf bytes.Buffer
 		if err := json.Indent(&buf, b, c.prefix, c.indent); err != nil {
-			return err
+			return nil, err
 		}
 		b = buf.Bytes()
 	}
@@ -58,9 +59,19 @@ func WriteTo(w io.WriteCloser, v interface{}, opts ...Option) error {
 	if c.compact {
 		var buf bytes.Buffer
 		if err := json.Compact(&buf, b); err != nil {
-			return err
+			return nil, err
 		}
 		b = buf.Bytes()
+	}
+
+	return b, nil
+}
+
+// WriteTo writes a value marshalled as JSON to the the given io.WriteCloser.
+func WriteTo(w io.WriteCloser, v interface{}, opts ...Option) error {
+	b, err := Marshal(v, opts...)
+	if err != nil {
+		return err
 	}
 
 	return files.WriteTo(w, b)
