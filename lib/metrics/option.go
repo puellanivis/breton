@@ -8,55 +8,55 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type option func(m *metric) option
+type Option func(m *metric) Option
 
-func withLabelsObj(labels *Labels) option {
-	return func(m *metric) option {
+func withLabelScope(labels *labelScope) Option {
+	return func(m *metric) Option {
 		save := m.labels
 
 		m.labels = labels
 
-		return withLabelsObj(save)
+		return withLabelScope(save)
 	}
 }
 
-// WithLabel returns an option function that will add a label, value pair to a Metric, and return an option that will undo that change.
-func WithLabels(labels ...Labeler) option {
-	return func(m *metric) option {
+// WithLabel returns an Option function that will add a label, value pair to a Metric, and return an Option that will undo that change.
+func WithLabels(labels ...Labeler) Option {
+	return func(m *metric) Option {
 		save := m.labels
 
 		if save == nil {
-			m.labels = DefineLabels(labels...)
+			m.labels = defineLabels(labels...)
 
 		} else {
-			m.labels = m.labels.WithLabels(labels...)
+			m.labels = m.labels.With(labels...)
 		}
 
-		return withLabelsObj(save)
+		return withLabelScope(save)
 	}
 }
 
-// WithRegistry returns an option function that will switch the registry to which a metric will be registered.
-func WithRegistry(registerer prometheus.Registerer) option {
-	return func(m *metric) option {
-		save := m.registerer
+// WithRegistry returns an Option function that will switch the registry to which a metric will be registered.
+func WithRegistry(registry *prometheus.Registry) Option {
+	return func(m *metric) Option {
+		save := m.registry
 
-		m.registerer = registerer
+		m.registry = registry
 
 		return WithRegistry(save)
 	}
 }
 
-func WithLinear(start, width float64, count int) option {
+func WithLinear(start, width float64, count int) Option {
 	return WithBuckets(prometheus.LinearBuckets(start, width, count)...)
 }
 
-func WithExponential(start, factor float64, count int) option {
+func WithExponential(start, factor float64, count int) Option {
 	return WithBuckets(prometheus.ExponentialBuckets(start, factor, count)...)
 }
 
-func WithBuckets(buckets ...float64) option {
-	return func(m *metric) option {
+func WithBuckets(buckets ...float64) Option {
+	return func(m *metric) Option {
 		save := m.buckets
 
 		m.buckets = buckets
@@ -66,8 +66,8 @@ func WithBuckets(buckets ...float64) option {
 
 }
 
-func WithObjectives(objectives map[float64]float64) option {
-	return func(m *metric) option {
+func WithObjectives(objectives map[float64]float64) Option {
+	return func(m *metric) Option {
 		save := m.objectives
 
 		m.objectives = objectives

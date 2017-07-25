@@ -29,7 +29,7 @@ func TestCounter(t *testing.T) {
 	//c.WithLabels(LabelUndefined.WithValue("undefined!")).Add(math.Phi)
 	//c.WithLabels(LabelUndefined).Add(math.Phi)
 
-	t.Logf("counter: %+v", c)
-	t.Logf("labels: %+v", c.labels.Get())
-	t.Logf("labelset: %+v", c.labels.set)
+	t.Logf("counter: %#v", c)
+	t.Logf("labels: %#v", c.labels.getList())
+	t.Logf("labelset: %#v", c.labels.set)
 }

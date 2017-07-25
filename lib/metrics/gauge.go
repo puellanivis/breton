@@ -1,10 +1,7 @@
 package metrics
 
 import (
-	"fmt"
-
 	"github.com/prometheus/client_golang/prometheus"
-	pb "github.com/prometheus/client_model/go"
 )
 
 type GaugeValue struct {
@@ -16,42 +13,11 @@ type GaugeValue struct {
 	gv *prometheus.GaugeVec
 }
 
-func (g *GaugeValue) collect() <-chan prometheus.Metric {
-	ch := make(chan prometheus.Metric)
-
-	go func() {
-		defer close(ch)
-
-		if g.gv == nil {
-			ch <- g.g
-			return
-		}
-
-		g.gv.Collect(ch)
-	}()
-
-	return ch
-}
-
-func (g *GaugeValue) String() string {
-	var list []string
-
-	for m := range g.collect() {
-		data := new(pb.Metric)
-		_ = m.Write(data)
-
-		list = append(list, fmt.Sprintf("\nmetric:<%s>", data.String()))
-	}
-	list = append(list, "\n")
-
-	return fmt.Sprintf("%v", list)
-}
-
 func (g GaugeValue) WithLabels(labels ...Labeler) *GaugeValue {
 	// we are working with a new copy, so no mutex is necessary.
 	g.g = nil
 
-	g.labels = g.labels.WithLabels(labels...)
+	g.labels = g.labels.With(labels...)
 
 	return &g
 }
@@ -70,7 +36,7 @@ func (g *GaugeValue) Delete(labels ...Labeler) bool {
 	return g.gv.Delete(g.labels.getMap())
 }
 
-func Gauge(name string, help string, options ...option) *GaugeValue {
+func Gauge(name string, help string, options ...Option) *GaugeValue {
 	m := newMetric(name, help)
 
 	for _, opt := range options {
@@ -89,11 +55,11 @@ func Gauge(name string, help string, options ...option) *GaugeValue {
 
 	if g.labels != nil {
 		g.gv = prometheus.NewGaugeVec(opts, g.labels.set.keys)
-		g.registerer.MustRegister(g.gv)
+		g.registry.MustRegister(g.gv)
 
 	} else {
 		g.g = prometheus.NewGauge(opts)
-		g.registerer.MustRegister(g.g)
+		g.registry.MustRegister(g.g)
 	}
 
 	return g

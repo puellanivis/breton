@@ -1,10 +1,7 @@
 package metrics
 
 import (
-	"fmt"
-
 	"github.com/prometheus/client_golang/prometheus"
-	pb "github.com/prometheus/client_model/go"
 )
 
 type SummaryValue struct {
@@ -16,42 +13,11 @@ type SummaryValue struct {
 	sv *prometheus.SummaryVec
 }
 
-func (s *SummaryValue) collect() <-chan prometheus.Metric {
-	ch := make(chan prometheus.Metric)
-
-	go func() {
-		defer close(ch)
-
-		if s.sv == nil {
-			ch <- s.s
-			return
-		}
-
-		s.sv.Collect(ch)
-	}()
-
-	return ch
-}
-
-func (s *SummaryValue) String() string {
-	var list []string
-
-	for m := range s.collect() {
-		data := new(pb.Metric)
-		_ = m.Write(data)
-
-		list = append(list, fmt.Sprintf("\nmetric:<%s>", data.String()))
-	}
-	list = append(list, "\n")
-
-	return fmt.Sprintf("%v", list)
-}
-
 func (s SummaryValue) WithLabels(labels ...Labeler) *SummaryValue {
 	// we are working with a new copy, so no mutex is necessary.
 	s.s = nil
 
-	s.labels = s.labels.WithLabels(labels...)
+	s.labels = s.labels.With(labels...)
 
 	return &s
 }
@@ -70,7 +36,7 @@ func (s *SummaryValue) Delete(labels ...Labeler) bool {
 	return s.sv.Delete(s.labels.getMap())
 }
 
-func Summary(name string, help string, options ...option) *SummaryValue {
+func Summary(name string, help string, options ...Option) *SummaryValue {
 	m := newMetric(name, help)
 
 	for _, opt := range options {
@@ -93,11 +59,11 @@ func Summary(name string, help string, options ...option) *SummaryValue {
 
 	if s.labels != nil {
 		s.sv = prometheus.NewSummaryVec(opts, s.labels.set.keys)
-		s.registerer.MustRegister(s.sv)
+		s.registry.MustRegister(s.sv)
 
 	} else {
 		s.s = prometheus.NewSummary(opts)
-		s.registerer.MustRegister(s.s)
+		s.registry.MustRegister(s.s)
 	}
 
 	return s

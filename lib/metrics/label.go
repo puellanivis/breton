@@ -20,11 +20,6 @@ type Labeler interface {
 // Label describes a label name.
 type Label string
 
-// String implements fmt.Stringer.
-func (l Label) String() string {
-	return fmt.Sprintf("%s=nil", string(l))
-}
-
 // Label implements Labeler.
 func (l Label) Label() (name, value string) {
 	return string(l), ""
@@ -52,11 +47,6 @@ type LabelValue struct {
 	key, val string
 }
 
-// String implements fmt.Stringer.
-func (l LabelValue) String() string {
-	return fmt.Sprintf("%s=%q", l.key, l.val)
-}
-
 // Label implements Labeler.
 func (l LabelValue) Label() (name, value string) {
 	return l.key, l.val
@@ -71,11 +61,6 @@ func (l LabelValue) WithValue(value string) Labeler {
 }
 
 type constLabel LabelValue
-
-// String implements fmt.Stringer.
-func (l constLabel) String() string {
-	return fmt.Sprintf("%s=%q", l.key, l.val)
-}
 
 // Label implements Labeler.
 func (l constLabel) Label() (name, value string) {
@@ -127,15 +112,15 @@ func newLabelSet(labels []Labeler) *labelSet {
 	return s
 }
 
-type Labels struct {
+type labelScope struct {
 	set *labelSet // keep track of the labelSet, for canSet testing
-	p   *Labels   // keep track of the parent of this scope
+	p   *labelScope   // keep track of the parent of this scope
 
 	kv kv.KeyVal // the key:val set defined at this scope.
 }
 
-func DefineLabels(labels ...Labeler) *Labels {
-	l := &Labels{
+func defineLabels(labels ...Labeler) *labelScope {
+	l := &labelScope{
 		set: newLabelSet(labels),
 	}
 
@@ -149,26 +134,21 @@ func DefineLabels(labels ...Labeler) *Labels {
 	return l
 }
 
-// String returns the Labels object as a list of labels and their values.
-func (l *Labels) String() string {
-	return fmt.Sprintf("%v", l.Get())
-}
-
-// WithLabels returns a child Labels object that additionally has the given Labelers labels set.
-func (parent *Labels) WithLabels(labels ...Labeler) *Labels {
-	if parent == nil {
+// WithLabels returns a child labelScope object that additionally has the given Labelers labels set.
+func (l *labelScope) With(labels ...Labeler) *labelScope {
+	if l == nil {
 		panic("metric does not have any labels")
 	}
 
-	l := &Labels{
-		set: parent.set,
-		p:   parent,
+	n := &labelScope{
+		set: l.set,
+		p:   l,
 	}
 
 	for _, label := range labels {
 		k, v := label.Label()
 
-		canSet, ok := l.set.canSet[k]
+		canSet, ok := n.set.canSet[k]
 		if !ok {
 			panic(fmt.Sprintf("attempt to assign to undefined label %q", k))
 		}
@@ -177,14 +157,14 @@ func (parent *Labels) WithLabels(labels ...Labeler) *Labels {
 			panic(fmt.Sprintf("attempt to assign to constant label %q", k))
 		}
 
-		l.kv.Append(k, v)
+		n.kv.Append(k, v)
 	}
-	sort.Sort(l.kv)
+	sort.Sort(n.kv)
 
-	return l
+	return n
 }
 
-func (l *Labels) get(name string) Labeler {
+func (l *labelScope) get(name string) Labeler {
 	if i, ok := l.kv.Index(name); ok {
 		return LabelValue{
 			key: name,
@@ -200,7 +180,7 @@ func (l *Labels) get(name string) Labeler {
 }
 
 // Get returns a slice of Labelers that defines the labels and their values.
-func (l *Labels) Get() []Labeler {
+func (l *labelScope) getList() []Labeler {
 	var list []Labeler
 
 	for _, k := range l.set.keys {
@@ -211,7 +191,7 @@ func (l *Labels) Get() []Labeler {
 }
 
 // getMap is a conversion function necessary to wrap the prometheus client.
-func (l *Labels) getMap() map[string]string {
+func (l *labelScope) getMap() map[string]string {
 	m := make(map[string]string)
 
 	for _, k := range l.set.keys {

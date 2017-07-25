@@ -1,10 +1,7 @@
 package metrics
 
 import (
-	"fmt"
-
 	"github.com/prometheus/client_golang/prometheus"
-	pb "github.com/prometheus/client_model/go"
 )
 
 type HistogramValue struct {
@@ -16,42 +13,11 @@ type HistogramValue struct {
 	hv *prometheus.HistogramVec
 }
 
-func (h *HistogramValue) collect() <-chan prometheus.Metric {
-	ch := make(chan prometheus.Metric)
-
-	go func() {
-		defer close(ch)
-
-		if h.hv == nil {
-			ch <- h.h
-			return
-		}
-
-		h.hv.Collect(ch)
-	}()
-
-	return ch
-}
-
-func (h *HistogramValue) String() string {
-	var list []string
-
-	for m := range h.collect() {
-		data := new(pb.Metric)
-		_ = m.Write(data)
-
-		list = append(list, fmt.Sprintf("\nmetric:<%s>", data.String()))
-	}
-	list = append(list, "\n")
-
-	return fmt.Sprintf("%v", list)
-}
-
 func (h HistogramValue) WithLabels(labels ...Labeler) *HistogramValue {
 	// we are working with a new copy, so no mutex is necessary.
 	h.h = nil
 
-	h.labels = h.labels.WithLabels(labels...)
+	h.labels = h.labels.With(labels...)
 
 	return &h
 }
@@ -70,7 +36,7 @@ func (h *HistogramValue) Delete(labels ...Labeler) bool {
 	return h.hv.Delete(h.labels.getMap())
 }
 
-func Histogram(name string, help string, options ...option) *HistogramValue {
+func Histogram(name string, help string, options ...Option) *HistogramValue {
 	m := newMetric(name, help)
 
 	for _, opt := range options {
@@ -90,11 +56,11 @@ func Histogram(name string, help string, options ...option) *HistogramValue {
 
 	if h.labels != nil {
 		h.hv = prometheus.NewHistogramVec(opts, h.labels.set.keys)
-		h.registerer.MustRegister(h.hv)
+		h.registry.MustRegister(h.hv)
 
 	} else {
 		h.h = prometheus.NewHistogram(opts)
-		h.registerer.MustRegister(h.h)
+		h.registry.MustRegister(h.h)
 	}
 
 	return h

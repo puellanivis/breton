@@ -17,11 +17,11 @@ type TimeKeeper interface {
 }
 
 type metric struct {
-	registerer prometheus.Registerer
+	registry *prometheus.Registry
 
 	name, help string
 
-	labels *Labels
+	labels *labelScope
 
 	objectives map[float64]float64
 	buckets []float64
@@ -35,17 +35,13 @@ func newMetric(name, help string) *metric {
 	}
 
 	return &metric{
-		registerer: prometheus.DefaultRegisterer,
+		registry: prometheus.DefaultRegisterer.(*prometheus.Registry),
 		name:       name,
 		help:       help,
 	}
 }
 
-func (m metric) Name() string {
-	return m.name
-}
-
-func (m metric) Help() string {
+func (m metric) helpString() string {
 	if m.help == "" {
 		return ""
 	}

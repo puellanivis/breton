@@ -1,10 +1,7 @@
 package metrics
 
 import (
-	"fmt"
-
 	"github.com/prometheus/client_golang/prometheus"
-	pb "github.com/prometheus/client_model/go"
 )
 
 type CounterValue struct {
@@ -16,42 +13,11 @@ type CounterValue struct {
 	cv *prometheus.CounterVec
 }
 
-func (c *CounterValue) collect() <-chan prometheus.Metric {
-	ch := make(chan prometheus.Metric)
-
-	go func() {
-		defer close(ch)
-
-		if c.cv == nil {
-			ch <- c.c
-			return
-		}
-
-		c.cv.Collect(ch)
-	}()
-
-	return ch
-}
-
-func (c *CounterValue) String() string {
-	var list []string
-
-	for m := range c.collect() {
-		data := new(pb.Metric)
-		_ = m.Write(data)
-
-		list = append(list, fmt.Sprintf("\nmetric:<%s>", data.String()))
-	}
-	list = append(list, "\n")
-
-	return fmt.Sprintf("%v", list)
-}
-
 func (c CounterValue) WithLabels(labels ...Labeler) *CounterValue {
 	// we are working with a new copy, so no mutex is necessary.
 	c.c = nil
 
-	c.labels = c.labels.WithLabels(labels...)
+	c.labels = c.labels.With(labels...)
 
 	return &c
 }
@@ -70,7 +36,7 @@ func (c *CounterValue) Delete(labels ...Labeler) bool {
 	return c.cv.Delete(c.labels.getMap())
 }
 
-func Counter(name string, help string, options ...option) *CounterValue {
+func Counter(name string, help string, options ...Option) *CounterValue {
 	m := newMetric(name, help)
 
 	for _, opt := range options {
@@ -89,11 +55,11 @@ func Counter(name string, help string, options ...option) *CounterValue {
 
 	if c.labels != nil {
 		c.cv = prometheus.NewCounterVec(opts, c.labels.set.keys)
-		c.registerer.MustRegister(c.cv)
+		c.registry.MustRegister(c.cv)
 
 	} else {
 		c.c = prometheus.NewCounter(opts)
-		c.registerer.MustRegister(c.c)
+		c.registry.MustRegister(c.c)
 	}
 
 	return c
