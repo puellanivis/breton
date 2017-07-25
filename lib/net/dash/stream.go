@@ -10,7 +10,6 @@ import (
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/log"
-	"github.com/puellanivis/breton/lib/metrics"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
@@ -19,9 +18,7 @@ import (
 type Stream struct {
 	w io.Writer
 
-	packets *metrics.CounterValue
-	timing  *metrics.SummaryValue
-	sizes   *metrics.SummaryValue
+	metrics *metricsPack
 
 	// so we can find the appropriate SegmentTimeline
 	// in a given mpd.MPD
@@ -97,10 +94,8 @@ func (s *Stream) Init(ctx context.Context) error {
 
 // readTo reads a given URL into the Stream’s io.Writer while keeping metrics.
 func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error {
-	timer := s.timing.Timer()
+	timer := s.metrics.timing.Timer()
 	defer timer.Done()
-
-	s.packets.Inc()
 
 	if log.V(5) {
 		log.Info("Grabbing:", url)
@@ -110,7 +105,7 @@ func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error 
 	if scale > 0.1 {
 		_ = n
 		// n is measured in bytes, we want to record in bits
-		s.sizes.Observe(float64(n*8) * scale)
+		s.metrics.bandwidth.Observe(float64(n*8) * scale)
 	}
 
 	return err
