@@ -43,51 +43,51 @@ func (i *uint64Value) String() string { return strconv.FormatUint(uint64(*i), 10
 // UintVar defines a uint flag with specified name, default value, and usage string.
 // The argument p points to a uint variable in which to store the value of the flag.
 func (f *FlagSet) UintVar(p *uint, name string, value uint, usage string, options ...Option) {
-	f.Var(newUintValue(value, p), name, usage)
+	f.Var(newUintValue(value, p), name, usage, options...)
 }
 
 // UintVar defines a uint flag with specified name, default value, and usage string.
 // The argument p points to a uint variable in which to store the value of the flag.
 func UintVar(p *uint, name string, value uint, usage string, options ...Option) {
-	CommandLine.Var(newUintValue(value, p), name, usage)
+	CommandLine.Var(newUintValue(value, p), name, usage, options...)
 }
 
 // Uint defines a uint flag with specified name, default value, and usage string.
 // The return value is the address of a uint variable that stores the value of the flag.
 func (f *FlagSet) Uint(name string, value uint, usage string, options ...Option) *uint {
 	p := new(uint)
-	f.UintVar(p, name, value, usage)
+	f.UintVar(p, name, value, usage, options...)
 	return p
 }
 
 // Uint defines a uint flag with specified name, default value, and usage string.
 // The return value is the address of a uint variable that stores the value of the flag.
 func Uint(name string, value uint, usage string, options ...Option) *uint {
-	return CommandLine.Uint(name, value, usage)
+	return CommandLine.Uint(name, value, usage, options...)
 }
 
 // Uint64Var defines a uint64 flag with specified name, default value, and usage string.
 // The argument p point64s to a uint64 variable in which to store the value of the flag.
 func (f *FlagSet) Uint64Var(p *uint64, name string, value uint64, usage string, options ...Option) {
-	f.Var(newUint64Value(value, p), name, usage)
+	f.Var(newUint64Value(value, p), name, usage, options...)
 }
 
 // Uint64Var defines a uint64 flag with specified name, default value, and usage string.
 // The argument p point64s to a uint64 variable in which to store the value of the flag.
 func Uint64Var(p *uint64, name string, value uint64, usage string, options ...Option) {
-	CommandLine.Var(newUint64Value(value, p), name, usage)
+	CommandLine.Var(newUint64Value(value, p), name, usage, options...)
 }
 
 // Uint64 defines a uint64 flag with specified name, default value, and usage string.
 // The return value is the address of a uint64 variable that stores the value of the flag.
 func (f *FlagSet) Uint64(name string, value uint64, usage string, options ...Option) *uint64 {
 	p := new(uint64)
-	f.Uint64Var(p, name, value, usage)
+	f.Uint64Var(p, name, value, usage, options...)
 	return p
 }
 
 // Uint64 defines a uint64 flag with specified name, default value, and usage string.
 // The return value is the address of a uint64 variable that stores the value of the flag.
 func Uint64(name string, value uint64, usage string, options ...Option) *uint64 {
-	return CommandLine.Uint64(name, value, usage)
+	return CommandLine.Uint64(name, value, usage, options...)
 }
