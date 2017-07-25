@@ -10,7 +10,29 @@ import (
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/log"
+	"github.com/puellanivis/breton/lib/metrics"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
+)
+
+const (
+	urlLabel = metrics.Label("stream_url")
+	typeLabel = metrics.Label("mime_type")
+)
+
+var (
+	labels = metrics.WithLabels(urlLabel, typeLabel)
+
+	objectives = metrics.WithObjectives(map[float64]float64{
+		0.5: 0.05,
+		0.9: 0.01,
+		0.99: 0.001,
+	})
+)
+
+var (
+	packets = metrics.Counter("dash_segments", "track the number of packets pulled down per stream", labels)
+	timings = metrics.Summary("dash_segment_timings_seconds", "tracks how long it takes to receive segments", labels, objectives)
+	sizes = metrics.Summary("dash_segment_sizes_bps", "tracks the bits per second of dash segments received", labels, objectives)
 )
 
 type adaptation struct {
@@ -30,6 +52,10 @@ type Manifest struct {
 	base     string
 	manifest string
 
+	packets *metrics.CounterValue
+	timings *metrics.SummaryValue
+	sizes   *metrics.SummaryValue
+
 	dynamic     bool
 	adaptations map[string]*adaptation
 
@@ -45,6 +71,8 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	url := urlLabel.WithValue(manifest)
 
 	idx := strings.LastIndexByte(manifest, '/')
 	base, manifest := manifest[:idx+1], manifest[idx+1:]
@@ -90,6 +118,10 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 		dynamic:     m.Type == "dynamic",
 		adaptations: adaptations,
 		m:           newMPD(manifest, minTime),
+
+		packets: packets.WithLabels(url),
+		timings: timings.WithLabels(url),
+		sizes:   sizes.WithLabels(url),
 	}, nil
 }
 
@@ -176,8 +208,14 @@ func (m *Manifest) Stream(w io.Writer, mimeType string, picker PickRepFunc) (*St
 		}
 	}
 
+	mtype := typeLabel.WithValue(mimeType)
+
 	return &Stream{
 		w: w,
+
+		packets: m.packets.WithLabels(mtype),
+		timing:  m.timings.WithLabels(mtype),
+		sizes:   m.sizes.WithLabels(mtype),
 
 		pid: as.pid,
 		aid: as.aid,

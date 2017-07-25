@@ -14,15 +14,14 @@ import (
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
-var (
-	sizes   = metrics.Summary("dash_segment_sizes_bps", "tracks the bits per second of dash segments received", metrics.WithObjective(0.5, 0.05), metrics.WithObjective(0.9, 0.01), metrics.WithObjective(0.99, 0.001))
-	timings = metrics.Summary("dash_segment_timings_seconds", "tracks how long it takes to receive segments", metrics.WithObjective(0.5, 0.05), metrics.WithObjective(0.9, 0.01), metrics.WithObjective(0.99, 0.001))
-)
-
 // Stream is a structure holding the information necessary to retreive a#
 // DASH stream.
 type Stream struct {
 	w io.Writer
+
+	packets *metrics.CounterValue
+	timing  *metrics.SummaryValue
+	sizes   *metrics.SummaryValue
 
 	// so we can find the appropriate SegmentTimeline
 	// in a given mpd.MPD
@@ -98,8 +97,10 @@ func (s *Stream) Init(ctx context.Context) error {
 
 // readTo reads a given URL into the Stream’s io.Writer while keeping metrics.
 func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error {
-	timer := timings.Timer()
+	timer := s.timing.Timer()
 	defer timer.Done()
+
+	s.packets.Inc()
 
 	if log.V(5) {
 		log.Info("Grabbing:", url)
@@ -107,14 +108,19 @@ func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error 
 
 	n, err := files.ReadTo(ctx, s.w, url)
 	if scale > 0.1 {
+		_ = n
 		// n is measured in bytes, we want to record in bits
-		sizes.Observe(float64(n*8) * scale)
+		s.sizes.Observe(float64(n*8) * scale)
 	}
 
 	return err
 }
 
 func (s *Stream) readTimeline(ctx context.Context, ts uint, num uint, tl *mpd.SegmentTimeline) (time.Duration, error) {
+	if s.eof {
+		return 0, io.EOF
+	}
+
 	var dur, tdur time.Duration
 	var tscale = time.Second
 	if ts != 0 {
