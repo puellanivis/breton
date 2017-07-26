@@ -1,9 +1,6 @@
 package metrics
 
 import (
-	"context"
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -143,34 +140,4 @@ func (g *GaugeValue) Timer() (done func()) {
 		// path as the g.g.Set() call, otherwise possibly racey.
 		g.Set(time.Since(t).Seconds())
 	}
-}
-
-// InProgress tracks in-progress requests for some piece of code/function.
-// It will set the Gauge to the accumulating duration at intervals of Duration d.
-// It will do so until the Context is canceled, or the returned done function is called.
-// (Caller MUST ensure the returned done function is called, and SHOULD use defer.)
-func (g *GaugeValue) InProgress(ctx context.Context, d time.Duration) (done func()) {
-	set := g.Timer()
-
-	// Setup a scoped cancel that will only cancel this context.
-	ctx, cancel := context.WithCancel(ctx)
-
-	// start up a ticker goroutine to just run set every tick.
-	t := time.NewTicker(d)
-	go func() {
-		defer set()
-
-		for {
-			select {
-			case <-t.C:
-				set()
-
-			case <-ctx.Done():
-				t.Stop()
-				return
-			}
-		}
-	}()
-
-	return cancel
 }
