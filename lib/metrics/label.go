@@ -66,11 +66,6 @@ func (l constLabel) Label() (name, value string) {
 	return l.key, l.val
 }
 
-// WithLabel panics preventing assignment to a constant Label.
-func (l constLabel) WithValue(value string) Labeler {
-	panic(fmt.Sprintf("attempt to assign to constant label %q", l.key))
-}
-
 // labelSet describes a set of labels, i.e. which keys are valid, and whether they may be set.
 type labelSet struct {
 	keys   []string
