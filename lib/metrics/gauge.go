@@ -135,6 +135,7 @@ func (g *GaugeValue) SetToDuration(d time.Duration) {
 
 // Timer times a piece of code and sets the Gauge to its duration in seconds.
 // This is useful for batch jobs. The Timer will commit the duration when the done function is called.
+//
 // (Caller MUST ensure the returned done function is called, and SHOULD use defer.)
 func (g *GaugeValue) Timer() (done func()) {
 	// get start time as fast as possible, then set the Gauge to zero.

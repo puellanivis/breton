@@ -82,7 +82,8 @@ func (c *CounterValue) Inc() {
 }
 
 // Add increments the Counter by the given value.
-// The given value MUST NOT be negative.
+//
+// (Caller MUST NOT give a negative value.)
 func (c *CounterValue) Add(v float64) {
 	if v < 0 {
 		panic("counter cannot decrease in value")

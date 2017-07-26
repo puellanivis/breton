@@ -97,6 +97,7 @@ func (h *HistogramValue) ObserveDuration(d time.Duration) {
 }
 
 // Timer times a piece of code and records to the Histogram its duration in seconds.
+//
 // (Caller MUST ensure the returned done function is called, and SHOULD use defer.)
 func (h *HistogramValue) Timer() (done func()) {
 	t := time.Now()
