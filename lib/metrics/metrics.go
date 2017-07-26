@@ -3,6 +3,7 @@ package metrics
 import (
 	"fmt"
 	"regexp"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	//pb "github.com/prometheus/client_model/go"
@@ -26,7 +27,18 @@ type metric struct {
 
 	labels *labelScope
 
+	*summarySettings
+	*histogramSettings
+}
+
+type summarySettings struct {
 	objectives map[float64]float64
+	maxAge time.Duration
+	ageBuckets uint32
+	bufCap uint32
+}
+
+type histogramSettings struct {
 	buckets    []float64
 }
 

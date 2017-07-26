@@ -48,6 +48,8 @@ func (h *HistogramValue) Clear() {
 func Histogram(name string, help string, options ...Option) *HistogramValue {
 	m := newMetric(name, help)
 
+	m.histogramSettings = new(histogramSettings)
+
 	for _, opt := range options {
 		// in initialization, we throw the reverting function away
 		_ = opt(m)

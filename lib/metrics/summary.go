@@ -54,7 +54,9 @@ func Summary(name string, help string, options ...Option) *SummaryValue {
 	//
 	// As such, we set a default empty map here to override any default
 	// currently in use by the wrapped prometheus library.
-	m.objectives = make(map[float64]float64)
+	m.summarySettings = &summarySettings{
+		objectives: make(map[float64]float64),
+	}
 
 	for _, opt := range options {
 		// in initialization, we throw the reverting function away

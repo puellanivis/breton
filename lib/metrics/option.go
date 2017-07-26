@@ -65,6 +65,10 @@ func ExponentialBuckets(start, factor float64, count uint) Option {
 // (Caller MUST ensure that the buckets are defined in increasing order.)
 func WithBuckets(buckets ...float64) Option {
 	return func(m *metric) Option {
+		if m.histogramSettings == nil {
+			panic("metric is not a histogram")
+		}
+
 		save := m.buckets
 
 		m.buckets = buckets
@@ -79,6 +83,10 @@ func WithBuckets(buckets ...float64) Option {
 // Reference: https://prometheus.io/docs/concepts/metric_types/#summary
 func WithObjectives(objectives map[float64]float64) Option {
 	return func(m *metric) Option {
+		if m.summarySettings == nil {
+			panic("metric is not a summary")
+		}
+
 		save := m.objectives
 
 		m.objectives = objectives
