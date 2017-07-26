@@ -33,13 +33,13 @@ type metric struct {
 
 type summarySettings struct {
 	objectives map[float64]float64
-	maxAge time.Duration
+	maxAge     time.Duration
 	ageBuckets uint32
-	bufCap uint32
+	bufCap     uint32
 }
 
 type histogramSettings struct {
-	buckets    []float64
+	buckets []float64
 }
 
 var validName = regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
