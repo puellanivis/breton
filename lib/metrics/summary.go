@@ -92,6 +92,11 @@ func (s *SummaryValue) Observe(v float64) {
 	s.s.Observe(v)
 }
 
+// ObserveDuration records the given Duration into the Summary.
+func (s *SummaryValue) ObserveDuration(d time.Duration) {
+	s.Observe(d.Seconds())
+}
+
 // Timer times a piece of code and records to the Summary its duration in seconds.
 // (Caller MUST ensure the returned done function is called, and SHOULD use defer.)
 func (s *SummaryValue) Timer() (done func()) {
@@ -100,6 +105,6 @@ func (s *SummaryValue) Timer() (done func()) {
 	return func() {
 		// use our s.Observe here to ensure s.s gets set in the same code
 		// path as the s.s.Observe() call, otherwise possibly racey.
-		s.Observe(time.Since(t).Seconds())
+		s.ObserveDuration(time.Since(t))
 	}
 }

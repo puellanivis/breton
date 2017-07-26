@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -126,6 +128,11 @@ func (g *GaugeValue) SetToTime(t time.Time) {
 	g.Set(float64(t.UnixNano()) / 1e9)
 }
 
+// SetToDuration sets the Gauge to the given Duration in seconds.
+func (g *GaugeValue) SetToDuration(d time.Duration) {
+	g.Set(d.Seconds())
+}
+
 // Timer times a piece of code and sets the Gauge to its duration in seconds.
 // This is useful for batch jobs. The Timer will commit the duration when the done function is called.
 // (Caller MUST ensure the returned done function is called, and SHOULD use defer.)
@@ -138,6 +145,6 @@ func (g *GaugeValue) Timer() (done func()) {
 	return func() {
 		// use our g.Set here to ensure g.g gets set in the same code
 		// path as the g.g.Set() call, otherwise possibly racey.
-		g.Set(time.Since(t).Seconds())
+		g.SetToDuration(time.Since(t))
 	}
 }

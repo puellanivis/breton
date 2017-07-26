@@ -89,6 +89,11 @@ func (h *HistogramValue) Observe(v float64) {
 	h.h.Observe(v)
 }
 
+// ObserveDuration records the given Duration into the Histogram.
+func (h *HistogramValue) ObserveDuration(d time.Duration) {
+	h.Observe(d.Seconds())
+}
+
 // Timer times a piece of code and records to the Histogram its duration in seconds.
 // (Caller MUST ensure the returned done function is called, and SHOULD use defer.)
 func (h *HistogramValue) Timer() (done func()) {
@@ -97,6 +102,6 @@ func (h *HistogramValue) Timer() (done func()) {
 	return func() {
 		// use our h.Observe here to ensure h.h gets set in the same code
 		// path as the h.h.Observe() call, otherwise possibly racey.
-		h.Observe(time.Since(t).Seconds())
+		h.ObserveDuration(time.Since(t))
 	}
 }
