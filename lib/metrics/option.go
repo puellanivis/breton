@@ -96,6 +96,6 @@ var (
 )
 
 // CommonObjectives returns an Option that applies a common set of Objectives, which track the 50th percentile (the median), the 95th percentile, and the 99th percentile. (By default, a Summary will not track any Quantiles.)
-func CommonObjectives(objectives map[float64]float64) Option {
+func CommonObjectives() Option {
 	return WithObjectives(commonObjectives)
 }
