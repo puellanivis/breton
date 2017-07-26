@@ -14,8 +14,8 @@ type Observer interface {
 	Observe(float64)
 }
 
-// TimeKeeper is implemented by any value that permits timing a piece of code.
-type TimeKeeper interface {
+// Timer is implemented by any value that permits timing a piece of code.
+type Timer interface {
 	Timer() (done func())
 }
 
