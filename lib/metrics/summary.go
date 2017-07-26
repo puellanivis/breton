@@ -71,9 +71,9 @@ func Summary(name string, help string, options ...Option) *SummaryValue {
 		Name:       name,
 		Help:       help,
 		Objectives: m.objectives,
-		// TODO: MaxAge
-		// TODO: AgeBuckets
-		// TODO: BufCap
+		MaxAge:     m.maxAge,
+		AgeBuckets: m.ageBuckets,
+		BufCap:     m.bufCap,
 	}
 
 	if s.labels != nil {
