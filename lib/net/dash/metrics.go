@@ -5,17 +5,12 @@ import (
 )
 
 const (
-	urlLabel = metrics.Label("manifest_url")
+	urlLabel  = metrics.Label("manifest_url")
 	typeLabel = metrics.Label("mime_type")
 )
 
 var (
 	labels = metrics.WithLabels(urlLabel, typeLabel)
-	objectives = metrics.WithObjectives(map[float64]float64{
-		0.5: 0.05,
-		0.9: 0.01,
-		0.99: 0.001,
-	})
 )
 
 type metricsPack struct {
@@ -24,14 +19,13 @@ type metricsPack struct {
 }
 
 var baseMetrics = &metricsPack{
-	timing: metrics.Summary("dash_segment_timing_seconds", "tracks how long it takes to receive segments", labels, objectives),
-	bandwidth: metrics.Summary("dash_segment_bandwidth_bps", "tracks the bits per second of dash segments received", labels, objectives),
+	timing:    metrics.Summary("dash_segment_timing_seconds", "tracks how long it takes to receive segments", labels, metrics.CommonObjectives()),
+	bandwidth: metrics.Summary("dash_segment_bandwidth_bps", "tracks the bits per second of dash segments received", labels, metrics.CommonObjectives()),
 }
 
 func (m *metricsPack) WithLabels(labels ...metrics.Labeler) *metricsPack {
 	return &metricsPack{
-		timing: m.timing.WithLabels(labels...),
+		timing:    m.timing.WithLabels(labels...),
 		bandwidth: m.bandwidth.WithLabels(labels...),
 	}
 }
-
