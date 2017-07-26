@@ -94,8 +94,8 @@ func (s *Stream) Init(ctx context.Context) error {
 
 // readTo reads a given URL into the Stream’s io.Writer while keeping metrics.
 func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error {
-	timer := s.metrics.timing.Timer()
-	defer timer.Done()
+	done := s.metrics.timing.Timer()
+	defer done()
 
 	if log.V(5) {
 		log.Info("Grabbing:", url)
