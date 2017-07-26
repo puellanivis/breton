@@ -86,3 +86,16 @@ func WithObjectives(objectives map[float64]float64) Option {
 		return WithObjectives(save)
 	}
 }
+
+var (
+	commonObjectives = map[float64]float64{
+		0.5:  0.05,
+		0.9:  0.01,
+		0.99: 0.001,
+	}
+)
+
+// CommonObjectives returns an Option that applies a common set of Objectives, which track the 50th percentile (the median), the 95th percentile, and the 99th percentile. (By default, a Summary will not track any Quantiles.)
+func CommonObjectives(objectives map[float64]float64) Option {
+	return WithObjectives(commonObjectives)
+}

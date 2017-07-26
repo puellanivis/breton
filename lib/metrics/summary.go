@@ -48,6 +48,14 @@ func (s *SummaryValue) Clear() {
 func Summary(name string, help string, options ...Option) *SummaryValue {
 	m := newMetric(name, help)
 
+	// prometheus library has deprecated DefaultObjectives, as the
+	// implementation documentation says that Summaries MUST allow for not
+	// having quantiles, and that this MUST be the default.
+	//
+	// As such, we set a default empty map here to override any default
+	// currently in use by the wrapped prometheus library.
+	m.objectives = make(map[float64]float64)
+
 	for _, opt := range options {
 		// in initialization, we throw the reverting function away
 		_ = opt(m)
