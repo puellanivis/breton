@@ -1,9 +1,12 @@
 package metrics
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// A SummaryValue holds the tracking information for a specific Summary or a “Child” of a Summary.
 type SummaryValue struct {
 	// we want to duplicate this every WithLabels() call,
 	// so we don’t use a pointer here.
@@ -13,6 +16,8 @@ type SummaryValue struct {
 	sv *prometheus.SummaryVec
 }
 
+// WithLabels provides access to a labeled dimension of the metric, and returns a “Child” wherein the given labels are set.
+// The “Child” returned is cacheable by the Caller, so as to avoid having to look it up again—this matters in latency-critical code.
 func (s SummaryValue) WithLabels(labels ...Labeler) *SummaryValue {
 	// we are working with a new copy, so no mutex is necessary.
 	s.s = nil
@@ -22,13 +27,8 @@ func (s SummaryValue) WithLabels(labels ...Labeler) *SummaryValue {
 	return &s
 }
 
-func (s *SummaryValue) Reset() {
-	if s.sv != nil {
-		s.sv.Reset()
-	}
-}
-
-func (s *SummaryValue) Delete(labels ...Labeler) bool {
+// Remove will remove a “Child” that matches the given labels from the metric, no longer exporting it.
+func (s *SummaryValue) Remove(labels ...Labeler) bool {
 	if s.sv == nil {
 		return false
 	}
@@ -36,6 +36,15 @@ func (s *SummaryValue) Delete(labels ...Labeler) bool {
 	return s.sv.Delete(s.labels.getMap())
 }
 
+// Clear removes all “Children” from the metric.
+func (s *SummaryValue) Clear() {
+	if s.sv != nil {
+		s.sv.Reset()
+	}
+}
+
+// Summary samples observations (usually things like request durations) over sliding windows of time,
+// and provides instantaneous insight into their distributions, frequencies, and sums.
 func Summary(name string, help string, options ...Option) *SummaryValue {
 	m := newMetric(name, help)
 
@@ -49,8 +58,8 @@ func Summary(name string, help string, options ...Option) *SummaryValue {
 	}
 
 	opts := prometheus.SummaryOpts{
-		Name: name,
-		Help: help,
+		Name:       name,
+		Help:       help,
 		Objectives: m.objectives,
 		// TODO: MaxAge
 		// TODO: AgeBuckets
@@ -58,6 +67,10 @@ func Summary(name string, help string, options ...Option) *SummaryValue {
 	}
 
 	if s.labels != nil {
+		if _, ok := m.labels.set.canSet["quantile"]; ok {
+			panic("summaries cannot allow \"quantile\" as a label")
+		}
+
 		s.sv = prometheus.NewSummaryVec(opts, s.labels.set.keys)
 		s.registry.MustRegister(s.sv)
 
@@ -69,6 +82,7 @@ func Summary(name string, help string, options ...Option) *SummaryValue {
 	return s
 }
 
+// Observe records the given value into the Summary.
 func (s *SummaryValue) Observe(v float64) {
 	if s.s == nil {
 		// function is idempotent, and won’t step on others’ toes
@@ -78,11 +92,14 @@ func (s *SummaryValue) Observe(v float64) {
 	s.s.Observe(v)
 }
 
-func (s *SummaryValue) Timer() *Timer {
-	if s.s == nil {
-		// function is idempotent, and won’t step on others’ toes
-		s.s = s.sv.With(s.labels.getMap()).(prometheus.Summary)
-	}
+// Timer times a piece of code and records to the Summary its duration in seconds.
+// (Caller MUST ensure the returned done function is called, and SHOULD use defer.)
+func (s *SummaryValue) Timer() (done func()) {
+	t := time.Now()
 
-	return newTimer(s.s)
+	return func() {
+		// use our s.Observe here to ensure s.s gets set in the same code
+		// path as the s.s.Observe() call, otherwise possibly racey.
+		s.Observe(time.Since(t).Seconds())
+	}
 }

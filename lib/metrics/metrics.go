@@ -8,12 +8,15 @@ import (
 	//pb "github.com/prometheus/client_model/go"
 )
 
+// Observer is implemented by any value that has an Observe(float64) format.
+// The primary metric types implementing this are Summary and Histogram.
 type Observer interface {
 	Observe(float64)
 }
 
+// TimeKeeper is implemented by any value that permits timing a piece of code.
 type TimeKeeper interface {
-	Timer() *Timer
+	Timer() (done func())
 }
 
 type metric struct {
@@ -24,7 +27,7 @@ type metric struct {
 	labels *labelScope
 
 	objectives map[float64]float64
-	buckets []float64
+	buckets    []float64
 }
 
 var validName = regexp.MustCompile(`^[a-zA-Z_:][a-zA-Z0-9_:]*$`)
@@ -36,8 +39,8 @@ func newMetric(name, help string) *metric {
 
 	return &metric{
 		registry: prometheus.DefaultRegisterer.(*prometheus.Registry),
-		name:       name,
-		help:       help,
+		name:     name,
+		help:     help,
 	}
 }
 

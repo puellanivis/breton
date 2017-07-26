@@ -12,20 +12,20 @@ import (
 // tests at compile-time. So, we will check at Registration time.
 var validLabel = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
+// A Labeler returns the name=value pairting from the implementer.
 type Labeler interface {
-	// Label returns the name=value pairing from the implementer.
 	Label() (name, value string)
 }
 
-// Label describes a label name.
+// Label describes only a label name, in a way that allows it to be set to a const.
 type Label string
 
-// Label implements Labeler.
+// Label implements Labeler. It returns an empty string for value.
 func (l Label) Label() (name, value string) {
 	return string(l), ""
 }
 
-// WithLabel takes the given label name, and attaches a value to it.
+// WithValue takes the given Label, and attaches a value to it.
 func (l Label) WithValue(value string) Labeler {
 	return LabelValue{
 		key: string(l),
@@ -34,7 +34,7 @@ func (l Label) WithValue(value string) Labeler {
 }
 
 // Const returns a Labeler that defines a label with a constant value.
-// The concrete type is unexported in order to further enforce constantness.
+// The concrete type is unexported in order to further enforce immutability.
 func (l Label) Const(value string) Labeler {
 	return constLabel{
 		key: string(l),
@@ -42,17 +42,17 @@ func (l Label) Const(value string) Labeler {
 	}
 }
 
-// A LabelValue is a pair of Label name, and a value.
+// A LabelValue describes a complete pair of Label name and value.
 type LabelValue struct {
 	key, val string
 }
 
-// Label implements Labeler.
+// Label returns the name and value of the LabelValue.
 func (l LabelValue) Label() (name, value string) {
 	return l.key, l.val
 }
 
-// WithLabel takes the given label name, and attaches a value to it.
+// WithValue returns a new Labeler with the same Label name, but a new value.
 func (l LabelValue) WithValue(value string) Labeler {
 	return LabelValue{
 		key: l.key,
@@ -62,17 +62,16 @@ func (l LabelValue) WithValue(value string) Labeler {
 
 type constLabel LabelValue
 
-// Label implements Labeler.
 func (l constLabel) Label() (name, value string) {
 	return l.key, l.val
 }
 
-// WithLabel takes the given label name, and attaches a value to it.
+// WithLabel panics preventing assignment to a constant Label.
 func (l constLabel) WithValue(value string) Labeler {
 	panic(fmt.Sprintf("attempt to assign to constant label %q", l.key))
 }
 
-// labelSet describes a set of labels, i.e. which keys are valid, and which are constant.
+// labelSet describes a set of labels, i.e. which keys are valid, and whether they may be set.
 type labelSet struct {
 	keys   []string
 	canSet map[string]bool
@@ -112,13 +111,16 @@ func newLabelSet(labels []Labeler) *labelSet {
 	return s
 }
 
+// labelScope allows for the scoping of labels, meaning successive levels of labels may be applied one after another.
 type labelScope struct {
-	set *labelSet // keep track of the labelSet, for canSet testing
-	p   *labelScope   // keep track of the parent of this scope
+	set *labelSet   // keep track of the labelSet, for canSet testing
+	p   *labelScope // keep track of the parent of this scope
 
 	kv kv.KeyVal // the key:val set defined at this scope.
 }
 
+// defineLabels takes a list of Labelers, constructs an appropriate labelSet,
+// and then returns a labelScope containing the Constant and Default label values.
 func defineLabels(labels ...Labeler) *labelScope {
 	l := &labelScope{
 		set: newLabelSet(labels),
@@ -134,10 +136,10 @@ func defineLabels(labels ...Labeler) *labelScope {
 	return l
 }
 
-// WithLabels returns a child labelScope object that additionally has the given Labelers labels set.
+// With returns a child labelScope that has the given Labelers additionally set.
 func (l *labelScope) With(labels ...Labeler) *labelScope {
 	if l == nil {
-		panic("metric does not have any labels")
+		panic("metric does not define any labels")
 	}
 
 	n := &labelScope{
@@ -164,6 +166,7 @@ func (l *labelScope) With(labels ...Labeler) *labelScope {
 	return n
 }
 
+// get returns the most-recently-set value for a given Label name.
 func (l *labelScope) get(name string) Labeler {
 	if i, ok := l.kv.Index(name); ok {
 		return LabelValue{
@@ -179,12 +182,17 @@ func (l *labelScope) get(name string) Labeler {
 	return Label(name)
 }
 
-// Get returns a slice of Labelers that defines the labels and their values.
+// getList returns a slice of Labelers that defines the labels and their values.
 func (l *labelScope) getList() []Labeler {
 	var list []Labeler
 
 	for _, k := range l.set.keys {
-		list = append(list, l.get(k))
+		_, v := l.get(k).Label()
+
+		list = append(list, LabelValue{
+			key: k,
+			val: v,
+		})
 	}
 
 	return list
