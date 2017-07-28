@@ -26,7 +26,8 @@ var (
 	// each column, and then autoscale each column to line up.
 	Empty = &Format{
 		Inner: &Divider{
-			Bar: " ",
+			Space: " ",
+			Bar:   " ",
 		},
 	}
 
