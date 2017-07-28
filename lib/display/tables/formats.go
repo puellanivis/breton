@@ -1,6 +1,9 @@
 package tables
 
-import ()
+import (
+	"os"
+	"strings"
+)
 
 // Divider defines a set of dividers to be used when printing a single specific row.
 type Divider struct {
