@@ -9,14 +9,14 @@ var (
 )
 
 // special case, easy every time.
-var Default Clipboard = &execClip{
+var defaultClipboard clipboard = &execClip{
 	name:  ".",
 	paste: pasteCmd,
 	copy:  copyCmd,
 }
 
 func init() {
-	clipboards["."] = Default
+	clipboards["."] = defaultClipboard
 
 	newExecClip("general")
 	newExecClip("ruler")

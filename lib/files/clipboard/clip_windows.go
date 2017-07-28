@@ -32,10 +32,10 @@ var (
 
 type winClip struct{}
 
-var Default Clipboard = winClip{}
+var defaultClipboard clipboard = winClip{}
 
 func init() {
-	clipboards["."] = Default
+	clipboards["."] = defaultClipboard
 }
 
 func (c winClip) Read() ([]byte, error) {
