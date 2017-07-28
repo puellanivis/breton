@@ -15,7 +15,21 @@ func (d *Divider) writeDivider(wr io.Writer, widths []int) error {
 		line.WriteString(d.Left)
 	}
 
-	if d.Space != "" {
+	switch {
+	case d.Bar == "":
+		var cols []string
+
+		for _, width := range widths {
+			if width < 0 {
+				width = -width
+			}
+
+			cols = append(cols, strings.Repeat(d.Space, width))
+		}
+
+		line.WriteString(strings.Join(cols, d.Space))
+
+	case d.Space != "":
 		var cols []string
 
 		for _, width := range widths {
@@ -73,14 +87,21 @@ func (f *Format) writeRow(wr io.Writer, cols []string) error {
 		return err
 	}
 
-	line.WriteString(f.Inner.Left)
-	line.WriteString(f.Inner.Space)
+	if f.Inner.Left != "" {
+		line.WriteString(f.Inner.Left)
+		line.WriteString(f.Inner.Space)
+	}
 
-	sep := fmt.Sprint(f.Inner.Space, f.Inner.Bar, f.Inner.Space)
+	var sep = f.Inner.Space
+	if f.Inner.Bar != "" {
+		sep = fmt.Sprint(f.Inner.Space, f.Inner.Bar, f.Inner.Space)
+	}
 	line.WriteString(strings.Join(cols, sep))
 
-	line.WriteString(f.Inner.Space)
-	line.WriteString(f.Inner.Right)
+	if f.Inner.Right != "" {
+		line.WriteString(f.Inner.Space)
+		line.WriteString(f.Inner.Right)
+	}
 
 	if line.Len() > 0 {
 		line.WriteByte('\n')
@@ -93,6 +114,13 @@ func (f *Format) writeRow(wr io.Writer, cols []string) error {
 
 func (f *Format) writeRowScale(wr io.Writer, row []string, widths []int) error {
 	var cols []string
+
+	if f.Inner.Right == "" {
+		w := make([]int, len(row)-1)
+		copy(w, widths)
+		widths = w
+		widths = append(widths, 0)
+	}
 
 	for i, width := range widths {
 		cols = append(cols, f.Inner.scale(width, row[i]))
@@ -156,7 +184,7 @@ func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
 		// whether to write a divider.
 
 		for _, row := range table {
-			if len(row) < len(widths) {
+			if f.Inner.Right != "" && len(row) < len(widths) {
 				l := len(widths) - len(row)
 				row = append(row, make([]string, l)...)
 			}
@@ -178,7 +206,7 @@ func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
 			continue
 		}
 
-		if len(row) < len(widths) {
+		if f.Inner.Right != "" && len(row) < len(widths) {
 			l := len(widths) - len(row)
 			row = append(row, make([]string, l)...)
 		}

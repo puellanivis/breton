@@ -27,7 +27,6 @@ var (
 	Empty = &Format{
 		Inner: &Divider{
 			Space: " ",
-			Bar:   " ",
 		},
 	}
 
