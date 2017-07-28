@@ -140,7 +140,7 @@ PROJECT="${PWD##*/}"
 if [[ -n $TIMESTAMP ]]; then
 	DEPS=$( go list -f "{{.Deps}}" | grep -c -e "\<lib/util\>" )
 	if [[ $DEPS -ne 0 ]]; then
-		GOFLAGS=-ldflags="-X lib/util.BUILD=$TIMESTAMP"
+		GOFLAGS=-ldflags="-X github.com/puellanivis/breton/lib/util.BUILD=$TIMESTAMP"
 	fi
 fi
 
