@@ -1,4 +1,4 @@
-// Go support for leveled logs, analogous to https://code.google.com/p/google-glog/ (With no dependency injection, the code had to be modified to integrate with github.com/puellanivis/breton/lib/flag)
+// Go support for leveled logs, analogous to https://code.google.com/p/google-glog/ (With no dependency injection, the code had to be modified to integrate with github.com/puellanivis/breton/lib/gnuflag)
 //
 // Copyright 2013 Google Inc. All Rights Reserved.
 //
@@ -86,7 +86,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/puellanivis/breton/lib/flag"
+	flag "github.com/puellanivis/breton/lib/gnuflag"
 )
 
 // severity identifies the sort of log: info, warning etc. It also implements

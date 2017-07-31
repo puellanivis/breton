@@ -6,7 +6,7 @@ import (
 	"runtime/pprof"
 	"sync"
 
-	"github.com/puellanivis/breton/lib/flag"
+	flag "github.com/puellanivis/breton/lib/gnuflag"
 	"github.com/puellanivis/breton/lib/glog"
 )
 
