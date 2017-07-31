@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
-	"github.com/puellanivis/breton/lib/log"
+	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
@@ -97,8 +97,8 @@ func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error 
 	done := s.metrics.timing.Timer()
 	defer done()
 
-	if log.V(5) {
-		log.Info("Grabbing:", url)
+	if glog.V(5) {
+		glog.Info("Grabbing:", url)
 	}
 
 	n, err := files.ReadTo(ctx, s.w, url)

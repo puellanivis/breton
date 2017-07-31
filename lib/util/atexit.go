@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/puellanivis/breton/lib/flag"
-	"github.com/puellanivis/breton/lib/log"
+	"github.com/puellanivis/breton/lib/glog"
 )
 
 var (
@@ -53,13 +53,13 @@ func Init(cmdname string, versions ...int) AtExitFunc {
 
 	flag.Parse()
 	AtExit(func() {
-		log.Flush()
+		glog.Flush()
 	})
 
 	if *profile != "" {
 		f, err := os.Create(*profile + ".prof")
 		if err != nil {
-			log.Fatal(err)
+			glog.Fatal(err)
 		}
 		pprof.StartCPUProfile(f)
 		AtExit(func() {
@@ -68,7 +68,7 @@ func Init(cmdname string, versions ...int) AtExitFunc {
 
 			f, err := os.Create(*profile + ".mprof")
 			if err != nil {
-				log.Fatal(err)
+				glog.Fatal(err)
 			}
 			pprof.WriteHeapProfile(f)
 			f.Close()

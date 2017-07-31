@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/puellanivis/breton/lib/log"
+	"github.com/puellanivis/breton/lib/glog"
 )
 
 var (

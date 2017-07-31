@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
-	"github.com/puellanivis/breton/lib/log"
+	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
 
@@ -175,10 +175,10 @@ func (m *Manifest) Stream(w io.Writer, mimeType string, picker PickRepFunc) (*St
 		return nil, errors.New("no suitable representations found")
 	}
 
-	if log.V(1) {
-		log.Infof("chose %s with bandwidth: %d", mimeType, best.Bandwidth)
+	if glog.V(1) {
+		glog.Infof("chose %s with bandwidth: %d", mimeType, best.Bandwidth)
 		if best.Height > 0 && best.Width > 0 {
-			log.Infof("chose %s with %d×%d", mimeType, best.Height, best.Width)
+			glog.Infof("chose %s with %d×%d", mimeType, best.Height, best.Width)
 		}
 	}
 
