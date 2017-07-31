@@ -14,23 +14,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package log implements logging analogous to the Google-internal C++ INFO/ERROR/V setup.
+// Package glog implements logging analogous to the Google-internal C++ INFO/ERROR/V setup.
 // It provides functions Info, Warning, Error, Fatal, plus formatting variants such as
 // Infof. It also provides V-style logging controlled by the --verbosity and --vmodule=file=2 flags.
 //
 // Basic examples:
 //
-//	log.Info("Prepare to repel boarders")
+//	glog.Info("Prepare to repel boarders")
 //
-//	log.Fatalf("Initialization failed: %s", err)
+//	glog.Fatalf("Initialization failed: %s", err)
 //
 // See the documentation for the V function for an explanation of these examples:
 //
-//	if log.V(2) {
+//	if glog.V(2) {
 //		log.Info("Starting transaction...")
 //	}
 //
-//	log.V(2).Infoln("Processed", nItems, "elements")
+//	glog.V(2).Infoln("Processed", nItems, "elements")
 //
 // Log output is buffered and written periodically using Flush. Programs
 // should call Flush before exiting to guarantee all log output is written.
@@ -55,7 +55,7 @@
 //	--log_backtrace_at=""
 //		When set to a file and line number holding a logging statement,
 //		such as
-//			-log_backtrace_at=gopherflakes.go:234
+//			--log_backtrace_at=gopherflakes.go:234
 //		a stack trace will be written to the Info log whenever execution
 //		hits that statement. (Unlike with --vmodule, the ".go" must be
 //		present.)
@@ -68,7 +68,7 @@
 //			--vmodule=gopher*=3
 //		sets the V level to 3 in all Go files whose names begin "gopher".
 //
-package log
+package glog
 
 import (
 	"bufio"
@@ -194,8 +194,8 @@ var severityStats = [numSeverity]*OutputStats{
 // the type of the v flag, which can be set programmatically.
 // It's a distinct type because we want to discriminate it from logType.
 // Variables of type level are only changed under logging.mu.
-// The --verbosity flag is read only with atomic ops, so the state of the
-// logging module is consistent.
+// The --verbosity flag is read only with atomic ops, so the state of the logging
+// module is consistent.
 
 // Level is treated as a sync/atomic int32.
 
@@ -401,7 +401,7 @@ func init() {
 	flag.BoolVar(&logging.alsoToStderr, "alsologtostderr", false, "log to standard error as well as files")
 	flag.Var(&logging.verbosity, "verbosity", "log `level` for V logs")
 	flag.Var(&logging.stderrThreshold, "stderrthreshold", "logs at or above this `threshold` go to stderr")
-	flag.Var(&logging.vmodule, "vmodule", "`comma-separated list of pattern=N` settings for file-filtered logging")
+	flag.Var(&logging.vmodule, "vmodule", "comma-separated list of pattern=N settings for file-filtered logging")
 	flag.Var(&logging.traceLocation, "log_backtrace_at", "when logging hits line `file:N`, emit a stack trace")
 
 	// Default stderrThreshold is ERROR.
@@ -742,7 +742,7 @@ func (l *loggingT) output(s severity, buf *buffer, file string, line int, alsoTo
 
 // timeoutFlush calls Flush and returns when it completes or after timeout
 // elapses, whichever happens first.  This is needed because the hooks invoked
-// by Flush may deadlock when log.Fatal is called from a hook that holds
+// by Flush may deadlock when glog.Fatal is called from a hook that holds
 // a lock.
 func timeoutFlush(timeout time.Duration) {
 	done := make(chan bool, 1)
@@ -753,7 +753,7 @@ func timeoutFlush(timeout time.Duration) {
 	select {
 	case <-done:
 	case <-time.After(timeout):
-		fmt.Fprintln(os.Stderr, "log: Flush took longer than", timeout)
+		fmt.Fprintln(os.Stderr, "glog: Flush took longer than", timeout)
 	}
 }
 
@@ -987,16 +987,16 @@ type Verbose bool
 // The returned value is a boolean of type Verbose, which implements Info, Infoln
 // and Infof. These methods will write to the Info log if called.
 // Thus, one may write either
-//	if log.V(2) { log.Info("log this") }
+//	if glog.V(2) { glog.Info("log this") }
 // or
-//	log.V(2).Info("log this")
+//	glog.V(2).Info("log this")
 // The second form is shorter but the first is cheaper if logging is off because it does
 // not evaluate its arguments.
 //
 // Whether an individual call to V generates a log record depends on the setting of
 // the --verbosity and --vmodule flags; both are off by default. If the level in the call to
 // V is at least the value of --verbosity, or of --vmodule for the source file containing the
-// call, the V call will log.
+// call, the V call will glog.
 func V(level Level) Verbose {
 	// This function tries hard to be cheap unless there's work to do.
 	// The fast path is two atomic loads and compares.

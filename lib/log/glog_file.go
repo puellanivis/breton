@@ -1,4 +1,4 @@
-// Go support for leveled logs, analogous to https://code.google.com/p/google-glog/
+// Go support for leveled logs, analogous to https://code.google.com/p/google-glog/ (With no dependency injection, the code had to be modified to integrate with github.com/puellanivis/breton/lib/flag)
 //
 // Copyright 2013 Google Inc. All Rights Reserved.
 //
@@ -16,7 +16,7 @@
 
 // File I/O for logs.
 
-package log
+package glog
 
 import (
 	"errors"
@@ -39,7 +39,7 @@ var logDirs []string
 
 // If non-empty, overrides the choice of directory in which to write logs.
 // See createLogDirs for the full list of possible destinations.
-var logDir = flag.String("log_dir", "If non-empty, write log files in this directory", "")
+var logDir = flag.String("log_dir", "", "If non-empty, write log files in this directory")
 
 func createLogDirs() {
 	if *logDir != "" {
@@ -61,8 +61,9 @@ func init() {
 		host = shortHostname(h)
 	}
 
-	if name, err := user.CurrentUsername(); err == nil {
-		userName = name
+	currentUsername, err := user.CurrentUsername()
+	if err == nil {
+		userName = currentUsername
 	}
 
 	// Sanitize userName since it may contain filepath separators on Windows.
