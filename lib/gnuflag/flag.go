@@ -9,7 +9,7 @@
 	Define flags using flag.String(), Bool(), Int(), etc.
 
 	This declares an integer flag, --flagname, with short flagname -f stored in the pointer ip, with type *int.
-		import "flag"
+		import "github.com/puellanivis/breton/lib/gnuflag"
 		var ip = flag.Int("flagname", 1234, "help message for flagname", flag.WithShort('f'))
 	If you like, you can bind the flag to a variable using the Var() functions.
 		var flagvar int
