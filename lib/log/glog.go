@@ -1,4 +1,4 @@
-// Go support for leveled logs, analogous to https://code.google.com/p/google-glog/
+// Go support for leveled logs, analogous to https://code.google.com/p/google-glog/ (With no dependency injection, the code had to be modified to integrate with github.com/puellanivis/breton/lib/flag)
 //
 // Copyright 2013 Google Inc. All Rights Reserved.
 //
@@ -16,7 +16,7 @@
 
 // Package log implements logging analogous to the Google-internal C++ INFO/ERROR/V setup.
 // It provides functions Info, Warning, Error, Fatal, plus formatting variants such as
-// Infof. It also provides V-style logging controlled by the -v and -vmodule=file=2 flags.
+// Infof. It also provides V-style logging controlled by the --verbosity and --vmodule=file=2 flags.
 //
 // Basic examples:
 //
@@ -57,7 +57,7 @@
 //		such as
 //			-log_backtrace_at=gopherflakes.go:234
 //		a stack trace will be written to the Info log whenever execution
-//		hits that statement. (Unlike with -vmodule, the ".go" must be
+//		hits that statement. (Unlike with --vmodule, the ".go" must be
 //		present.)
 //	--verbosity=0
 //		Enable V-leveled logging at the specified level.
@@ -65,7 +65,7 @@
 //		The syntax of the argument is a comma-separated list of pattern=N,
 //		where pattern is a literal file name (minus the ".go" suffix) or
 //		"glob" pattern and N is a V level. For instance,
-//			-vmodule=gopher*=3
+//			--vmodule=gopher*=3
 //		sets the V level to 3 in all Go files whose names begin "gopher".
 //
 package log
@@ -194,13 +194,13 @@ var severityStats = [numSeverity]*OutputStats{
 // the type of the v flag, which can be set programmatically.
 // It's a distinct type because we want to discriminate it from logType.
 // Variables of type level are only changed under logging.mu.
-// The -v flag is read only with atomic ops, so the state of the logging
-// module is consistent.
+// The --verbosity flag is read only with atomic ops, so the state of the
+// logging module is consistent.
 
 // Level is treated as a sync/atomic int32.
 
 // Level specifies a level of verbosity for V logs. *Level implements
-// flag.Value; the -v flag is of type Level and should be modified
+// flag.Value; the --verbosity flag is of type Level and should be modified
 // only through the flag.Value interface.
 type Level int32
 
@@ -236,12 +236,12 @@ func (l *Level) Set(value string) error {
 	return nil
 }
 
-// moduleSpec represents the setting of the -vmodule flag.
+// moduleSpec represents the setting of the --vmodule flag.
 type moduleSpec struct {
 	filter []modulePat
 }
 
-// modulePat contains a filter for the -vmodule flag.
+// modulePat contains a filter for the --vmodule flag.
 // It holds a verbosity level and a file pattern to match.
 type modulePat struct {
 	pattern string
@@ -281,7 +281,7 @@ func (m *moduleSpec) Get() interface{} {
 
 var errVmoduleSyntax = errors.New("syntax error: expect comma-separated list of filename=N")
 
-// Syntax: -vmodule=recordio=2,file=1,gfs*=3
+// Syntax: --vmodule=recordio=2,file=1,gfs*=3
 func (m *moduleSpec) Set(value string) error {
 	var filter []modulePat
 	for _, pat := range strings.Split(value, ",") {
@@ -994,8 +994,8 @@ type Verbose bool
 // not evaluate its arguments.
 //
 // Whether an individual call to V generates a log record depends on the setting of
-// the -v and --vmodule flags; both are off by default. If the level in the call to
-// V is at least the value of -v, or of -vmodule for the source file containing the
+// the --verbosity and --vmodule flags; both are off by default. If the level in the call to
+// V is at least the value of --verbosity, or of --vmodule for the source file containing the
 // call, the V call will log.
 func V(level Level) Verbose {
 	// This function tries hard to be cheap unless there's work to do.
