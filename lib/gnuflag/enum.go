@@ -1,4 +1,4 @@
-package flag
+package gnuflag
 
 import (
 	"errors"
