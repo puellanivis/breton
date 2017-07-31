@@ -25,6 +25,10 @@ func TestCounter(t *testing.T) {
 	c.WithLabels(LabelFoo.WithValue("stuff")).Add(42)
 	c.WithLabels().Add(math.Pi)
 
+	// all of these commented “tests“ are “undefined behavior”
+	// as such actually testing for their behavior would define
+	// their behavior, which is not the proper way to write tests.
+
 	//c.WithLabels(LabelBar.WithValue("constant!")).Add(math.E)
 	//c.WithLabels(LabelUndefined.WithValue("undefined!")).Add(math.Phi)
 	//c.WithLabels(LabelUndefined).Add(math.Phi)

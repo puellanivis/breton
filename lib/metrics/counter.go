@@ -14,8 +14,12 @@ type CounterValue struct {
 	cv *prometheus.CounterVec
 }
 
-// WithLabels provides access to a labeled dimension of the metric, and returns a “Child” wherin the given labels are set.
-// The “Child” returned is cacheable by the Caller, so as to avoid having to look it up again—this matters in latency-critical code.
+// WithLabels provides access to a labeled dimension of the metric, and
+// returns a “Child” wherein the given labels are set.
+// The “Child” returned is cacheable by the Caller, so as to avoid having
+// to look it up again—this matters in latency-critical code.
+//
+// Caller MUST NOT attempt to set a label value that has been defined to be constant.
 func (c CounterValue) WithLabels(labels ...Labeler) *CounterValue {
 	// we are working with a new copy, so no mutex is necessary.
 	c.c = nil

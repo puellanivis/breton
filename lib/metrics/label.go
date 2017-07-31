@@ -106,7 +106,8 @@ func newLabelSet(labels []Labeler) *labelSet {
 	return s
 }
 
-// labelScope allows for the scoping of labels, meaning successive levels of labels may be applied one after another.
+// labelScope allows for the scoping of labels, meaning successive levels
+// of labels may be applied one after another.
 type labelScope struct {
 	set *labelSet   // keep track of the labelSet, for canSet testing
 	p   *labelScope // keep track of the parent of this scope

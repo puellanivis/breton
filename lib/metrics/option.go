@@ -10,7 +10,8 @@ import (
 // it returns a new Option that will revert the feature to the previous state.
 type Option func(m *metric) Option
 
-// withLabelScope allows for toggling labelScopes directly, and not just a list of Labelers to keep enscoping into.
+// withLabelScope allows for toggling labelScopes directly, and not just
+// a list of Labelers to keep enscoping into.
 func withLabelScope(labels *labelScope) Option {
 	return func(m *metric) Option {
 		save := m.labels
