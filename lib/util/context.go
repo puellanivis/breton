@@ -61,8 +61,8 @@ func sigHandler(ctx context.Context) context.Context {
 		for _ = range timer.C {
 			select {
 			case <-killchan:
-				if log.V(5) {
-					log.Info("removed entry from killchan")
+				if glog.V(5) {
+					glog.Info("removed entry from killchan")
 				}
 			default:
 			}
@@ -76,7 +76,7 @@ func sigHandler(ctx context.Context) context.Context {
 			select {
 			case sig := <-sigchan:
 				cancel()
-				log.Error("received signal:", sig)
+				glog.Error("received signal:", sig)
 
 				select {
 				case killchan <- true:
