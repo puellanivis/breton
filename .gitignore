@@ -3,3 +3,4 @@ bin
 tmp
 *.tar.bz2
 projects
+test
