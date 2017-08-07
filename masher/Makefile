@@ -1,7 +1,7 @@
 .PHONY: all clean install container push
 TIMESTAMP=$(shell date +"%Y%m%d.%H%M")
 ifneq "$(DOCKER_REGISTRY)" ""
-REGISTRY=$(DOCKER_REGISTRY)/
+#REGISTRY=$(DOCKER_REGISTRY)/
 endif
 PROJECT=$(shell basename "${PWD}")
 USER=$(shell whoami)
