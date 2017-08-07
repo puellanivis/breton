@@ -66,33 +66,41 @@ if which go > /dev/null 2>&1 ; then
         echo Building with Go Version: $GO_VERSION
 fi
 
+if ! ls *.go > /dev/null 2>&1 ; then
+	NOGOFILES=true
+fi
+
 PROTOC_FLAGS="--proto_path=./proto --proto_path=/go/src --go_out=plugins=grpc:proto/"
 
 if [[ -n $ALLPROTOS ]]; then
-	if [[ -x test.sh ]]; then
-		protos=$(find lib -name "proto" -type d)
+	if [[ -n $NOGOFILES ]]; then
+		echo Building all subdir protos
+		protos=$(find . -type d -name proto)
+		proto_prefix=""
 	else
-		protos=$(go list -f "{{.Deps}}" | grep -o -e " [^\.\/ ]*/[^ ]*/proto\>")
+		echo Building go dependency protos
+		protos=$(go list -f "{{.Deps}}" | grep -o -e " [^\.\/ ]*/[^ ]*/proto\> | sort -u")
+		proto_prefix=/go/src
 	fi
+
 	for proto in $protos; do
-		protopath=/go/src/${proto%/*}
-		for protofile in $( find $protopath -name "*.proto"); do
-			echo Building proto: $protofile
+		protopath=${proto_prefix}${proto%/*}
+		for protofile in $( find $protopath/proto -maxdepth 1 -name "*.proto" ); do
+			echo Building all protos: $protofile
 			( cd $protopath ; protoc ${PROTOC_FLAGS} ${protofile#$protopath/} ) || exit 1
 		done
 	done
 elif [[ -d "proto" ]]; then
-	for proto in proto/*.proto; do
-		protopath=${PWD}
-		for protofile in $( find $protopath -name "*.proto"); do
-			echo Building proto: $protofile
-			( cd $protopath ; protoc ${PROTOC_FLAGS} ${protofile#$protopath/} ) || exit 1
-		done
+	echo Building local protos
+	protopath=${PWD}
+	for protofile in $( find $protopath/proto -maxdepth 1 -name "*.proto" ); do
+		echo Building proto: $protofile
+		( cd $protopath ; protoc ${PROTOC_FLAGS} ${protofile#$protopath/} ) || exit 1
 	done
 fi
 
 
-if ! ls *.go > /dev/null 2>&1 ; then
+if [[ -n $NOGOFILES ]]; then
 	if [[ -x test.sh ]] ; then
 		# if there is a test.sh file, then execute this instead of
 		# erroring out that there are no go files.
