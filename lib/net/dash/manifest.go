@@ -59,10 +59,6 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 		pid := p.Id
 
 		for _, as := range p.AdaptationSet {
-			if as.MimeType == "" {
-				continue
-			}
-
 			a := &adaptation{
 				pid: pid,
 				aid: as.Id,
@@ -74,7 +70,15 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 			}
 
 			for _, r := range as.Representation {
+				if as.MimeType == "" {
+					as.MimeType = r.MimeType
+				}
+
 				a.reps = append(a.reps, r)
+			}
+
+			if as.MimeType == "" {
+				continue
 			}
 
 			adaptations[as.MimeType] = a
