@@ -98,6 +98,8 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 		return errInvalidDur
 	}
 
+	var radix bool
+	var scale time.Duration = 1
 	var n time.Duration
 	var t bool
 
@@ -106,6 +108,10 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 		case r >= '0' && r <= '9':
 			n *= 10
 			n += time.Duration(r - '0')
+			if radix {
+				scale *= 10
+			}
+
 		case r == 'T' && !t:
 			t = true
 
@@ -117,6 +123,9 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 		case r == 'D' && !t:
 			d.Duration += n * Day
 
+		case r == '.' && t && !radix:
+			radix = true
+
 		case r == 'H' && t:
 			d.Duration += n * time.Hour
 			n = 0
@@ -124,7 +133,7 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 			d.Duration += n * time.Minute
 			n = 0
 		case r == 'S' && t:
-			d.Duration += n * time.Second
+			d.Duration += (n * time.Second) / scale
 			n = 0
 
 		default:
