@@ -270,7 +270,7 @@ type SegmentTimeline struct {
 }
 
 type BaseURL struct {
-	string `xml:",chardata"`
+	CDATA string `xml:",chardata"`
 
 	ServiceLocation          string  `xml:"serviceLocation,attr,omitempty"`
 	ByteRange                string  `xml:"byteRange,attr,omitempty"`
