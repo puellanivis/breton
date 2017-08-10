@@ -10,6 +10,11 @@ import (
 	"github.com/puellanivis/breton/lib/files"
 )
 
+// Unmarshal is encoding/json.Unmarshal
+func Unmarshal(data []byte, v interface{}) error {
+	return json.Marshal(data, v)
+}
+
 // ReadFrom will ReadAndClose the given io.ReadCloser and unmarshal that data into v as per json.Unmarshal.
 func ReadFrom(r io.ReadCloser, v interface{}) error {
 	data, err := files.ReadFrom(r)
