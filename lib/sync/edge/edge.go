@@ -1,3 +1,4 @@
+// Package edge implements a simple atomic up/down edge/condition-change detector.
 package edge
 
 import (
