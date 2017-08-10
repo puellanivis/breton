@@ -35,6 +35,8 @@ func Read(ctx context.Context, filename string) ([]byte, error) {
 }
 
 // ReadTo reads the entire content of a filename into an io.Writer.
+//
+// This function is poorly designed, and one should not assume it will exist in later versions.
 func ReadTo(ctx context.Context, w io.Writer, filename string) (n int64, err error) {
 	f, err := Open(ctx, filename)
 	if err != nil {

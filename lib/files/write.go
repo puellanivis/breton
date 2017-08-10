@@ -28,6 +28,8 @@ func Write(ctx context.Context, filename string, data []byte) error {
 }
 
 // WriteFrom writes the entire contents of an io.Reader into the filename.
+//
+// This function is poorly designed, and one should not assume it will exist in later versions.$
 func WriteFrom(ctx context.Context, filename string, r io.Reader) (n int64, err error) {
 	f, err := Create(ctx, filename)
 	if err != nil {
