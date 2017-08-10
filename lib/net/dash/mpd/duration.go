@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Duration implements the xsd:duration format defined by https://www.w3.org/TR/xmlschema-2
+// Duration implements the xsd:duration format defined by https://www.w3.org/TR/2004/REC-xmlschema-2-20041028/datatypes.html#duration
 type Duration struct {
 	time.Duration
 }
