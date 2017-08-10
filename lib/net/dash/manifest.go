@@ -1,3 +1,4 @@
+// Package dash provides an abstraction to accessing DASH streams.
 package dash
 
 import (
