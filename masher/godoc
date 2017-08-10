@@ -1,0 +1,175 @@
+#!/bin/bash
+
+if ! which docker > /dev/null 2>&1 ; then
+	echo Please install docker >&2
+	exit 1
+fi
+
+if [[ -z ${MASHER_ROOT} ]]; then
+	echo Please setup build environment >&2
+	exit 1
+fi
+
+if [[ -n ${bamboo_DOCKER_REGISTRY} ]]; then
+	DOCKER_REGISTRY=${bamboo_DOCKER_REGISTRY}
+	PROD="true"
+fi
+
+if [[ -n ${bamboo_docker_registry} ]]; then
+	DOCKER_REGISTRY=${bamboo_docker_registry}
+	PROD="true"
+fi
+
+PROJECT=${PWD##*/}
+REGISTRY=${DOCKER_REGISTRY}
+
+RUNAS="${UID}"
+if [[ -n ${DOCKER_MACHINE_NAME} ]]; then
+	RUNAS=1000
+fi
+
+PORT="8080"
+
+while [[ $# -gt 0 ]]; do
+	key="$1"
+	val="${key#*=}"
+
+	case $key in
+	--image=*)
+		IMAGE="$val"
+	;;
+	--registry=*)
+		REGISTRY="$val"
+	;;
+	--port=*)
+		PORT="$val"
+	;;
+
+	--play)
+		PLAY="-play"
+	;;
+	--index)
+		INDEX="-index"
+	;;
+
+	--shell)
+		ESCAPE="--shell"
+		FLAGS="-it"	
+	;;
+	--)
+		shift
+		break
+	;;
+	--*)
+		echo "unknown flag $1" >&2
+		exit 1
+	;;
+	*)
+		break
+	;;
+	esac
+	shift
+done
+
+if [[ -n $REGISTRY ]]; then
+	REGISTRY="${REGISTRY%/}/"
+fi
+
+if [[ -z $IMAGE ]]; then
+	IMAGE="${USER}/masher"
+
+	if ! which git > /dev/null 2>&1 ; then
+		echo Please install git >&2
+		exit 1
+	fi
+
+	HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
+	BRANCH=$(basename ${HEAD})
+
+	IMAGE="${IMAGE}:latest"
+fi
+
+MASHER_ROOT=${MASHER_ROOT%/}
+PRJPATH="${PWD##*${MASHER_ROOT}/}"
+BASE="${PWD%$PRJPATH}"
+
+if [[ -z $BASE ]] ; then
+	BASE="${PWD}"
+	PRJPATH=""
+fi
+
+NAME="masher-godoc"
+
+echo "NAME='$NAME'"
+echo "BASE='$BASE'"
+echo "PRJPATH='$PRJPATH'"
+echo "PROJECT='$PROJECT'"
+echo "BRANCH='$BRANCH'"
+
+TIMESTAMP=$(date -u +"%Y%m%d.%H%M%S")
+
+echo Using image: $IMAGE
+echo godoc $ESCAPE $PLAY $INDEX --timestamp=$TIMESTAMP $@
+
+DOCKER_VERSION="$(docker --version)"
+DOCKER_VERSION=${DOCKER_VERSION%%,*}
+DOCKER_VERSION=${DOCKER_VERSION##* }
+echo Found Docker Version: $DOCKER_VERSION
+
+case $DOCKER_VERSION in
+1.?|1.?.*) ;;
+*)
+	READONLY="--read-only"
+	TMPFS="--tmpfs /tmp:size=1G,exec"
+;;
+esac
+
+[[ -n $MASHER_PREFIX ]] && PREFIX="/${MASHER_PREFIX#/}"
+SRCROOT="/go/src${PREFIX}/${MASHER_ROOT%/}"
+echo "SRCROOT='$SRCROOT'"
+
+[[ -n $MASHER_LIBS ]] || MASHER_LIBS="lib"
+LIBS=""
+
+SAVE_IFS=$IFS
+IFS=':'
+for p in $MASHER_LIBS; do
+	l=$(echo $p | cut -d= -f1)
+	t=$(echo $p | cut -d= -f2)
+
+	[[ -n $t ]] || t="$l"
+
+	l="${BASE}$l"
+	t="/go/src/$t"
+
+	if [[ -d $l ]]; then
+		echo "$l => $t"
+		LIBS="$LIBS --volume $l:$t"
+	else
+		echo "couldn’t find $l!" >&2
+		exit 1
+	fi
+done
+IFS=$SAVE_IFS
+
+NET="-net host"
+case ${OSTYPE} in
+	linux*)
+	;;
+	*)
+		NET="-p $PORT:$PORT"
+	;;
+esac
+
+exec docker run ${FLAGS} --rm \
+	-e "GOPATH=$SRCROOT" \
+	--name "${NAME}" \
+	-p "$PORT:8080" \
+	${READONLY} \
+	${TMPFS} \
+	--user "${RUNAS}" \
+	--volume "${BASE}:${SRCROOT}/src:ro" \
+	$LIBS \
+	--workdir "${SRCROOT}" \
+	${IMAGE} \
+	godoc -goroot ${SRCROOT} -http ":$PORT" $INDEX $PLAY "$@" || exit 1
