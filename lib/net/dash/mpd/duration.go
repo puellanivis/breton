@@ -4,10 +4,12 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 )
 
+// Duration implements the xsd:duration format defined by https://www.w3.org/TR/xmlschema-2
 type Duration struct {
 	time.Duration
 }
@@ -15,12 +17,13 @@ type Duration struct {
 var errInvalidDur = errors.New("invalid duration")
 
 const (
-	// These values are so naive
+	// These values are very _very_ naive
 	Day   = 24 * time.Hour
 	Month = Day * 30
 	Year  = Day * 365
 )
 
+// MarshalXMLAttr implements the xml attribute marshaller interface.
 func (d Duration) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if s := d.XMLString(); s != "" {
 		return xml.Attr{
@@ -32,7 +35,11 @@ func (d Duration) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	return xml.Attr{}, nil
 }
 
+// XMLString returns the XML representation of the Duration as a string.
 func (d Duration) XMLString() string {
+	frac := d.Duration.Seconds()
+	frac = frac - math.Floor(frac)
+
 	seconds := int(d.Duration.Seconds())
 
 	if seconds == 0 {
@@ -50,6 +57,8 @@ func (d Duration) XMLString() string {
 	days, hours := hours/24, hours%24
 	years, days := days/365, days%365
 	months, days := days/30, days%30
+
+	frac += float64(seconds)
 
 	var elems []string
 	if neg {
@@ -75,14 +84,19 @@ func (d Duration) XMLString() string {
 		if minutes > 0 {
 			elems = append(elems, fmt.Sprintf("%dM", minutes))
 		}
-		if seconds > 0 {
-			elems = append(elems, fmt.Sprintf("%dS", seconds))
+		if frac > 0 {
+			if frac - float64(seconds) < 0.0005 {
+				elems = append(elems, fmt.Sprintf("%dS", seconds))
+			} else {
+				elems = append(elems, fmt.Sprintf("%0.3fS", frac))
+			}
 		}
 	}
 
 	return strings.Join(elems, "")
 }
 
+// UnmarshalXMLAttr implements the xml attribute unmarshaller interface.
 func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 	if len(attr.Value) < 1 {
 		return errInvalidDur
