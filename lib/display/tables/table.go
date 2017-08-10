@@ -1,3 +1,4 @@
+// Package tables formats multi-dimensional slices of strings to be formated in formated tables.
 package tables
 
 import (
