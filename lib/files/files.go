@@ -1,3 +1,4 @@
+// Package files implements an abstraction of accessing data via URL/URIs.
 package files
 
 import (

@@ -1,3 +1,4 @@
+// Package cachefiles implements a caching filestore accessable through "cache:opaqueURL".
 package cachefiles
 
 import (

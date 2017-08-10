@@ -1,3 +1,4 @@
+// Package json is intended to replace uses of encoding/json while integrating with the files package.
 package json
 
 import (

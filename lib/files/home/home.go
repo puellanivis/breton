@@ -1,3 +1,4 @@
+// Package home implements a URL scheme "home:" which references files according to user home directories.
 package home
 
 import (

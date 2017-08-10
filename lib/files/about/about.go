@@ -1,3 +1,4 @@
+// Package about implements a simple "about:" scheme.
 package aboutfiles
 
 import (

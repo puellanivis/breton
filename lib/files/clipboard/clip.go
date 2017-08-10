@@ -1,3 +1,4 @@
+// Package clipboard implements a scheme for "clipboard:" and "clip:".
 package clipboard
 
 import (

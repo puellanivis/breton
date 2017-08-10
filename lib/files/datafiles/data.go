@@ -1,3 +1,4 @@
+// Package datafiles implements the "data:" URL scheme.
 package datafiles
 
 import (

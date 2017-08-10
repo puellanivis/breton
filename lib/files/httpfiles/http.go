@@ -1,3 +1,4 @@
+// Package httpfiles implements the "http:" and "https:" URL schemes.
 package httpfiles
 
 import (
