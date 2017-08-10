@@ -1,3 +1,4 @@
+// Package sort provides sorting implementations for all builtin data-types and an implementation of Radix sort.
 package sort // import "github.com/puellanivis/breton/lib/sort"
 
 import (
