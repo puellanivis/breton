@@ -1,4 +1,41 @@
 // Package tables formats multi-dimensional slices of strings to be formated in formated tables.
+//
+// Defining a table is relatively easy:
+//	var t tables.Table
+//	t = t.Append(1, 2, 3, 4)
+//	t = t.Append()
+//	t = t.Append("any", "arbitrary", "data", 123)
+//	t = t.Append("a", "b", "c")
+//
+// tables.Empty will produce:
+//	1   2         3    4
+//	any arbitrary data 123
+//	a   b         c
+// N.B. the last elements of every row will not have any ending whitespace added to match other row lengths
+//
+// tables.ASCII will produce:
+//	+-----+-----------+------+-----+
+//	| 1   | 2         | 3    | 4   |
+//	+-----+-----------+------+-----+
+//	| any | arbitrary | data | 123 |
+//	| a   | b         | c    |     |
+//	+-----+-----------+------+-----+
+//
+// tables.Unicode will produce:
+//	┌─────┬───────────┬──────┬─────┐
+//	│ 1   │ 2         │ 3    │ 4   │
+//	├─────┼───────────┼──────┼─────┤
+//	│ any │ arbitrary │ data │ 123 │
+//	│ a   │ b         │ c    │     │
+//	└─────┴───────────┴──────┴─────┘
+//
+// tables.HTML will produce:
+//	<table>
+//	<tr><td class="first">1</td><td>2</td><td>3</td><td>4</td></tr>
+//	<tr><td class="first">any</td><td>arbitrary</td><td>data</td><td>123</td></tr>
+//	<tr><td class="first">a</td><td>b</td><td>c</td><td></td></tr>
+//	</table>
+//
 package tables
 
 import (
