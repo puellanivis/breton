@@ -3,6 +3,7 @@ package wrapper
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/url"
 	"sync"
 	"time"

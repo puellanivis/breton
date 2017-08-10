@@ -12,7 +12,7 @@ import (
 
 // Unmarshal is encoding/json.Unmarshal
 func Unmarshal(data []byte, v interface{}) error {
-	return json.Marshal(data, v)
+	return json.Unmarshal(data, v)
 }
 
 // ReadFrom will ReadAndClose the given io.ReadCloser and unmarshal that data into v as per json.Unmarshal.
