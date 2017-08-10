@@ -1,4 +1,37 @@
 // Package metrics provides an abstracted metrics library compatible with prometheus client specifications.
+//
+// This package works very much like the standard flag library:
+//	var (
+//		counter := metrics.Counter("counter_name", "usage information")
+//		gauge   := metrics.Gauge("gauge_name", "usage information")
+//		histogram := metrics.Histogram("histogram_name", "usage informationn") // default buckets
+//		summary   := metrics.Summary("summary_name", "usage information")      // no objectives defined
+//	)
+//
+// Setting up timing for a function is hopefuly straight-forward.
+//	func httpHandler(w http.ResponseWriter, r *http.Request) {
+//		done := summary.Timer()
+//		defer done()
+//
+//		// do work here.
+//	}
+//
+// A set of common 50-90-95 Summary objectives is available:
+//	var summary := metrics.Summary("summary", "usage", metrics.CommonObjectives())
+//
+// Defining labels for a metric is hopefully also straight-forward:
+//	const (
+//		labelCode = metrics.Label("code")
+//	)
+//
+//	var counter := metrics.Coutner("http_status", "usage", metrics.WithLabels(labelCode))
+//
+//	func httpError(w http.ResponseWriter, error string, code int) {
+//		status := fmt.Sprint(code)
+//		counter.WithLabels(labelCode.WithValue(status)).Inc()
+//
+//		http.Error(w, error, code)
+//	}
 package metrics
 
 import (
