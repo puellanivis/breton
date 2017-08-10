@@ -2,14 +2,10 @@
 package mpd
 
 import (
-	//"encoding/base64"
-	//"encoding/hex"
-	//"encoding/xml"
-	//"errors"
 	"regexp"
-	//"strings"
 	"time"
 )
+
 
 // mostly computer generated from from http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd
 
@@ -305,3 +301,4 @@ type Range struct {
 	Starttime Duration `xml:"starttime,attr,omitempty"`
 	Duration  Duration `xml:"duration,attr,omitempty"`
 }
+

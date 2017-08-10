@@ -290,7 +290,7 @@
       <xsl:call-template name="complexContent" />
     </xsl:for-each>
     <xsl:for-each select="xs:simpleContent/xs:extension">
-      <xsl:text>	CDATA</xsl:text>
+      <xsl:text>	CDATA </xsl:text>
       <xsl:call-template name="mapType">
         <xsl:with-param name="type" select="@base" />
       </xsl:call-template>
