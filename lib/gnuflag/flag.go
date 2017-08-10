@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-/*	Package flag implements command-line flag parsing compatible with GNU longopts.
+/*	Package gnuflag implements command-line flag parsing compatible with GNU longopts.
 
 	Usage:
 
