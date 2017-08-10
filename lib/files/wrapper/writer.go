@@ -37,7 +37,16 @@ func NewWriter(ctx context.Context, uri *url.URL, f WriteFn) *Writer {
 
 	go func() {
 		for {
+			defer func() {
+				close(wr.errch)
+				close(wr.flush)
+			}()
+
 			select {
+			case <-wr.done:
+				wr.errch <- f(wr.b.Bytes())
+				return
+
 			case <-wr.flush:
 				wr.errch <- f(wr.b.Bytes())
 
@@ -45,18 +54,6 @@ func NewWriter(ctx context.Context, uri *url.URL, f WriteFn) *Writer {
 				return
 			}
 		}
-	}()
-
-	go func() {
-		defer close(wr.errch)
-
-		select {
-		case <-wr.done:
-		case <-ctx.Done():
-			return
-		}
-
-		close(wr.flush)
 	}()
 
 	return wr
@@ -75,6 +72,13 @@ func (w *Writer) Sync() error {
 	w.Lock()
 	defer w.Unlock()
 
+	select {
+	case <-w.done:
+		// cannot flush a closed Writer.
+		return io.ErrClosedPipe
+	default:
+	}
+
 	w.flush <- true
 	return <-w.errch
 }
@@ -86,6 +90,7 @@ func (w *Writer) Close() error {
 
 	select {
 	case <-w.done:
+		// already closed
 		return nil
 	default:
 	}

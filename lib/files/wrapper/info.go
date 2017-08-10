@@ -1,3 +1,4 @@
+// Package wrapper provides a files.Files implementation based on a bytes.Buffer backing store, and WriteFn callbacks.
 package wrapper
 
 import (
@@ -13,6 +14,16 @@ type Info struct {
 	sz   int64
 	mode os.FileMode
 	t    time.Time
+}
+
+// NewInfo returns a new Info set with the url, size and time specified.
+func NewInfo(uri *url.URL, size int, t time.Time) *Info {
+	return &Info{
+		uri:  uri,
+		sz:   int64(size),
+		mode: os.FileMode(0644),
+		t:    t,
+	}
 }
 
 // Stat returns the Info as an os.FileInfo, required for implementation of files.File
@@ -59,14 +70,4 @@ func (fi *Info) IsDir() bool {
 // Sys returns nil, it could potentially later hold the actual underyling buffer...
 func (fi *Info) Sys() interface{} {
 	return fi
-}
-
-// NewInfo returns a new Info set with the url, size and time specified.
-func NewInfo(uri *url.URL, size int, t time.Time) *Info {
-	return &Info{
-		uri:  uri,
-		sz:   int64(size),
-		mode: os.FileMode(0644),
-		t:    t,
-	}
 }
