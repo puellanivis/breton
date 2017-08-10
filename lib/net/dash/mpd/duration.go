@@ -85,7 +85,7 @@ func (d Duration) XMLString() string {
 			elems = append(elems, fmt.Sprintf("%dM", minutes))
 		}
 		if frac > 0 {
-			if frac - float64(seconds) < 0.0005 {
+			if frac-float64(seconds) < 0.0005 {
 				elems = append(elems, fmt.Sprintf("%dS", seconds))
 			} else {
 				elems = append(elems, fmt.Sprintf("%0.3fS", frac))
@@ -115,9 +115,14 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 	var radix bool
 	var scale time.Duration = 1
 	var n time.Duration
-	var t bool
+	var t, end bool
 
 	for _, r := range attr.Value[1:] {
+		if end {
+			// we had extra chars after a fractional value, this is an error
+			return errInvalidDur
+		}
+
 		switch {
 		case r >= '0' && r <= '9':
 			n *= 10
@@ -125,9 +130,13 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 			if radix {
 				scale *= 10
 			}
-
+			continue
 		case r == 'T' && !t:
 			t = true
+			continue
+		case (r == '.' || r == ',') && !radix:
+			radix = true
+			continue
 
 		case r == 'Y' && !t:
 			d.Duration += n * Year
@@ -137,9 +146,6 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 		case r == 'D' && !t:
 			d.Duration += n * Day
 
-		case r == '.' && t && !radix:
-			radix = true
-
 		case r == 'H' && t:
 			d.Duration += n * time.Hour
 			n = 0
@@ -147,11 +153,16 @@ func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 			d.Duration += n * time.Minute
 			n = 0
 		case r == 'S' && t:
-			d.Duration += (n * time.Second) / scale
+			d.Duration += n * time.Second
 			n = 0
 
 		default:
 			return errInvalidDur
+		}
+
+		if radix {
+			d.Duration /= scale
+			end = true
 		}
 	}
 
