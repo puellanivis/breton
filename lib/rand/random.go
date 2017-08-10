@@ -1,3 +1,4 @@
+// Package rand provides a wrapper around math/rand that uses crypto/rand for generating seeds.
 package rand
 
 import (
