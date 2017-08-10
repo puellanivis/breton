@@ -1,3 +1,4 @@
+// Package util provides a number of basic functions that I commonly use, and an Init/Context/AtExit harness for main.
 package util
 
 import (
