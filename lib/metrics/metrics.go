@@ -1,3 +1,4 @@
+// Package metrics provides an abstracted metrics library compatible with prometheus client specifications.
 package metrics
 
 import (
