@@ -4,12 +4,10 @@ package dash
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 	"time"
 
-	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
