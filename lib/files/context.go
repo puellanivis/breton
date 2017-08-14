@@ -11,14 +11,20 @@ const (
 	rootKey key = iota
 )
 
-// WithRoot attaches a string to a Context that is used as the resolution reference for any files.Open() using that context that is not otherwise a valid URL.
+// WithRootURL attaches a url.URL to a Context
+// and is used as the resolution reference for any files.Open() using that context.
+func WithRootURL(ctx context.Context, uri *url.URL) context.Context {
+	return context.WithValue(ctx, rootKey, uri)
+}
+
+// WithRoot parses the root as a URL, then attaches it to the Context as per WithRootURL.
 func WithRoot(ctx context.Context, root string) (context.Context, error) {
 	uri, err := url.Parse(root)
 	if err != nil {
 		return ctx, err
 	}
 
-	return context.WithValue(ctx, rootKey, uri), nil
+	return WithRootURL(ctx, uri), nil
 }
 
 func getRoot(ctx context.Context) (*url.URL, bool) {
