@@ -3,6 +3,7 @@ package dash
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -17,6 +18,7 @@ import (
 // DASH stream.
 type Stream struct {
 	w io.Writer
+	m *Manifest
 
 	metrics *metricsPack
 
@@ -25,14 +27,23 @@ type Stream struct {
 	pid string
 	aid uint
 
-	eof bool
+	eof     bool
+	dynamic bool
 
-	dynamic     bool
 	init, media string
+	bw          uint
+	repID       string
+	time        uint64
+}
 
-	Bandwidth uint
-	RepID     string
-	time      uint64
+// Bandwidth returns the bandwidth that was selected for this Stream.
+func (s *Stream) Bandwidth() uint {
+	return s.bw
+}
+
+// RepresentationID returns the ID of the Representationn that was selected for this Stream.
+func (s *Stream) RepresentationID() string {
+	return s.repID
 }
 
 // buildURL takes the given template, and given number, and renders it
@@ -73,9 +84,9 @@ func (s *Stream) buildURL(template string, number uint) string {
 		case "Time":
 			fmt.Fprintf(b, format, s.time)
 		case "Bandwidth":
-			fmt.Fprintf(b, format, s.Bandwidth)
+			fmt.Fprintf(b, format, s.bw)
 		case "RepresentationID":
-			fmt.Fprintf(b, format, s.RepID)
+			fmt.Fprintf(b, format, s.repID)
 		case "Number":
 			fmt.Fprintf(b, format, number)
 		}
@@ -103,7 +114,6 @@ func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error 
 
 	n, err := files.ReadTo(ctx, s.w, url)
 	if scale > 0.1 {
-		_ = n
 		// n is measured in bytes, we want to record in bits
 		s.metrics.bandwidth.Observe(float64(n*8) * scale)
 	}
@@ -151,8 +161,6 @@ func (s *Stream) readTimeline(ctx context.Context, ts uint, num uint, tl *mpd.Se
 			tdur += dur
 			t += seg.D
 		}
-
-		//tdur = (dur * time.Duration(r+1))
 	}
 
 	if !s.dynamic {
@@ -163,85 +171,43 @@ func (s *Stream) readTimeline(ctx context.Context, ts uint, num uint, tl *mpd.Se
 	return tdur, nil
 }
 
-/*
-// ReadSegments will read the currently available DASH segments into the
-// Stream’s io.Writer. It returns a total time.Duration of segments read.
-// If this is not a dynamic DASH stream, then it will return io.EOF when
-// it reaches the end of the stream. It is not an error for a dynamic
-// stream to return a 0 amount of time.Duration, it means that it has
-// already read all of the available Segments already.
-func (s *Stream) ReadSegments(ctx context.Context) (time.Duration, error) {
-	ctx, err := files.WithRoot(ctx, s.base)
+// Read reads the next series of segments in the Stream.
+// If the returned time.Duration is 0, it means that no new segments were available.
+// (In which case, you’re likely calling this function too often in this case.
+// Calling any faster than the duration returned by MinimumUpdatePeriod is just a waste of cycles.)
+func (s *Stream) Read(ctx context.Context) (time.Duration, error) {
+	ctx, err := files.WithRoot(ctx, s.m.base)
 	if err != nil {
 		return 0, err
 	}
 
-	m, err := s.getMPD(ctx)
+	cur, err := s.m.m.get(ctx)
 	if err != nil {
 		return 0, err
 	}
 
-	tmpl := m.Period.AdaptationSets[s.index].SegmentTemplate
-
-	var dur time.Duration
-	var cnt int
-	var tscale = time.Second
-	if tmpl.StartNumber != nil {
-		cnt = int(*tmpl.StartNumber)
-	}
-	if tmpl.Timescale != nil {
-		tscale = time.Second / time.Duration(*tmpl.Timescale)
-	}
-	media := *tmpl.Media
-
-	var tdur time.Duration
-
-	for _, seg := range tmpl.SegmentTimeline.Segments {
-		if seg.StartTime == nil {
+	for _, p := range cur.Period {
+		if p.Id != s.pid {
 			continue
 		}
 
-		if s.time < *seg.StartTime {
-			s.time = *seg.StartTime
-		}
-
-		dur = time.Duration(seg.Duration) * tscale
-		scale := 1 / dur.Seconds()
-
-		var r uint64
-		if seg.RepeatCount != nil && *seg.RepeatCount > 0 {
-			r = uint64(*seg.RepeatCount)
-		}
-
-		t := *seg.StartTime
-
-		// less than or equal to, because it includes an implicit first
-		for i := uint64(0); i <= r; i++ {
-			if t <= s.time {
-				t += seg.Duration
+		for _, as := range p.AdaptationSet {
+			if as.Id != s.aid {
 				continue
 			}
 
-			cnt++
-			s.time = t
-
-			url := s.buildURL(media, cnt)
-
-			if err := s.readFrom(ctx, url, scale); err != nil {
-				return tdur, err
+			tmpl := as.SegmentTemplate
+			if tmpl == nil {
+				return 0, errors.New("SegmentTemplate not found")
 			}
 
-			tdur += dur
-			t += seg.Duration
+			if tmpl.SegmentTimeline == nil {
+				return 0, errors.New("SegmentTimeline not found")
+			}
+
+			return s.readTimeline(ctx, tmpl.Timescale, tmpl.StartNumber, tmpl.SegmentTimeline)
 		}
-
-		//tdur = (dur * time.Duration(r+1))
 	}
 
-	if !s.dynamic {
-		return tdur, io.EOF
-	}
-
-	return tdur, nil
+	return 0, fmt.Errorf("no media could be found for pid: %s, aid: %d", s.pid, s.aid)
 }
-// */
