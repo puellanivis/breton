@@ -112,9 +112,15 @@ func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error 
 		glog.Info("Grabbing:", url)
 	}
 
-	n, err := files.ReadTo(ctx, s.w, url)
+	f, err := files.Open(ctx, url)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	n, err := io.Copy(s.w, f)
 	if scale > 0.1 {
-		// n is measured in bytes, we want to record in bits
+		// n is measured in bytes, we want to record in bits per time unit
 		s.metrics.bandwidth.Observe(float64(n*8) * scale)
 	}
 
