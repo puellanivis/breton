@@ -2,7 +2,6 @@ package gnuflag
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -14,7 +13,7 @@ type EnumValue struct {
 }
 
 // NewEnumValue returns an EnumValue that will only accept the given strings.
-func NewEnumValue(valid []string) *EnumValue {
+func NewEnumValue(valid ...string) *EnumValue {
 	e := &EnumValue{
 		indices: make(map[string]int),
 		valid:   valid,
@@ -32,7 +31,7 @@ func NewEnumValue(valid []string) *EnumValue {
 // ValueType permits an ability for the more standard flags library to support
 // a flag displaying values/type allowed beyond the concrete types.
 func (e *EnumValue) ValueType() string {
-	return fmt.Sprintf("[ ", strings.Join(e.valid, ", "), " ]")
+	return strings.Join(e.valid, ", ")
 }
 
 // Copy returns a newly allocated copy of the EnumValue.
@@ -93,7 +92,7 @@ func EnumVar(p *EnumValue, name string, value string, usage string, options ...O
 
 // Enum defines an enum flag with specified name, shortname, usage, default value, and a list of additional valid values. The return value is the address of an EnumValue variable that stores the value of the flag.
 func (f *FlagSet) Enum(name string, value string, usage string, valid []string, options ...Option) *EnumValue {
-	e := NewEnumValue(valid)
+	e := NewEnumValue(valid...)
 	f.EnumVar(e, name, value, usage, options...)
 	return e
 }
