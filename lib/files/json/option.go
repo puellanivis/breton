@@ -11,8 +11,8 @@ type config struct {
 // that will revert the change applied.
 type Option func(*config) Option
 
-// Indent returns a function that directs Marshal to use the indenting characters given.
-func Indent(prefix, indent string) Option {
+// WithIndent returns a function that directs Marshal to use the indenting characters given.
+func WithIndent(prefix, indent string) Option {
 	return func(c *config) Option {
 		psave, isave := c.prefix, c.indent
 
