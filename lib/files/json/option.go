@@ -18,7 +18,7 @@ func WithIndent(prefix, indent string) Option {
 
 		c.prefix, c.indent = prefix, indent
 
-		return Indent(psave, isave)
+		return WithIndent(psave, isave)
 	}
 }
 
