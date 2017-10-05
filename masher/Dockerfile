@@ -1,6 +1,6 @@
 # This docker image builds upon the golang docker image to support a more automated process for building
 # golang files.
-FROM golang:1.9
+FROM golang:1.9.1
 MAINTAINER Cassondra Foesch <puellanivis@gmail.com>
 
 # Setup various environment and argument settings which define the building environment.
@@ -19,10 +19,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Here, we pull down a protoc 3 release, and unpack it.
-# TODO: this can be removed once the debian used by the golang image uses a protoc > v3.0
+# This _could_ technically be removed now that debian stretch (baseline for golang:1.9 has a protoc v3.0 or higher…
+# However, I don’t think it makes sense to pair such an older version with golang 1.9.
 RUN mkdir -p /usr/bin && \
 	cd /usr && \
-	curl -sS -L https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip | \
+	curl -sS -L https://github.com/google/protobuf/releases/download/v3.4.0/protoc-3.4.0-linux-x86_64.zip | \
 		bsdtar -xvf- --exclude=readme.txt && \
 	chmod 755 /usr/bin/protoc
 
