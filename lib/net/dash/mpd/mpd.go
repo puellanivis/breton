@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// Reference imports to suppress errors if they are not otherwise used.
+var _ = regexp.MustCompile
+var _ = time.Second
 
 // mostly computer generated from from http://standards.iso.org/ittf/PubliclyAvailableStandards/MPEG-DASH_schema_files/DASH-MPD.xsd
 
@@ -301,4 +304,3 @@ type Range struct {
 	Starttime Duration `xml:"starttime,attr,omitempty"`
 	Duration  Duration `xml:"duration,attr,omitempty"`
 }
-
