@@ -24,7 +24,7 @@
 //		labelCode = metrics.Label("code")
 //	)
 //
-//	var counter = metrics.Coutner("http_status", "usage", metrics.WithLabels(labelCode))
+//	var counter = metrics.Counter("http_status", "usage", metrics.WithLabels(labelCode))
 //
 //	func httpError(w http.ResponseWriter, error string, code int) {
 //		label := labelCode.WithValue(strconv.Itoa(code))
