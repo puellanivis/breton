@@ -146,45 +146,6 @@ func (f *Format) WriteSimple(wr io.Writer, table Table) error {
 		}
 	}
 
-	if err := f.writeSimple(wr, table, widths); err != nil {
-		return err
-	}
-
-	if f.Lower != nil {
-		if _, err := f.Lower.writeDivider(wr, widths); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
-	// number of rows = 0
-	if len(table) < 1 {
-		return nil
-	}
-
-	if f.Inner.Space == "" {
-		for _, row := range table {
-			if len(row) < 1 {
-				if f.Middle != nil {
-					if _, err := f.Middle.writeDivider(wr, widths); err != nil {
-						return err
-					}
-				}
-
-				continue
-			}
-
-			if _, err := f.writeRow(wr, row); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-
 	for _, row := range table {
 		if len(row) < 1 {
 			if f.Middle != nil {
@@ -196,12 +157,27 @@ func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
 			continue
 		}
 
+		if f.Inner.Space == "" {
+			if _, err := f.writeRow(wr, row); err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		if f.Inner.Right != "" && len(row) < len(widths) {
+			// in this case, we need to pad the available rows to match the rest of the table.
 			l := len(widths) - len(row)
 			row = append(row, make([]string, l)...)
 		}
 
 		if _, err := f.writeRowScale(wr, row, widths); err != nil {
+			return err
+		}
+	}
+
+	if f.Lower != nil {
+		if _, err := f.Lower.writeDivider(wr, widths); err != nil {
 			return err
 		}
 	}

@@ -35,6 +35,7 @@ var (
 		Inner: &Divider{
 			Space: " ",
 		},
+		// If UTF-8 is detected per Default, then tables.Empty will use the same WidthFunc as tables.Unicode
 	}
 
 	// ASCII uses barebones ASCII line-drawing characters, i.e. |, +, and -
@@ -122,6 +123,7 @@ var (
 func checkUTF8(lang string) {
 	if strings.HasSuffix(lang, ".UTF-8") {
 		Default = Unicode
+		Empty.WidthFunc = Unicode.WidthFunc
 	}
 }
 
