@@ -205,6 +205,11 @@ if [[ -z $BASE ]] ; then
 	PRJPATH=""
 fi
 
+case $BASE in
+	*/) ;;
+	*) BASE="$BASE/"
+esac
+
 NAME="masher-${PROJECT}"
 if [[ -z ${ESCAPE} ]]; then
 	NAME="${NAME}-"
