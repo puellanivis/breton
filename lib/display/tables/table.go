@@ -2,10 +2,10 @@
 //
 // Defining a table is relatively easy:
 //	var t tables.Table
-//	t = t.Append(1, 2, 3, 4)
-//	t = t.Append()
-//	t = t.Append("any", "arbitrary", "data", 123)
-//	t = t.Append("a", "b", "c")
+//	t = tables.Append(t, 1, 2, 3, 4)
+//	t = tables.Append(t)
+//	t = tables.Append(t, "any", "arbitrary", "data", 123)
+//	t = tables.Append(t, "a", "b", "c")
 //
 // tables.Empty will produce:
 //	1   2         3    4
@@ -68,9 +68,15 @@ func (t Table) String() string {
 	return b.String()
 }
 
-func (t Table) widths(autoscale bool) []int {
+func (t Table) widths(autoscale bool, fn func(string) int) []int {
 	if len(t) < 1 {
 		return nil
+	}
+
+	if fn == nil {
+		fn = func(s string) int {
+			return len(s)
+		}
 	}
 
 	l := 0
@@ -88,8 +94,10 @@ func (t Table) widths(autoscale bool) []int {
 
 	for _, row := range t {
 		for i, col := range row {
-			if widths[i] < len(col) {
-				widths[i] = len(col)
+			l := fn(col)
+
+			if widths[i] < l {
+				widths[i] = l
 			}
 		}
 	}

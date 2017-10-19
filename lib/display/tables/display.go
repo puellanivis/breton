@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"unicode/utf8"
 )
 
-func (d *Divider) writeDivider(wr io.Writer, widths []int) error {
-	var line bytes.Buffer
+func (d *Divider) writeDivider(wr io.Writer, widths []int) (n int64, err error) {
+	line := new(bytes.Buffer)
 
 	if d.Left != "" {
 		line.WriteString(d.Left)
@@ -47,23 +46,24 @@ func (d *Divider) writeDivider(wr io.Writer, widths []int) error {
 		line.WriteString(d.Right)
 	}
 
-	if line.Len() > 0 {
-		line.WriteByte('\n')
-
-		_, err := io.Copy(wr, &line)
-		return err
+	if line.Len() == 0 {
+		return 0, nil
 	}
 
-	return nil
+	line.WriteByte('\n')
+	return io.Copy(wr, line)
 }
 
-func (d *Divider) scale(width int, text string) string {
+func (d *Divider) scale(width int, text string, fn func(string) int) string {
 	if width == 0 || d.Space == "" {
 		return text
 	}
 
-	// should count display widths...
-	l := utf8.RuneCountInString(text)
+	l := len(text)
+
+	if fn != nil {
+		l = fn(text)
+	}
 
 	if width < 0 {
 		padding := strings.Repeat(d.Space, -width-l)
@@ -74,17 +74,18 @@ func (d *Divider) scale(width int, text string) string {
 	return fmt.Sprint(text, padding)
 }
 
-func (f *Format) writeRow(wr io.Writer, cols []string) error {
-	var line bytes.Buffer
+// writeRow buffers the whole line together, then makes a single wr.Write of the rendered row.
+func (f *Format) writeRow(wr io.Writer, cols []string) (n int64, err error) {
+	line := new(bytes.Buffer)
 
 	if f.Inner == nil {
+		// if there is no defined Inner format, just dump it raw.
 		for _, col := range cols {
 			line.WriteString(col)
 		}
 
 		line.WriteByte('\n')
-		_, err := io.Copy(wr, &line)
-		return err
+		return io.Copy(wr, line)
 	}
 
 	if f.Inner.Left != "" {
@@ -103,16 +104,17 @@ func (f *Format) writeRow(wr io.Writer, cols []string) error {
 		line.WriteString(f.Inner.Right)
 	}
 
-	if line.Len() > 0 {
-		line.WriteByte('\n')
-		_, err := io.Copy(wr, &line)
-		return err
+	if line.Len() == 0 {
+		// if line is empty, don’t perform any Write at all.
+		// Otherwise we would put a newline in.
+		return 0, nil
 	}
 
-	return nil
+	line.WriteByte('\n')
+	return io.Copy(wr, line)
 }
 
-func (f *Format) writeRowScale(wr io.Writer, row []string, widths []int) error {
+func (f *Format) writeRowScale(wr io.Writer, row []string, widths []int) (n int64, err error) {
 	var cols []string
 
 	if f.Inner.Right == "" {
@@ -123,7 +125,7 @@ func (f *Format) writeRowScale(wr io.Writer, row []string, widths []int) error {
 	}
 
 	for i, width := range widths {
-		cols = append(cols, f.Inner.scale(width, row[i]))
+		cols = append(cols, f.Inner.scale(width, row[i], f.WidthFunc))
 	}
 
 	return f.writeRow(wr, cols)
@@ -134,33 +136,27 @@ func WriteSimple(wr io.Writer, table Table) error {
 	return Default.WriteSimple(wr, table)
 }
 
-func (f *Format) bind(wr io.Writer, widths []int, fn func() error) error {
+// WriteSimple takes only a 2D slice to fill in the table.
+func (f *Format) WriteSimple(wr io.Writer, table Table) error {
+	widths := table.widths(f.Inner.Space != "", f.WidthFunc)
+
 	if f.Upper != nil {
-		if err := f.Upper.writeDivider(wr, widths); err != nil {
+		if _, err := f.Upper.writeDivider(wr, widths); err != nil {
 			return err
 		}
 	}
 
-	if err := fn(); err != nil {
+	if err := f.writeSimple(wr, table, widths); err != nil {
 		return err
 	}
 
 	if f.Lower != nil {
-		if err := f.Lower.writeDivider(wr, widths); err != nil {
+		if _, err := f.Lower.writeDivider(wr, widths); err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-// WriteSimple takes only a 2D slice to fill in the table.
-func (f *Format) WriteSimple(wr io.Writer, table Table) error {
-	widths := table.widths(f.Inner.Space != "")
-
-	return f.bind(wr, widths, func() error {
-		return f.writeSimple(wr, table, widths)
-	})
 }
 
 func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
@@ -171,25 +167,17 @@ func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
 
 	if f.Inner.Space == "" {
 		for _, row := range table {
-			if err := f.writeRow(wr, row); err != nil {
-				return err
-			}
-		}
+			if len(row) < 1 {
+				if f.Middle != nil {
+					if _, err := f.Middle.writeDivider(wr, widths); err != nil {
+						return err
+					}
+				}
 
-		return nil
-	}
-
-	if f.Middle == nil {
-		// special case, absolutely no need to check
-		// whether to write a divider.
-
-		for _, row := range table {
-			if f.Inner.Right != "" && len(row) < len(widths) {
-				l := len(widths) - len(row)
-				row = append(row, make([]string, l)...)
+				continue
 			}
 
-			if err := f.writeRowScale(wr, row, widths); err != nil {
+			if _, err := f.writeRow(wr, row); err != nil {
 				return err
 			}
 		}
@@ -199,8 +187,10 @@ func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
 
 	for _, row := range table {
 		if len(row) < 1 {
-			if err := f.Middle.writeDivider(wr, widths); err != nil {
-				return err
+			if f.Middle != nil {
+				if _, err := f.Middle.writeDivider(wr, widths); err != nil {
+					return err
+				}
 			}
 
 			continue
@@ -211,7 +201,7 @@ func (f *Format) writeSimple(wr io.Writer, table Table, widths []int) error {
 			row = append(row, make([]string, l)...)
 		}
 
-		if err := f.writeRowScale(wr, row, widths); err != nil {
+		if _, err := f.writeRowScale(wr, row, widths); err != nil {
 			return err
 		}
 	}

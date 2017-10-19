@@ -3,14 +3,20 @@ package tables
 import (
 	"os"
 	"strings"
+
+	dispwidth "github.com/puellanivis/breton/lib/display/width"
 )
 
 // Divider defines a set of dividers to be used when printing a single specific row.
 type Divider struct {
-	Left  string // The left-side of the row e.g. "|" for ASCII
-	Space string // The character used for spacing.
-	Bar   string // The separator between two colums, e.g. " |" for ASCII
-	Right string // The right-side of the row e.g. "|" for ASCII
+	// lines are build with:
+	//	`{{.Left}}{{.Space}}` +
+	//	strings.Join(columns, `{{.Space}}{{.Bar}}{{.Space}}`) +
+	//	`{{.Space}}{{.Right}}`
+	Left  string // The left-side of the row.         e.g. "|" for ASCII
+	Space string // The character used for spacing.   e.g. " " for ASCII
+	Bar   string // The separator between two colums. e.g. "|" for ASCII
+	Right string // The right-side of the row.        e.g. "|" for ASCII
 }
 
 // Format defines a set of dividers for all types of rows.
@@ -19,18 +25,19 @@ type Format struct {
 	Inner  *Divider // Content    e.g. | x | y | z |
 	Middle *Divider // The middle e.g. ├---+---+---┤
 	Lower  *Divider // the bottom e.g. └---+---+---┘
+
+	WidthFunc func(string) int
 }
 
 var (
-	// Empty does nothing but put a single space between
-	// each column, and then autoscale each column to line up.
+	// Empty does nothing but autoscale each column, and put a single space between.
 	Empty = &Format{
 		Inner: &Divider{
 			Space: " ",
 		},
 	}
 
-	// ASCII uses ASCII line-drawing characters, i.e. |, +, and -
+	// ASCII uses barebones ASCII line-drawing characters, i.e. |, +, and -
 	ASCII = &Format{
 		Upper: &Divider{
 			Left:  "+",
@@ -84,6 +91,8 @@ var (
 			Bar:   "┴",
 			Right: "┘",
 		},
+
+		WidthFunc: dispwidth.String,
 	}
 
 	// HTML outputs a _very_ simple HTML table.
@@ -110,16 +119,17 @@ var (
 	Default = ASCII
 )
 
+func checkUTF8(lang string) {
+	if strings.HasSuffix(lang, ".UTF-8") {
+		Default = Unicode
+	}
+}
+
 func init() {
 	if lang := os.Getenv("LC_ALL"); lang != "" {
-		if strings.HasSuffix(lang, ".UTF-8") {
-			Default = Unicode
-		}
-
+		checkUTF8(lang)
 		return
 	}
 
-	if lang := os.Getenv("LANG"); strings.HasSuffix(lang, ".UTF-8") {
-		Default = Unicode
-	}
+	checkUTF8(os.Getenv("LANG"))
 }
