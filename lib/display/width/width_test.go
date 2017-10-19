@@ -5,12 +5,12 @@ import (
 )
 
 func TestZeroWidth(t *testing.T) {
-	if l := Rune('\n'); l != 0 {
-		t.Error("Expected that Cc characters are width == 0, but width of NEWLINE gave instead ", l)
+	if l := Rune('\n'); l != -1 {
+		t.Error("Expected that Cc characters are width == -1, but width of NEWLINE gave instead ", l)
 	}
 
-	if l := Rune('\xAD'); l != 0 {
-		t.Error("Expected that Cf characters are width == 0, but width of SOFT HYPHEN gave instead ", l)
+	if l := Rune('\u200B'); l != 0 {
+		t.Error("Expected that Cf characters are width == 0, but width of ZERO WIDTH SPACE gave instead ", l)
 	}
 
 	if l := Rune('\u0304'); l != 0 {
