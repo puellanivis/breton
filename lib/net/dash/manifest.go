@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
 )
@@ -16,6 +17,8 @@ type adaptation struct {
 	// indexes into the period and adaptions
 	pid string
 	aid uint
+
+	base string
 
 	// template strings
 	init, media string
@@ -37,6 +40,26 @@ type Manifest struct {
 	m *cachedMPD
 }
 
+func updateBase(ctx context.Context, baseURL []*mpd.BaseURL) context.Context {
+	for _, url := range baseURL {
+		if url.CDATA == "" {
+			continue
+		}
+
+		base := url.CDATA
+
+		ctx, err := files.WithRoot(ctx, base)
+		if err != nil {
+			glog.Fatal("omg, root failed", err)
+			continue
+		}
+
+		return ctx
+	}
+
+	return ctx
+}
+
 // New returns a Manifest constructed from the given URL.
 func New(ctx context.Context, manifest string) (*Manifest, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -50,22 +73,39 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 	url := urlLabel.WithValue(manifest)
 
 	idx := strings.LastIndexByte(manifest, '/')
+	fqManifest := manifest
 	base, manifest := manifest[:idx+1], manifest[idx+1:]
+
+	ctx, err = files.WithRoot(ctx, base)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx = updateBase(ctx, m.BaseURL)
 
 	adaptations := make(map[string]*adaptation)
 
 	for _, p := range m.Period {
 		pid := p.Id
 
+		ctx := updateBase(ctx, p.BaseURL)
+
 		for _, as := range p.AdaptationSet {
+			ctx := updateBase(ctx, as.BaseURL)
+
+			if root, ok := files.GetRoot(ctx); ok {
+				base = root
+			}
+
 			a := &adaptation{
 				pid: pid,
 				aid: as.Id,
+				base: base,
 			}
 
 			if tmpl := as.SegmentTemplate; tmpl != nil {
-				a.init = base + tmpl.Initialization
-				a.media = base + tmpl.Media
+				a.init = tmpl.Initialization
+				a.media = tmpl.Media
 			}
 
 			for _, r := range as.Representation {
@@ -77,6 +117,10 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 			}
 
 			if as.MimeType == "" {
+				continue
+			}
+
+			if _, ok := adaptations[as.MimeType]; ok {
 				continue
 			}
 
@@ -95,7 +139,7 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 		manifest:    manifest,
 		dynamic:     m.Type == "dynamic",
 		adaptations: adaptations,
-		m:           newMPD(manifest, minTime),
+		m:           newMPD(fqManifest, minTime),
 
 		metrics: baseMetrics.WithLabels(url),
 	}, nil
@@ -151,6 +195,7 @@ func (m *Manifest) Stream(w io.Writer, mimeType string, picker Picker) (*Stream,
 		aid: as.aid,
 
 		dynamic: m.dynamic,
+		base:    as.base,
 		init:    as.init,
 		media:   as.media,
 

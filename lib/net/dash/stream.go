@@ -30,6 +30,7 @@ type Stream struct {
 	eof     bool
 	dynamic bool
 
+	base        string
 	init, media string
 	bw          uint
 	repID       string
@@ -99,6 +100,11 @@ func (s *Stream) buildURL(template string, number uint) string {
 
 // Init reads the initialization URL from the stream.
 func (s *Stream) Init(ctx context.Context) error {
+	ctx, err := files.WithRoot(ctx, s.base)
+	if err != nil {
+		return err
+	}
+
 	init := s.buildURL(s.init, 0)
 	return s.readFrom(ctx, init, 0)
 }
@@ -108,8 +114,15 @@ func (s *Stream) readFrom(ctx context.Context, url string, scale float64) error 
 	done := s.metrics.timing.Timer()
 	defer done()
 
+	ctx, err := files.WithRoot(ctx, s.base)
+	if err != nil {
+		return err
+	}
+
 	if glog.V(5) {
-		glog.Info("Grabbing:", url)
+		root, _ := files.GetRoot(ctx)
+
+		glog.Infof("Grabbing: %s %s", root, url)
 	}
 
 	f, err := files.Open(ctx, url)
@@ -182,11 +195,6 @@ func (s *Stream) readTimeline(ctx context.Context, ts uint, num uint, tl *mpd.Se
 // (In which case, you’re likely calling this function too often in this case.
 // Calling any faster than the duration returned by MinimumUpdatePeriod is just a waste of cycles.)
 func (s *Stream) Read(ctx context.Context) (time.Duration, error) {
-	ctx, err := files.WithRoot(ctx, s.m.base)
-	if err != nil {
-		return 0, err
-	}
-
 	cur, err := s.m.m.get(ctx)
 	if err != nil {
 		return 0, err
