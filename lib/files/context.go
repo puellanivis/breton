@@ -14,6 +14,10 @@ const (
 // WithRootURL attaches a url.URL to a Context
 // and is used as the resolution reference for any files.Open() using that context.
 func WithRootURL(ctx context.Context, uri *url.URL) context.Context {
+	if root, ok := getRoot(ctx); ok {
+		uri = root.ResolveReference(uri)
+	}
+
 	return context.WithValue(ctx, rootKey, uri)
 }
 
