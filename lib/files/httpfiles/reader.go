@@ -2,6 +2,7 @@ package httpfiles
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,11 +13,25 @@ import (
 )
 
 type reader struct {
-	r files.Reader
+	r io.ReadCloser
+	info *wrapper.Info
+
 	*request
+	header http.Header
 
 	err     error
 	loading <-chan struct{}
+}
+
+func (r *reader) Header() (http.Header, error) {
+	for range r.loading {
+	}
+
+	if r.err != nil {
+		return nil, r.err
+	}
+
+	return r.header, nil
 }
 
 func (r *reader) Stat() (os.FileInfo, error) {
@@ -27,7 +42,7 @@ func (r *reader) Stat() (os.FileInfo, error) {
 		return nil, r.err
 	}
 
-	return r.r.Stat()
+	return r.info.Stat()
 }
 
 func (r *reader) Read(b []byte) (n int, err error) {
@@ -50,7 +65,12 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 		return 0, r.err
 	}
 
-	return r.r.Seek(offset, whence)
+	seeker, ok := r.r.(io.Seeker)
+	if !ok {
+		return 0, os.ErrInvalid
+	}
+
+	return seeker.Seek(offset, whence)
 }
 
 func (r *reader) Close() error {
@@ -108,6 +128,22 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 			return
 		}
 
+		r.header = resp.Header
+
+		t := time.Now()
+		if lastmod := r.header.Get("Last-Modified"); lastmod != "" {
+			if t1, err := http.ParseTime(lastmod); err == nil {
+				t = t1
+			}
+		}
+
+		r.info = wrapper.NewInfo(uri, int(resp.ContentLength), t)
+
+		if resp.ContentLength < 0 {
+			r.r = resp.Body
+			return
+		}
+
 		b, err := files.ReadFrom(resp.Body)
 		if err != nil {
 			r.err = err
@@ -119,16 +155,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 			return
 		}
 
-		var t time.Time
-		if lastmod := resp.Header.Get("Last-Modified"); lastmod != "" {
-			if t1, err := http.ParseTime(lastmod); err == nil {
-				t = t1
-			}
-		} else {
-			t = time.Now()
-		}
-
-		r.r = wrapper.NewReader(uri, b, t)
+		r.r = wrapper.NewReaderWithInfo(r.info, b)
 	}()
 
 	return r, nil

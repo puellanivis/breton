@@ -14,6 +14,10 @@ type writer struct {
 	*request
 }
 
+func (w *writer) Header() (http.Header, error) {
+	return w.request.req.Header, nil
+}
+
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	uri = elideDefaultPort(uri)
 
