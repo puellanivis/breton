@@ -6,6 +6,20 @@ import (
 	"time"
 )
 
+type deadlineWriter struct {
+	ctx context.Context
+	w   io.Writer
+}
+func (w *deadlineWriter) Write(b []byte) (n int, err error) {
+	select {
+	case <-w.ctx.Done():
+		return 0, w.ctx.Err()
+	default:
+	}
+
+	return w.w.Write(b)
+}
+
 const copyBufferSize = 32*1024
 
 // CopyWithRunningTimeout performs a series of io.CopyN calls that each has the given timeout.
@@ -22,11 +36,16 @@ func CopyWithRunningTimeout(ctx context.Context, dst io.Writer, src io.Reader, t
 		done := make(chan struct{})
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 
+		w := &deadlineWriter{
+			ctx: ctx,
+			w: dst,
+		}
+
 		var n int64
 		go func() {
 			defer close(done)
 
-			n, err = io.CopyBuffer(dst, io.LimitReader(src, copyBufferSize), buf)
+			n, err = io.CopyBuffer(w, io.LimitReader(src, copyBufferSize), buf)
 
 			if n < copyBufferSize && err == nil {
 				err = io.EOF
