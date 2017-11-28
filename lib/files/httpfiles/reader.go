@@ -129,6 +129,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		}
 
 		r.header = resp.Header
+		uri := resp.Request.URL
 
 		t := time.Now()
 		if lastmod := r.header.Get("Last-Modified"); lastmod != "" {
