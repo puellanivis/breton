@@ -40,6 +40,10 @@ type Manifest struct {
 	m *cachedMPD
 }
 
+func (m *Manifest) IsDynamic() bool {
+	return m.dynamic
+}
+
 func updateBase(ctx context.Context, baseURL []*mpd.BaseURL) context.Context {
 	for _, url := range baseURL {
 		if url.CDATA == "" {
