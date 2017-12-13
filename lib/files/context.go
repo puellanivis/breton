@@ -16,14 +16,17 @@ const (
 // and is used as the resolution reference for any files.Open() using that context.
 func WithRootURL(ctx context.Context, uri *url.URL) context.Context {
 	uriCopy := uri
-	uri := resolveFilename(ctx, uri)
+	uri = resolveFilename(ctx, uri)
 
 	// we got the same URL back, clone it so that it stays immutable to the original uri passed in.
 	if uriCopy == uri {
 		uriCopy = new(url.URL)
-
 		*uriCopy = *uri
-		*uriCopy.User = *uri.User // gotta copy this pointer struct also.
+
+		if uri.User != nil {
+			uriCopy.User = new(url.Userinfo)
+			*uriCopy.User = *uri.User // gotta copy this pointer struct also.
+		}
 
 		uri = uriCopy
 	}
