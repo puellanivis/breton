@@ -4,6 +4,7 @@
 // The basic usage of the library is fairly straight-forward:
 //	import (
 //		"context"
+//		"fmt"
 //		"io"
 //		"os"
 //
@@ -17,15 +18,18 @@
 //	if err != nil {
 //		return err
 //	}
-//	defer r.Close()
-//	io.Copy(os.Stdout, r)	// copy the response.Body from the HTTP request to stdout.
+//	// copy the response.Body from the HTTP request to stdout.
+//	if _, err := files.Copy(ctx, os.Stdout, r); err != nil {
+//		return err
+//	}
+//	r.Close()
 //
 //	w, err := files.Create(ctx, "clipboard:")
 //	if err != nil {
 //		return err	// will return `os.IsNotExist(err) == true` if not available.
 //	}
-//	defer w.Close()
-//	w.Write([]byte("write this string to the OS clipboard if available"))
+//	fmt.Fprint(w, "write this string to the OS clipboard if available")
+//	w.Close()
 //
 //	fi, err := files.List(ctx, "home:")
 //	if err != nil {
@@ -33,7 +37,7 @@
 //	}
 //	for _, info := range fi {
 //		// will print each filename and size listed in the user.Current().HomeDir
-//		fmt.Println("%s %d", info.Name(), info.Size())
+//		fmt.Printf("%s %d\n", info.Name(), info.Size())
 //	}
 //
 // Additionally, there are some helper functions which simply read/write a whole byte slice.
