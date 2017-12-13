@@ -4,21 +4,43 @@ import ()
 
 type config struct {
 	prefix, indent string
-	compact        bool
+	escapeHTML, compact bool
 }
 
 // An Option is a function that apply a specific option, then returns an Option function
 // that will revert the change applied.
 type Option func(*config) Option
 
-// WithIndent returns a function that directs Marshal to use the indenting characters given.
-func WithIndent(prefix, indent string) Option {
+// WithPrefix returns a function that directs Marshal to use the prefix string given.
+func WithPrefix(prefix string) Option {
 	return func(c *config) Option {
-		psave, isave := c.prefix, c.indent
+		save := c.prefix
 
-		c.prefix, c.indent = prefix, indent
+		c.prefix = prefix
 
-		return WithIndent(psave, isave)
+		return WithPrefix(save)
+	}
+}
+
+// WithIndent returns a function that directs Marshal to use the indenting string given.
+func WithIndent(indent string) Option {
+	return func(c *config) Option {
+		save := c.indent
+
+		c.indent = indent
+
+		return WithIndent(save)
+	}
+}
+
+// EscapeHTML returns a function that directs Marshal to either enable or disable HTML escaping.
+func EscapeHTML(value bool) Option {
+	return func(c *config) Option {
+		save := c.escapeHTML
+
+		c.escapeHTML = value
+
+		return EscapeHTML(save)
 	}
 }
 
