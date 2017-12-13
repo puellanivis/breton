@@ -16,12 +16,15 @@ func ReadFrom(r io.ReadCloser) ([]byte, error) {
 }
 
 // Discard throws away the entire content of an io.ReadCloser and closes the reader.
+// This is specifically not context aware, it is intended to always run to completion.
 func Discard(r io.ReadCloser) error {
-	if _, err := io.Copy(ioutil.Discard, r); err != nil {
-		return err
+	_, err := io.Copy(ioutil.Discard, r)
+
+	if err2 := r.Close(); err == nil {
+		err = err2
 	}
 
-	return r.Close()
+	return err
 }
 
 // Read takes a Context and a filename and reads the entire content into a byte-slice which it returns.
