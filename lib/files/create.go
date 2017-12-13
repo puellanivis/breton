@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"path/filepath"
 )
 
 // Create takes a context and a filename (which may be a URL) and returns a
@@ -28,6 +29,10 @@ func create(ctx context.Context, filename string) (Writer, error) {
 		return os.Stdout, nil
 	case "/dev/stderr":
 		return os.Stderr, nil
+	}
+
+	if filepath.IsAbs(filename) {
+		return os.Create(filename)
 	}
 
 	if uri, err := url.Parse(filename); err == nil {

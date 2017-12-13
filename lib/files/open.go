@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path/filepath"
 )
 
 // Open takes a Context and a filename (which may be a URL) and returns a
@@ -29,6 +30,10 @@ func open(ctx context.Context, filename string) (Reader, error) {
 		return os.Stdin, nil
 	}
 
+	if filepath.IsAbs(filename) {
+		return os.Open(filename)
+	}
+
 	if uri, err := url.Parse(filename); err == nil {
 		uri = resolveFilename(ctx, uri)
 
@@ -46,6 +51,10 @@ func List(ctx context.Context, filename string) ([]os.FileInfo, error) {
 	switch filename {
 	case "", "-", "/dev/stdin":
 		return os.Stdin.Readdir(0)
+	}
+
+	if filepath.IsAbs(filename) {
+		return ioutil.ReadDir(filename)
 	}
 
 	if uri, err := url.Parse(filename); err == nil {
