@@ -3,6 +3,7 @@ package files
 import (
 	"context"
 	"net/url"
+	"path/filepath"
 )
 
 type key int
@@ -14,16 +15,30 @@ const (
 // WithRootURL attaches a url.URL to a Context
 // and is used as the resolution reference for any files.Open() using that context.
 func WithRootURL(ctx context.Context, uri *url.URL) context.Context {
-	if root, ok := getRoot(ctx); ok {
-		uri = root.ResolveReference(uri)
-	}
+	uriCopy := uri
+	uri := resolveFilename(ctx, uri)
 
+	// we got the same URL back, clone it so that it stays immutable to the original uri passed in.
+	if uriCopy == uri {
+		uriCopy = new(url.URL)
+
+		*uriCopy = *uri
+		*uriCopy.User = *uri.User // gotta copy this pointer struct also.
+
+		uri = uriCopy
+	}
+	
 	return context.WithValue(ctx, rootKey, uri)
 }
 
-// WithRoot parses the root as a URL, then attaches it to the Context as per WithRootURL.
-func WithRoot(ctx context.Context, root string) (context.Context, error) {
-	uri, err := url.Parse(root)
+// WithRoot stores either a URL or a local path to use as a root point when resolving filenames.
+func WithRoot(ctx context.Context, path string) (context.Context, error) {
+	if filepath.IsAbs(path) {
+		path = filepath.Clean(path)
+		return WithRootURL(ctx, makePath(path)), nil
+	}
+
+	uri, err := url.Parse(path)
 	if err != nil {
 		return ctx, err
 	}
@@ -41,6 +56,10 @@ func GetRoot(ctx context.Context) (string, bool) {
 	root, ok := getRoot(ctx)
 	if !ok {
 		return "", false
+	}
+
+	if isPath(root) {
+		return getPath(root), true
 	}
 
 	return root.String(), true
