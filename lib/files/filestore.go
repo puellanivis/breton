@@ -27,10 +27,6 @@ func getFS(uri *url.URL) (FileStore, bool) {
 	fsMap.Lock()
 	defer fsMap.Unlock()
 
-	if len(uri.Scheme) <= localDriveLength {
-		return Local, true
-	}
-
 	if fsMap.m == nil {
 		return nil, false
 	}
