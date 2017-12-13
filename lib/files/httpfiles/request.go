@@ -44,11 +44,11 @@ func (r *request) SetBody(body []byte) []byte {
 	r.body = body
 
 	r.req.GetBody = func() (io.ReadCloser, error) {
-		if len(body) < 1 {
+		if len(r.body) < 1 {
 			return nil, nil
 		}
 
-		return ioutil.NopCloser(bytes.NewReader(body)), nil
+		return ioutil.NopCloser(bytes.NewReader(r.body)), nil
 	}
 
 	// we know this http.Request.GetBody won’t throw an error
