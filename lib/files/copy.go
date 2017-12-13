@@ -22,6 +22,49 @@ func (w *deadlineWriter) Write(b []byte) (n int, err error) {
 
 const copyBufferSize = 32*1024
 
+// Copy is a context aware version of io.Copy.
+// Do not use to Discard a reader, as a canceled context would stop the read, and it would not be fully discarded.
+func Copy(ctx context.Context, dst io.Writer, src io.Reader) (written int64, err error) {
+	// we allocate a buffer to use as a temporary buffer, rather than alloc new every time.
+	buf := make([]byte, copyBufferSize)
+
+	for {
+		done := make(chan struct{})
+
+		w := &deadlineWriter{
+			ctx: ctx,
+			w: dst,
+		}
+
+		var n int64
+		go func() {
+			defer close(done)
+
+			n, err = io.CopyBuffer(w, io.LimitReader(src, copyBufferSize), buf)
+
+			if n < copyBufferSize && err == nil {
+				err = io.EOF
+			}
+		}()
+
+		select {
+		case <-done:
+		case <-ctx.Done():
+			return written, ctx.Err()
+		}
+
+		written += n
+		if err != nil {
+			if err == io.EOF {
+				return written, nil
+			}
+
+			return written, err
+		}
+	}
+
+}
+
 // CopyWithRunningTimeout performs a series of io.CopyN calls that each has the given timeout.
 // So, this function allows you to copy a continuous stream of data, and yet respond to a disconnect/timeout event.
 //
