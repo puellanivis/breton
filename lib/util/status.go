@@ -3,8 +3,6 @@ package util
 import (
 	"fmt"
 	"os"
-
-	flag "github.com/puellanivis/breton/lib/gnuflag"
 )
 
 // CleanLineStart is a string that may be printed which will reset to column 0, and then set ANSI formatting to default.
