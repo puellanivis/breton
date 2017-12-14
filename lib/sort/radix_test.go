@@ -5,6 +5,8 @@ import (
 )
 
 func TestFloat64s(t *testing.T) {
+	qsortInstead = qsortNever
+
 	l := []float64{42.37, 5.3, -7.5, 2, 3, 0.5, -6, 100000, 0}
 
 	if Float64sAreSorted(l) {
@@ -24,6 +26,8 @@ func TestFloat64s(t *testing.T) {
 }
 
 func TestUints(t *testing.T) {
+	qsortInstead = qsortNever
+
 	l := []uint{42, 5, 7, 2, 3}
 
 	if UintsAreSorted(l) {
@@ -43,6 +47,8 @@ func TestUints(t *testing.T) {
 }
 
 func TestInts(t *testing.T) {
+	qsortInstead = qsortNever
+
 	l := []int{42, 5, -7, -2, 3}
 
 	if IntsAreSorted(l) {
@@ -62,6 +68,8 @@ func TestInts(t *testing.T) {
 }
 
 func TestStrings(t *testing.T) {
+	qsortInstead = qsortNever
+
 	l := []string{"zomg", "stuff", "things", "blah", "asdf"}
 
 	if StringsAreSorted(l) {

@@ -80,12 +80,6 @@ func sortTwo(a RadixInterface, i int) {
 	}
 }
 
-func qsortInstead(l, radix, last int) bool {
-	r := uint(last-radix)
-
-	return r > uint(uintMSB-1) || l < (1 << r)
-}
-
 func quickRadix(a RadixInterface, start, end, radix, last int) {
 	r := end-start
 	if r < 3 {

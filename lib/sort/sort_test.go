@@ -9,6 +9,8 @@ import (
 )
 
 func TestInt32s(t *testing.T) {
+	qsortInstead = qsortNever
+
 	l := []int32{42, 5, 7, 2, 3}
 
 	if Int32sAreSorted(l) {
@@ -27,6 +29,8 @@ func TestInt32s(t *testing.T) {
 }
 
 func TestReverseInt32s(t *testing.T) {
+	qsortInstead = qsortNever
+
 	a := []int32{42, 5, 7, 2, 3}
 	l := Reverse(a)
 
@@ -46,6 +50,8 @@ func TestReverseInt32s(t *testing.T) {
 }
 
 func TestInt64s(t *testing.T) {
+	qsortInstead = qsortNever
+
 	l := []int64{42, 5, 7, 2, 3}
 
 	if Int64sAreSorted(l) {
@@ -64,6 +70,8 @@ func TestInt64s(t *testing.T) {
 }
 
 func TestFloat32s(t *testing.T) {
+	qsortInstead = qsortNever
+
 	l := []float32{42, 5, 7, 2, 3}
 
 	if Float32sAreSorted(l) {
@@ -127,6 +135,8 @@ func initIntBench() {
 }
 
 func BenchmarkIntRadixSort(b *testing.B) {
+	qsortInstead = qsortSometimes
+
 	b.StopTimer()
 	benchIntOnce.Do(initIntBench)
 
