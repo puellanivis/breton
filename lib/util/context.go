@@ -50,24 +50,10 @@ func Quit() {
 }
 
 func sigHandler(ctx context.Context) context.Context {
-	nctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(ctx)
 
-	killchan := make(chan bool, 3)
+	killchan := make(chan struct{}, 3)
 	sigchan = make(chan os.Signal)
-
-	go func() {
-		timer := time.NewTimer(1 * time.Second)
-
-		for _ = range timer.C {
-			select {
-			case <-killchan:
-				if glog.V(5) {
-					glog.Info("removed entry from killchan")
-				}
-			default:
-			}
-		}
-	}()
 
 	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 
@@ -75,11 +61,23 @@ func sigHandler(ctx context.Context) context.Context {
 		for {
 			select {
 			case sig := <-sigchan:
-				cancel()
 				glog.Error("received signal:", sig)
 
+				if !IsDone(ctx) {
+					cancel()
+				}
+
 				select {
-				case killchan <- true:
+				case killchan <- struct{}{}:
+					go func() {
+						<-time.After(1 * time.Second)
+
+						select {
+						case <-killchan:
+						default:
+						}
+					}()
+
 				default:
 					debug.SetTraceback("all")
 					panic("not responding to signals!")
@@ -88,5 +86,5 @@ func sigHandler(ctx context.Context) context.Context {
 		}
 	}()
 
-	return nctx
+	return ctx
 }
