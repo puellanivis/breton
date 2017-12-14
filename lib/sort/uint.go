@@ -1,11 +1,12 @@
 package sort
 
 import (
+	"math"
+	"math/bits"
 	"sort"
-	"strconv"
 )
 
-var uintMSB = strconv.IntSize-1
+var uintMSB = bits.UintSize-1
 
 func CompareUint64(x, y uint64) int {
 	if x == y {
@@ -38,15 +39,17 @@ func (p UintSlice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p UintSlice) RadixRange() (int, int) {
-	var max uint
+	allBits := uint((1 << uint(bits.UintSize)) - 1)
+	var anyBits uint
 	for _, v := range p {
-		if v > max {
-			max = v
-		}
+		anyBits |= v
+		allBits &= v
 	}
+	bitMask := anyBits &^ allBits
 
-	r := bsr(uint64(max))
-	return uintMSB-int(r), uintMSB
+	end := uintMSB-bits.TrailingZeros(bitMask)
+
+	return bits.LeadingZeros(bitMask), end
 }
 func (p UintSlice) RadixFunc(r int) RadixTest {
 	mask := uint(1) << uint(uintMSB-r)
@@ -92,15 +95,17 @@ func (p Uint64Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint64Slice) RadixRange() (int, int) {
-	var max uint64
+	allBits := uint64(math.MaxUint64)
+	var anyBits uint64
 	for _, v := range p {
-		if v > max {
-			max = v
-		}
+		anyBits |= v
+		allBits &= v
 	}
+	bitMask := anyBits &^ allBits
 
-	r := bsr(uint64(max))
-	return 63-int(r), 63
+	end := 63-bits.TrailingZeros64(bitMask)
+
+	return bits.LeadingZeros64(bitMask), end
 }
 func (p Uint64Slice) RadixFunc(r int) RadixTest {
 	mask := uint64(1) << uint(63-r)
@@ -146,15 +151,17 @@ func (p Uint32Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint32Slice) RadixRange() (int, int) {
-	var max uint32
+	allBits := uint32(math.MaxUint32)
+	var anyBits uint32
 	for _, v := range p {
-		if v > max {
-			max = v
-		}
+		anyBits |= v
+		allBits &= v
 	}
+	bitMask := anyBits &^ allBits
 
-	r := bsr(uint64(max))
-	return 31-int(r), 31
+	end := 31-bits.TrailingZeros32(bitMask)
+
+	return bits.LeadingZeros32(bitMask), end
 }
 func (p Uint32Slice) RadixFunc(r int) RadixTest {
 	mask := uint32(1) << uint(31-r)
@@ -200,15 +207,17 @@ func (p Uint16Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint16Slice) RadixRange() (int, int) {
-	var max uint16
+	allBits := uint16(math.MaxUint16)
+	var anyBits uint16
 	for _, v := range p {
-		if v > max {
-			max = v
-		}
+		anyBits |= v
+		allBits &= v
 	}
+	bitMask := anyBits &^ allBits
 
-	r := bsr(uint64(max))
-	return 15-int(r), 15
+	end := 15-bits.TrailingZeros16(bitMask)
+
+	return bits.LeadingZeros16(bitMask), end
 }
 func (p Uint16Slice) RadixFunc(r int) RadixTest {
 	mask := uint16(1) << uint(15-r)
@@ -254,15 +263,17 @@ func (p Uint8Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint8Slice) RadixRange() (int, int) {
-	var max uint8
+	allBits := uint8(math.MaxUint8)
+	var anyBits uint8
 	for _, v := range p {
-		if v > max {
-			max = v
-		}
+		anyBits |= v
+		allBits &= v
 	}
+	bitMask := anyBits &^ allBits
 
-	r := bsr(uint64(max))
-	return 7-int(r), 7
+	end := 7-bits.TrailingZeros8(bitMask)
+
+	return bits.LeadingZeros8(bitMask), end
 }
 func (p Uint8Slice) RadixFunc(r int) RadixTest {
 	mask := uint8(1) << uint(7-r)

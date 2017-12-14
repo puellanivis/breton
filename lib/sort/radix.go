@@ -161,5 +161,3 @@ func radixSort(a RadixInterface, start, end, radix, last int) {
 		}
 	}
 }
-
-func bsr(u uint64) uint64
