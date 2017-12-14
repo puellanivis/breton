@@ -2,6 +2,7 @@ package sort
 
 import (
 	"bytes"
+	"math/bits"
 	"sort"
 	"unicode"
 )
@@ -162,7 +163,7 @@ func (p RuneSliceSlice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
-var runeMSB = int(bsr(uint64(unicode.MaxRune)))
+var runeMSB = int(31-bits.LeadingZeros32(uint32(unicode.MaxRune)))
 
 func (p RuneSliceSlice) RadixRange() (int, int) {
 	r := 0
