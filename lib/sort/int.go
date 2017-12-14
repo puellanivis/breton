@@ -1,6 +1,7 @@
 package sort
 
 import (
+	//"math/bits"
 	"sort"
 )
 
@@ -34,17 +35,19 @@ func (p IntSlice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p IntSlice) RadixRange() (int, int) {
-	var r uint64
+	var max int
 	for _, v := range p {
 		if v < 0 {
 			return 0, uintMSB
 		}
 
-		if b := bsr(uint64(v)); b > r {
-			r = b
+		if v > max {
+			max = v
 		}
 	}
-	return uintMSB - int(r), uintMSB
+
+	r := bsr(uint64(max))
+	return uintMSB-int(r), uintMSB
 }
 func (p IntSlice) RadixFunc(r int) RadixTest {
 	if r == 0 {
@@ -95,16 +98,19 @@ func (p Int64Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Int64Slice) RadixRange() (int, int) {
-	var r uint64
+	var max int64
 	for _, v := range p {
 		if v < 0 {
 			return 0, 63
 		}
-		if b := bsr(uint64(v)); b > r {
-			r = b
+
+		if v > max {
+			max = v
 		}
 	}
-	return 63 - int(r), 63
+
+	r := bsr(uint64(max))
+	return 63-int(r), 63
 }
 func (p Int64Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
@@ -155,16 +161,19 @@ func (p Int32Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Int32Slice) RadixRange() (int, int) {
-	var r uint64
+	var max int32
 	for _, v := range p {
 		if v < 0 {
 			return 0, 31
 		}
-		if b := bsr(uint64(v)); b > r {
-			r = b
+
+		if v > max {
+			max = v
 		}
 	}
-	return 31 - int(r), 31
+
+	r := bsr(uint64(max))
+	return 31-int(r), 31
 }
 func (p Int32Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
@@ -215,16 +224,19 @@ func (p Int16Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Int16Slice) RadixRange() (int, int) {
-	var r uint64
+	var max int16
 	for _, v := range p {
 		if v < 0 {
 			return 0, 15
 		}
-		if b := bsr(uint64(v)); b > r {
-			r = b
+
+		if v > max {
+			max = v
 		}
 	}
-	return 15 - int(r), 15
+
+	r := bsr(uint64(max))
+	return 15-int(r), 15
 }
 func (p Int16Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
@@ -275,16 +287,19 @@ func (p Int8Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Int8Slice) RadixRange() (int, int) {
-	var r uint64
+	var max int8
 	for _, v := range p {
 		if v < 0 {
 			return 0, 7
 		}
-		if b := bsr(uint64(v)); b > r {
-			r = b
+
+		if v > max {
+			max = v
 		}
 	}
-	return 7 - int(r), 7
+
+	r := bsr(uint64(max))
+	return 7-int(r), 7
 }
 func (p Int8Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {

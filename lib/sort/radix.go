@@ -2,6 +2,7 @@ package sort
 
 import (
 	"sort"
+	_ "unsafe"
 )
 
 // Returns true if the i'th element of the sort.RadixInterface is set
@@ -70,18 +71,42 @@ func Radix(a interface{}) {
 
 func radix(a RadixInterface) {
 	s, e := a.RadixRange()
-	radixSort(a, 0, a.Len(), s, e)
+	quickRadix(a, 0, a.Len(), s, e+1)
 }
 
-func radixSort(a RadixInterface, start, end, radix, last int) {
-	i := start
-	j := end - 1
+func sortTwo(a RadixInterface, i int) {
+	if a.Less(i+1, i) {
+		a.Swap(i, i+1)
+	}
+}
 
-	if radix > last || i >= j {
+func qsortInstead(l, radix, last int) bool {
+	r := uint(last-radix)
+
+	return r > uint(uintMSB-1) || l < (1 << r)
+}
+
+func quickRadix(a RadixInterface, start, end, radix, last int) {
+	r := end-start
+	if r < 3 {
+		if r == 2 {
+			sortTwo(a, start)
+		}
 		return
 	}
 
-	f := a.RadixFunc(radix)
+	if qsortInstead(r, radix, last) {
+		quickSort(a, start, end, maxDepth(r))
+		return
+	} // */
+
+	radixSort(a, start, end, radix, last)
+}
+
+type swapFunc func(i, j int)
+
+func radixPass(f RadixTest, swap swapFunc, start, end int) (pivot int) {
+	i, j := start, end -1
 
 	for i < j {
 		// from the start, find the i-th item that satisfies radix.
@@ -94,34 +119,53 @@ func radixSort(a RadixInterface, start, end, radix, last int) {
 			j--
 		}
 
-		if j < i {
-			// avoid swapping if they’ve passed each other…
-			// really no big deal if they’re ==, but *shrug*
-			// already doing the test anyways.
+		if j <= i {
+			// avoid swapping if they’ve passed each other, or are the same thing…
+			// while the swap is no big deal, the extra increments not good
 			break
 		}
 
-		a.Swap(i, j)
+		swap(i, j)
+		i++
+		j--
 	}
 
-	// if the i-th element doesn’t satisfy radix, then
-	// we need to increment it so that i == len(head)
-	// where head is the slice of items not satisfying radix.
-	if !f(i) {
+	// we’re standing on a pivot, if it doesn’t satisfy pivot, then pivot just after.
+	if i == j && !f(i) {
 		i++
 	}
 
-	// if the j-th element doesn’t satisfy radix, then
-	// we need to increment it so that j is the start of tail,
-	// where tail is the slice of items satisfying radix.
-	if !f(j) {
-		j++
+	return i
+}
+
+func radixSort(a RadixInterface, start, end, radix, last int) {
+	for radix < last {
+		r := end-start
+		if r < 3 {
+			if r == 2 {
+				sortTwo(a, start)
+			}
+			return
+		}
+
+		if qsortInstead(r, radix, last) {
+			quickSort(a, start, end, maxDepth(r))
+			return
+		} // */
+
+		pivot := radixPass(a.RadixFunc(radix), a.Swap, start, end)
+
+		radix++
+
+		if pivot-start < end-pivot {
+			quickRadix(a, start, pivot, radix, last)
+			start = pivot
+
+		} else {
+			quickRadix(a, pivot, end, radix, last)
+			end = pivot
+		}
 	}
-
-	radix++
-
-	radixSort(a, start, i, radix, last)
-	radixSort(a, j, end, radix, last)
 }
 
 func bsr(u uint64) uint64

@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-var uintMSB = strconv.IntSize
+var uintMSB = strconv.IntSize-1
 
 func CompareUint64(x, y uint64) int {
 	if x == y {
@@ -38,13 +38,15 @@ func (p UintSlice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p UintSlice) RadixRange() (int, int) {
-	var r uint64
+	var max uint
 	for _, v := range p {
-		if b := bsr(uint64(v)); b > r {
-			r = b
+		if v > max {
+			max = v
 		}
 	}
-	return uintMSB - int(r), uintMSB
+
+	r := bsr(uint64(max))
+	return uintMSB-int(r), uintMSB
 }
 func (p UintSlice) RadixFunc(r int) RadixTest {
 	mask := uint(1) << uint(uintMSB-r)
@@ -90,13 +92,15 @@ func (p Uint64Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint64Slice) RadixRange() (int, int) {
-	var r uint64
+	var max uint64
 	for _, v := range p {
-		if b := bsr(uint64(v)); b > r {
-			r = b
+		if v > max {
+			max = v
 		}
 	}
-	return 63 - int(r), 63
+
+	r := bsr(uint64(max))
+	return 63-int(r), 63
 }
 func (p Uint64Slice) RadixFunc(r int) RadixTest {
 	mask := uint64(1) << uint(63-r)
@@ -142,13 +146,15 @@ func (p Uint32Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint32Slice) RadixRange() (int, int) {
-	var r uint64
+	var max uint32
 	for _, v := range p {
-		if b := bsr(uint64(v)); b > r {
-			r = b
+		if v > max {
+			max = v
 		}
 	}
-	return 31 - int(r), 31
+
+	r := bsr(uint64(max))
+	return 31-int(r), 31
 }
 func (p Uint32Slice) RadixFunc(r int) RadixTest {
 	mask := uint32(1) << uint(31-r)
@@ -194,13 +200,15 @@ func (p Uint16Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint16Slice) RadixRange() (int, int) {
-	var r uint64
+	var max uint16
 	for _, v := range p {
-		if b := bsr(uint64(v)); b > r {
-			r = b
+		if v > max {
+			max = v
 		}
 	}
-	return 15 - int(r), 15
+
+	r := bsr(uint64(max))
+	return 15-int(r), 15
 }
 func (p Uint16Slice) RadixFunc(r int) RadixTest {
 	mask := uint16(1) << uint(15-r)
@@ -246,13 +254,15 @@ func (p Uint8Slice) CompareFunc(x interface{}) func(int) int {
 }
 
 func (p Uint8Slice) RadixRange() (int, int) {
-	var r uint64
+	var max uint8
 	for _, v := range p {
-		if b := bsr(uint64(v)); b > r {
-			r = b
+		if v > max {
+			max = v
 		}
 	}
-	return 7 - int(r), 7
+
+	r := bsr(uint64(max))
+	return 7-int(r), 7
 }
 func (p Uint8Slice) RadixFunc(r int) RadixTest {
 	mask := uint8(1) << uint(7-r)
