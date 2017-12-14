@@ -105,7 +105,7 @@ func initIntBench() {
 	if width < 2 {
 		width = 2
 	}
-	fmt.Printf("using %d bits\n", log)
+	fmt.Printf("using %d bits << %d\n", log, uintMSB-log)
 	b := make([]byte, width)
 
 	for i := 0; i < benchSize; i++ {
@@ -126,7 +126,7 @@ func initIntBench() {
 			val = -val
 		} //*/
 
-		benchIntArray = append(benchIntArray, val)
+		benchIntArray = append(benchIntArray, (val << uint(uintMSB - log)) | 0x10)
 	}
 }
 
