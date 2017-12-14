@@ -7,13 +7,6 @@ import (
 	flag "github.com/puellanivis/breton/lib/gnuflag"
 )
 
-var (
-	// Go libraries should not set flags themselves, this is an exception.
-	debugFlag = flag.Func("debug", "turns on a lot of messages that we don't normally need or want", func() {
-		// TODO: set log.V(5) or something
-	})
-)
-
 // CleanLineStart is a string that may be printed which will reset to column 0, and then set ANSI formatting to default.
 const CleanLineStart = "\r\033[K"
 
