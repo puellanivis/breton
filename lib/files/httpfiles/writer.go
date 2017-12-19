@@ -42,6 +42,8 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		req:  req,
 	}
 
+	// The http.Writer does not actually perform the http.Request until wrapper.Sync is called,
+	// So there is no need for complex synchronization like the httpfiles.Reader needs.
 	w := wrapper.NewWriter(ctx, uri, func(b []byte) error {
 		if r.req.Header.Get("Content-Type") == "" {
 			r.req.Header.Set("Content-Type", http.DetectContentType(b))
