@@ -3,6 +3,7 @@ package files
 import (
 	"errors"
 	"os"
+	"time"
 )
 
 // ErrNotSupported should be returned when a specific file.File given to an
@@ -53,5 +54,57 @@ func WithFileMode(mode os.FileMode) Option {
 		}
 
 		return WithFileMode(save), nil
+	}
+}
+
+type observer interface {
+	Observe(float64)
+}
+
+type copyConfig struct {
+	runningTimeout time.Duration
+	bufferSize int
+	buffer []byte
+
+	bwObserver observer
+}
+
+type CopyOption func(c *copyConfig) CopyOption
+
+func WithWatchdogTimeout(timeout time.Duration) CopyOption {
+	return func(c *copyConfig) CopyOption {
+		save := c.runningTimeout
+
+		c.runningTimeout = timeout
+
+		return WithWatchdogTimeout(save)
+	}
+}
+
+func WithBuffer(buf []byte) CopyOption {
+	return func(c *copyConfig) CopyOption {
+		save := c.buffer
+
+		c.buffer = buf
+
+		return WithBuffer(save)
+	}
+}
+
+func WithBufferSize(size int) CopyOption {
+	if size < 0 {
+		panic("cannot use a negative buffer size!")
+	}
+
+	return WithBuffer(make([]byte, size))
+}
+
+func WithBandwidthMetrics(observer interface{ Observe(float64) }) CopyOption {
+	return func(c *copyConfig) CopyOption {
+		save := c.bwObserver
+
+		c.bwObserver = observer
+
+		return WithBandwidthMetrics(save)
 	}
 }
