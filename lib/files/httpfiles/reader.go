@@ -1,6 +1,7 @@
 package httpfiles
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -13,7 +14,7 @@ import (
 )
 
 type reader struct {
-	r io.ReadCloser
+	r io.Reader
 	info *wrapper.Info
 
 	*request
@@ -81,7 +82,11 @@ func (r *reader) Close() error {
 		return r.err
 	}
 
-	return r.r.Close()
+	if c, ok := r.r.(io.Closer); ok {
+		return c.Close()
+	}
+
+	return nil
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
@@ -113,6 +118,16 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	}
 
 	go func() {
+		// So, all of the file operations block on a range over the loading channel.
+		// They will not end this blocking until loading is closed.
+		// But they will also swallow any sends, though sends will block until someone is receiving.
+		//
+		// So, we will block on the first send until someone receives from the loading channel,
+		// or the context expires.
+		//
+		// But none of the receivers will actually unblock until the loading channel is _closed_.
+		// And once the channel is closed, each range over loading won’t even stop to block.
+
 		defer close(loading)
 
 		select {
@@ -121,6 +136,14 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 			r.err = ctx.Err()
 			return
 		}
+
+		// So, we will not arrive here until someone is ranging over the loading channel.
+		//
+		// This ensures the actual http request HAPPENS AFTER the first file operation is called,
+		// but that all file operation behavior HAPPENS AFTER the actual http request is made.
+		//
+		// This lets us apply files.Option functions after files.Open,
+		// and change the http.Request before actually doing it.
 
 		resp, err := cl.Do(req)
 		if err != nil {
@@ -156,7 +179,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 			return
 		}
 
-		r.r = wrapper.NewReaderWithInfo(r.info, b)
+		r.r = bytes.NewReader(b)
 	}()
 
 	return r, nil
