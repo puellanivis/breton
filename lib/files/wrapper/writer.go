@@ -16,7 +16,7 @@ type Writer struct {
 	*Info
 	b bytes.Buffer
 
-	flush chan bool
+	flush chan struct{}
 	done  chan struct{}
 	errch chan error
 }
@@ -31,25 +31,29 @@ type WriteFn func([]byte) error
 func NewWriter(ctx context.Context, uri *url.URL, f WriteFn) *Writer {
 	wr := &Writer{
 		Info:  NewInfo(uri, 0, time.Now()),
+		flush: make(chan struct{}),
 		done:  make(chan struct{}),
 		errch: make(chan error),
-		flush: make(chan bool),
 	}
 
 	go func() {
-		for {
-			defer func() {
-				close(wr.errch)
-				close(wr.flush)
-			}()
+		defer func() {
+			close(wr.errch)
+			close(wr.flush)
+		}()
 
+		for {
 			select {
 			case <-wr.done:
-				wr.errch <- f(wr.b.Bytes())
+				if err := f(wr.b.Bytes()); err != nil {
+					wr.errch <- err
+				}
 				return
 
 			case <-wr.flush:
-				wr.errch <- f(wr.b.Bytes())
+				if err := f(wr.b.Bytes()); err != nil {
+					wr.errch <- err
+				}
 
 			case <-ctx.Done():
 				return
@@ -80,7 +84,7 @@ func (w *Writer) Sync() error {
 	default:
 	}
 
-	w.flush <- true
+	w.flush <- struct{}{}
 	return <-w.errch
 }
 
