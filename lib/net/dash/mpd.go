@@ -91,9 +91,9 @@ func (m *cachedMPD) get(ctx context.Context) (*mpd.MPD, error) {
 	select {
 	case <-m.expired:
 		return m.refresh(ctx)
-
 	case <-ctx.Done():
 		return nil, ctx.Err()
+	default:
 	}
 
 	m.RLock()
