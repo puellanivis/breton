@@ -1,0 +1,85 @@
+package sort
+
+import (
+	"math/bits"
+	"sort"
+)
+
+// {{.Name}}Slice attaches the methods of sort.Interface to []{{.Type}}, sorting in increasing order.
+type {{.Name}}Slice []{{.Type}}
+
+func (p {{.Name}}Slice) Len() int           { return len(p) }
+func (p {{.Name}}Slice) Less(i, j int) bool { return p[i] < p[j] }
+func (p {{.Name}}Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func cmp{{.Name}}(x, y {{.Type}}) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return +1
+}
+
+func (p {{.Name}}Slice) Compare(i, j int) int {
+	return cmp{{.Name}}(p[i], p[j])
+}
+func (p {{.Name}}Slice) CompareFunc(x interface{}) func(int) int {
+	e := x.({{.Type}})
+	return func(i int) int {
+		return cmp{{.Name}}(p[i], e)
+	}
+}
+
+func (p {{.Name}}Slice) RadixRange() (int, int) {
+	allBits := {{.Type}}(^1)
+	var anyBits {{.Type}}
+	for _, v := range p {
+		anyBits |= v
+		allBits &= v
+	}
+	bitMask := anyBits &^ allBits
+
+	end := {{.MSB}} - bits.TrailingZeros{{.Width}}(uint{{.Width}}(bitMask))
+
+	if bitMask < 0 {
+		return 0, end
+	}
+
+	return bits.LeadingZeros{{.Width}}(uint{{.Width}}(bitMask)), end
+}
+func (p {{.Name}}Slice) RadixFunc(r int) RadixTest {
+	if r == 0 {
+		return func(i int) bool {
+			return p[i] >= 0
+		}
+	}
+
+	mask := {{.Type}}(1) << uint({{.MSB}}-r)
+	return func(i int) bool {
+		return p[i]&mask != 0
+	}
+}
+
+// Sort is a convenience method.
+func (p {{.Name}}Slice) Sort()  { radix(p) }
+func (p {{.Name}}Slice) Radix() { radix(p) }
+
+func (p {{.Name}}Slice) Search(x {{.Type}}) int      { return Search{{.Name}}s(p, x) }
+func (p {{.Name}}Slice) SearchFor(x interface{}) int { return Search{{.Name}}s(p, x.({{.Type}})) }
+
+// {{.Name}}s sorts a slice of {{.Type}}s in increasing order.
+func {{.Name}}s(a []{{.Type}}) { radix({{.Name}}Slice(a)) }
+
+// Search{{.Name}}s searches for x in a sorted slice of {{.Type}}s and returns the index as specified by sort.Search.
+// The return value is the index to insert x if x is not present (it could be len(a)).
+// The slice must be sorted in ascending order.
+func Search{{.Name}}s(a []{{.Type}}, x {{.Type}}) int {
+	return sort.Search(len(a), func(i int) bool { return a[i] >= x })
+}
+
+// {{.Name}}sAreSorted tests whether a slice of {{.Type}}s is sorted in increasing order.
+func {{.Name}}sAreSorted(a []{{.Type}}) bool { return sort.IsSorted({{.Name}}Slice(a)) }
