@@ -12,7 +12,7 @@ var (
 func BenchmarkPrometheusCounterInc(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		cnt.c.Inc()
-	} 
+	}
 }
 
 func BenchmarkPrometheusCounterIncWithHeavyContention(b *testing.B) {
@@ -28,7 +28,7 @@ func BenchmarkPrometheusCounterIncWithHeavyContention(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				cnt.c.Inc()
-			} 
+			}
 		}()
 	}
 

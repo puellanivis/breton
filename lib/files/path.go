@@ -15,7 +15,7 @@ func isPath(uri *url.URL) bool {
 		return false
 	}
 
-	if len(uri.Host) + len(uri.RawQuery) + len(uri.Fragment) > 0 {
+	if len(uri.Host)+len(uri.RawQuery)+len(uri.Fragment) > 0 {
 		return false
 	}
 
@@ -36,7 +36,7 @@ func getPath(uri *url.URL) string {
 
 func makePath(path string) *url.URL {
 	return &url.URL{
-		Path: path,
+		Path:    path,
 		RawPath: path,
 	}
 }

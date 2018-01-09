@@ -14,7 +14,7 @@ import (
 )
 
 type reader struct {
-	r io.Reader
+	r    io.Reader
 	info *wrapper.Info
 
 	*request

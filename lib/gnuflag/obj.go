@@ -21,7 +21,7 @@ func flagName(prefix, name string) string {
 	if prefix != "" {
 		words = append(words, prefix)
 	}
-	
+
 	for _, r := range name {
 		if unicode.IsUpper(r) {
 			if !maybeAcronym && len(word) > 1 {
@@ -148,7 +148,6 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 			// now, then lets work with the element itself.
 			field = field.Elem()
 		}
-
 
 		// We set val such that we can generically just use fs.Var to setup the flag,
 		// any other fs.TypeVar will overwrite the value that is stored in that field,
@@ -311,7 +310,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def,  arrayWrap(func(s string) error {
+			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
 				*slice = append(*slice, s)
 				return nil
 			}))

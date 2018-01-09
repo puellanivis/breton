@@ -10,10 +10,10 @@ import (
 
 // Pipe defines an io.Reader and io.Writer where data given to Write will be buffered until a corresponding Read.
 type Pipe struct {
-	sync.Mutex	
+	sync.Mutex
 
 	closed chan struct{}
-	ready chan struct{}
+	ready  chan struct{}
 
 	b bytes.Buffer
 }
@@ -23,7 +23,7 @@ func New(ctx context.Context) *Pipe {
 	// initial state is not-closed, and not-ready
 	p := &Pipe{
 		closed: make(chan struct{}),
-		ready: make(chan struct{}),
+		ready:  make(chan struct{}),
 	}
 
 	go func() {
@@ -91,7 +91,6 @@ func (p *Pipe) Read(b []byte) (n int, err error) {
 			// the ready channel is already reopened, so don't open it again
 		}
 	}
-
 
 	return n, err
 }

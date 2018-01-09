@@ -82,6 +82,4 @@ func TestPathURL(t *testing.T) {
 	if path := resolveFilename(ctx, filename); path.String() != "file:///c:/Windows/filename" {
 		t.Errorf("resolveFilename with %q and %q gave %#v instead", filename, p, path)
 	}
-
-
 }

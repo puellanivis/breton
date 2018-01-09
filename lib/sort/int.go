@@ -43,7 +43,7 @@ func (p IntSlice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := uintMSB-bits.TrailingZeros(uint(bitMask))
+	end := uintMSB - bits.TrailingZeros(uint(bitMask))
 
 	if bitMask < 0 {
 		return 0, end
@@ -108,7 +108,7 @@ func (p Int64Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 63-bits.TrailingZeros64(uint64(bitMask))
+	end := 63 - bits.TrailingZeros64(uint64(bitMask))
 
 	if bitMask < 0 {
 		return 0, end
@@ -173,7 +173,7 @@ func (p Int32Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 31-bits.TrailingZeros32(uint32(bitMask))
+	end := 31 - bits.TrailingZeros32(uint32(bitMask))
 
 	if bitMask < 0 {
 		return 0, end
@@ -238,7 +238,7 @@ func (p Int16Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 15-bits.TrailingZeros16(uint16(bitMask))
+	end := 15 - bits.TrailingZeros16(uint16(bitMask))
 
 	if bitMask < 0 {
 		return 0, end
@@ -303,7 +303,7 @@ func (p Int8Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 7-bits.TrailingZeros8(uint8(bitMask))
+	end := 7 - bits.TrailingZeros8(uint8(bitMask))
 
 	if bitMask < 0 {
 		return 0, end

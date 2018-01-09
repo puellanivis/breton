@@ -30,7 +30,7 @@ func WithRootURL(ctx context.Context, uri *url.URL) context.Context {
 
 		uri = uriCopy
 	}
-	
+
 	return context.WithValue(ctx, rootKey, uri)
 }
 

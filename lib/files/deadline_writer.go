@@ -7,7 +7,7 @@ import (
 
 type deadlineWriter struct {
 	ctx context.Context
-	w io.Writer
+	w   io.Writer
 }
 
 func (w *deadlineWriter) Write(b []byte) (n int, err error) {

@@ -4,6 +4,7 @@ import ()
 
 type config struct {
 	prefix, indent string
+
 	escapeHTML, compact bool
 }
 

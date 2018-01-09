@@ -102,8 +102,8 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 			}
 
 			a := &adaptation{
-				pid: pid,
-				aid: as.Id,
+				pid:  pid,
+				aid:  as.Id,
 				base: base,
 			}
 

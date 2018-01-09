@@ -6,8 +6,8 @@ import (
 	"runtime/pprof"
 	"sync"
 
-	flag "github.com/puellanivis/breton/lib/gnuflag"
 	"github.com/puellanivis/breton/lib/glog"
+	flag "github.com/puellanivis/breton/lib/gnuflag"
 )
 
 var (

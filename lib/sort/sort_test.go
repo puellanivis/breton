@@ -103,9 +103,9 @@ func initIntBench() {
 	// than there would be for quicksort (log n).
 	// So, our implementation will often switch to using just quickSort.
 	// If we allowed for not-in-place sorting, we could use a better log base.
-	log := (maxDepth(benchSize)/2) - 3
-	width := log/8+1
-	mask := byte(0xff) >> (uint(8 - (log%8)))
+	log := (maxDepth(benchSize) / 2) - 3
+	width := log/8 + 1
+	mask := byte(0xff) >> (uint(8 - (log % 8)))
 	if width < 2 {
 		width = 2
 	}
@@ -130,7 +130,7 @@ func initIntBench() {
 			val = -val
 		} //*/
 
-		benchIntArray = append(benchIntArray, (val << uint(uintMSB - log)) | 0x10)
+		benchIntArray = append(benchIntArray, (val<<uint(uintMSB-log))|0x10)
 	}
 }
 

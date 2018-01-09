@@ -81,7 +81,7 @@ func sortTwo(a RadixInterface, i int) {
 }
 
 func quickRadix(a RadixInterface, start, end, radix, last int) {
-	r := end-start
+	r := end - start
 	if r < 3 {
 		if r == 2 {
 			sortTwo(a, start)
@@ -100,7 +100,7 @@ func quickRadix(a RadixInterface, start, end, radix, last int) {
 type swapFunc func(i, j int)
 
 func radixPass(f RadixTest, swap swapFunc, start, end int) (pivot int) {
-	i, j := start, end -1
+	i, j := start, end-1
 
 	for i < j {
 		// from the start, find the i-th item that satisfies radix.
@@ -134,7 +134,7 @@ func radixPass(f RadixTest, swap swapFunc, start, end int) (pivot int) {
 
 func radixSort(a RadixInterface, start, end, radix, last int) {
 	for radix < last {
-		r := end-start
+		r := end - start
 		if r < 3 {
 			if r == 2 {
 				sortTwo(a, start)

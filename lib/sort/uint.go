@@ -6,7 +6,7 @@ import (
 	"sort"
 )
 
-var uintMSB = bits.UintSize-1
+var uintMSB = bits.UintSize - 1
 
 func CompareUint64(x, y uint64) int {
 	if x == y {
@@ -47,7 +47,7 @@ func (p UintSlice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := uintMSB-bits.TrailingZeros(bitMask)
+	end := uintMSB - bits.TrailingZeros(bitMask)
 
 	return bits.LeadingZeros(bitMask), end
 }
@@ -103,7 +103,7 @@ func (p Uint64Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 63-bits.TrailingZeros64(bitMask)
+	end := 63 - bits.TrailingZeros64(bitMask)
 
 	return bits.LeadingZeros64(bitMask), end
 }
@@ -159,7 +159,7 @@ func (p Uint32Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 31-bits.TrailingZeros32(bitMask)
+	end := 31 - bits.TrailingZeros32(bitMask)
 
 	return bits.LeadingZeros32(bitMask), end
 }
@@ -215,7 +215,7 @@ func (p Uint16Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 15-bits.TrailingZeros16(bitMask)
+	end := 15 - bits.TrailingZeros16(bitMask)
 
 	return bits.LeadingZeros16(bitMask), end
 }
@@ -271,7 +271,7 @@ func (p Uint8Slice) RadixRange() (int, int) {
 	}
 	bitMask := anyBits &^ allBits
 
-	end := 7-bits.TrailingZeros8(bitMask)
+	end := 7 - bits.TrailingZeros8(bitMask)
 
 	return bits.LeadingZeros8(bitMask), end
 }

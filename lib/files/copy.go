@@ -6,11 +6,11 @@ import (
 	"time"
 )
 
-const defaultBufferSize = 32*1024
+const defaultBufferSize = 32 * 1024
 
 type noopObserver struct{}
 
-func (o *noopObserver) Observe(v float64) { }
+func (o *noopObserver) Observe(v float64) {}
 
 // Copy is a context aware version of io.Copy.
 // Do not use to Discard a reader, as a canceled context would stop the read, and it would not be fully discarded.
@@ -34,8 +34,8 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 	for {
 		done := make(chan struct{})
 
-		ctx := ctx // shadow context intentionally, we might set a timeout later
-		cancel := func() { } // noop cancel
+		ctx := ctx          // shadow context intentionally, we might set a timeout later
+		cancel := func() {} // noop cancel
 
 		if c.runningTimeout > 0 {
 			ctx, cancel = context.WithTimeout(ctx, c.runningTimeout)
@@ -43,7 +43,7 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 
 		w := &deadlineWriter{
 			ctx: ctx,
-			w: dst,
+			w:   dst,
 		}
 		r := io.LimitReader(src, l)
 
