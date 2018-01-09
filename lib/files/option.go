@@ -99,9 +99,7 @@ func WithBufferSize(size int) CopyOption {
 	return WithBuffer(make([]byte, size))
 }
 
-func WithBandwidthMetrics(observer interface {
-	Observe(float64)
-}) CopyOption {
+func WithBandwidthMetrics(observer interface{ Observe(float64) }) CopyOption {
 	return func(c *copyConfig) CopyOption {
 		save := c.bwObserver
 
