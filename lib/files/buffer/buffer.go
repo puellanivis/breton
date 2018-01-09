@@ -1,3 +1,4 @@
+// Package buffer (DO NOT USE) is a preliminary library futzing with how to efficiently hold mutable byte-slices.
 package buffer
 
 import (

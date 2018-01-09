@@ -1,3 +1,4 @@
+// Package atomic (DO NOT USE) is a baseline implementation to replace float64 metrics used internally by prometheus.
 package atomic
 
 import (
