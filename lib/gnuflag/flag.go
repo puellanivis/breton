@@ -423,7 +423,7 @@ func PrintDefaults() {
 // defaultUsage is the default function to print a usage message.
 func (f *FlagSet) defaultUsage() {
 	if f.name == "" {
-		fmt.Fprintf(f.Outpu(), "Usage:\n")
+		fmt.Fprintf(f.Output(), "Usage:\n")
 	} else {
 		fmt.Fprintf(f.Output(), "Usage of %s:\n", f.name)
 	}
@@ -528,7 +528,7 @@ func (f *FlagSet) setShort(flag *Flag, name rune) {
 
 		msg += fmt.Sprintf("shortflag redefined: %q", string(name))
 
-		fmt.Fprintln(f.out(), msg)
+		fmt.Fprintln(f.Output(), msg)
 		panic(msg) // Happens only if flags are declared with identical names
 	}
 
