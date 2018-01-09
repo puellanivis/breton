@@ -4,6 +4,9 @@ while [[ "$#" -gt 0 ]]; do
 	key="$1"
 
 	case $key in
+		--cache=*)
+			export GOCACHE=${1#--cache=}
+		;;
 		--timestamp=*)
 			TIMESTAMP=${1#--timestamp=}
 		;;

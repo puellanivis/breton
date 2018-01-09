@@ -258,6 +258,9 @@ SRCROOT="/go/src${PREFIX}/${MASHER_ROOT%/}"
 [[ -n $MASHER_LIBS ]] || MASHER_LIBS="lib"
 LIBS=""
 
+[[ -d ${BASE}/.cache ]] || mkdir ${BASE}/.cache
+CACHE="--cache=${SRCROOT}/.cache"
+
 SAVE_IFS=$IFS
 IFS=':'
 for p in $MASHER_LIBS; do
@@ -286,10 +289,11 @@ ${EXEC} docker run ${FLAGS} --rm \
 	${TMPFS} \
 	--user "${RUNAS}" \
 	--volume "${BASE}:${SRCROOT}:rw" \
+	--volume "${BASE}/.cache:${SRCROOT}/.cache:rw" \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
 	${IMAGE} \
-	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD --timestamp=$TIMESTAMP "$@" || exit 1
+	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE --timestamp=$TIMESTAMP "$@" || exit 1
 
 if [[ $PROD == "true" ]]; then
 	make push || exit 1
