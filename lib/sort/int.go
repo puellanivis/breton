@@ -5,7 +5,14 @@ import (
 	"sort"
 )
 
-func CompareInt64(x, y int64) int {
+// IntSlice attaches the methods of sort.Interface to []int, sorting in increasing order.
+type IntSlice []int
+
+func (p IntSlice) Len() int           { return len(p) }
+func (p IntSlice) Less(i, j int) bool { return p[i] < p[j] }
+func (p IntSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+func cmpInt(x, y int) int {
 	if x == y {
 		return 0
 	}
@@ -14,23 +21,16 @@ func CompareInt64(x, y int64) int {
 		return -1
 	}
 
-	return 1
+	return +1
 }
-
-// IntSlice attaches the methods of sort.Interface to []int, sorting in increasing order.
-type IntSlice []int
-
-func (p IntSlice) Len() int           { return len(p) }
-func (p IntSlice) Less(i, j int) bool { return p[i] < p[j] }
-func (p IntSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 func (p IntSlice) Compare(i, j int) int {
-	return CompareInt64(int64(p[i]), int64(p[j]))
+	return cmpInt(p[i], p[j])
 }
 func (p IntSlice) CompareFunc(x interface{}) func(int) int {
-	e := int64(x.(int))
+	e := x.(int)
 	return func(i int) int {
-		return CompareInt64(int64(p[i]), e)
+		return cmpInt(p[i], e)
 	}
 }
 
@@ -65,15 +65,17 @@ func (p IntSlice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p IntSlice) Sort()            { radix(p) }
-func (p IntSlice) Search(x int) int { return SearchInts(p, x) }
-func (p IntSlice) Radix()           { radix(p) }
+func (p IntSlice) Sort()  { radix(p) }
+func (p IntSlice) Radix() { radix(p) }
+
+func (p IntSlice) Search(x int) int            { return SearchInts(p, x) }
+func (p IntSlice) SearchFor(x interface{}) int { return SearchInts(p, x.(int)) }
 
 // Ints sorts a slice of ints in increasing order.
 func Ints(a []int) { radix(IntSlice(a)) }
 
-//SearchInts searches for x in a sorted slice of ints and returns the index
-// as specified by sort.Search.  The return value is the index to insert x if x is not present (it could be len(a)).
+// SearchInts searches for x in a sorted slice of ints and returns the index as specified by sort.Search.
+// The return value is the index to insert x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchInts(a []int, x int) int {
 	return sort.Search(len(a), func(i int) bool { return a[i] >= x })
@@ -82,20 +84,32 @@ func SearchInts(a []int, x int) int {
 // IntsAreSorted tests whether a slice of ints is sorted in increasing order.
 func IntsAreSorted(a []int) bool { return sort.IsSorted(IntSlice(a)) }
 
-// IntSlice attaches the methods of sort.Interface to []int, sorting in increasing order.
+// Int64Slice attaches the methods of sort.Interface to []int64, sorting in increasing order.
 type Int64Slice []int64
 
 func (p Int64Slice) Len() int           { return len(p) }
 func (p Int64Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+func cmpInt64(x, y int64) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return +1
+}
+
 func (p Int64Slice) Compare(i, j int) int {
-	return CompareInt64(p[i], p[j])
+	return cmpInt64(p[i], p[j])
 }
 func (p Int64Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.(int64)
 	return func(i int) int {
-		return CompareInt64(p[i], e)
+		return cmpInt64(p[i], e)
 	}
 }
 
@@ -130,15 +144,17 @@ func (p Int64Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int64Slice) Sort()              { radix(p) }
-func (p Int64Slice) Search(x int64) int { return SearchInt64s(p, x) }
-func (p Int64Slice) Radix()             { radix(p) }
+func (p Int64Slice) Sort()  { radix(p) }
+func (p Int64Slice) Radix() { radix(p) }
+
+func (p Int64Slice) Search(x int64) int          { return SearchInt64s(p, x) }
+func (p Int64Slice) SearchFor(x interface{}) int { return SearchInt64s(p, x.(int64)) }
 
 // Int64s sorts a slice of int64s in increasing order.
 func Int64s(a []int64) { radix(Int64Slice(a)) }
 
-//SearchInt64s searches for x in a sorted slice of int64s and returns the index
-// as specified by sort.Search.  The return value is the index to insert x if x is not present (it could be len(a)).
+// SearchInt64s searches for x in a sorted slice of int64s and returns the index as specified by sort.Search.
+// The return value is the index to insert x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchInt64s(a []int64, x int64) int {
 	return sort.Search(len(a), func(i int) bool { return a[i] >= x })
@@ -154,13 +170,25 @@ func (p Int32Slice) Len() int           { return len(p) }
 func (p Int32Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int32Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+func cmpInt32(x, y int32) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return +1
+}
+
 func (p Int32Slice) Compare(i, j int) int {
-	return CompareInt64(int64(p[i]), int64(p[j]))
+	return cmpInt32(p[i], p[j])
 }
 func (p Int32Slice) CompareFunc(x interface{}) func(int) int {
-	e := int64(x.(int32))
+	e := x.(int32)
 	return func(i int) int {
-		return CompareInt64(int64(p[i]), e)
+		return cmpInt32(p[i], e)
 	}
 }
 
@@ -195,15 +223,17 @@ func (p Int32Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int32Slice) Sort()              { radix(p) }
-func (p Int32Slice) Search(x int32) int { return SearchInt32s(p, x) }
-func (p Int32Slice) Radix()             { radix(p) }
+func (p Int32Slice) Sort()  { radix(p) }
+func (p Int32Slice) Radix() { radix(p) }
+
+func (p Int32Slice) Search(x int32) int          { return SearchInt32s(p, x) }
+func (p Int32Slice) SearchFor(x interface{}) int { return SearchInt32s(p, x.(int32)) }
 
 // Int32s sorts a slice of int32s in increasing order.
 func Int32s(a []int32) { radix(Int32Slice(a)) }
 
-//SearchInt32s searches for x in a sorted slice of int32s and returns the index
-// as specified by sort.Search.  The return value is the index to insert x if x is not present (it could be len(a)).
+// SearchInt32s searches for x in a sorted slice of int32s and returns the index as specified by sort.Search.
+// The return value is the index to insert x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchInt32s(a []int32, x int32) int {
 	return sort.Search(len(a), func(i int) bool { return a[i] >= x })
@@ -219,13 +249,25 @@ func (p Int16Slice) Len() int           { return len(p) }
 func (p Int16Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int16Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+func cmpInt16(x, y int16) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return +1
+}
+
 func (p Int16Slice) Compare(i, j int) int {
-	return CompareInt64(int64(p[i]), int64(p[j]))
+	return cmpInt16(p[i], p[j])
 }
 func (p Int16Slice) CompareFunc(x interface{}) func(int) int {
-	e := int64(x.(int16))
+	e := x.(int16)
 	return func(i int) int {
-		return CompareInt64(int64(p[i]), e)
+		return cmpInt16(p[i], e)
 	}
 }
 
@@ -260,15 +302,17 @@ func (p Int16Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int16Slice) Sort()              { radix(p) }
-func (p Int16Slice) Search(x int16) int { return SearchInt16s(p, x) }
-func (p Int16Slice) Radix()             { radix(p) }
+func (p Int16Slice) Sort()  { radix(p) }
+func (p Int16Slice) Radix() { radix(p) }
+
+func (p Int16Slice) Search(x int16) int          { return SearchInt16s(p, x) }
+func (p Int16Slice) SearchFor(x interface{}) int { return SearchInt16s(p, x.(int16)) }
 
 // Int16s sorts a slice of int16s in increasing order.
 func Int16s(a []int16) { radix(Int16Slice(a)) }
 
-//SearchInt16s searches for x in a sorted slice of int16s and returns the index
-// as specified by sort.Search.  The return value is the index to insert x if x is not present (it could be len(a)).
+// SearchInt16s searches for x in a sorted slice of int16s and returns the index as specified by sort.Search.
+// The return value is the index to insert x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchInt16s(a []int16, x int16) int {
 	return sort.Search(len(a), func(i int) bool { return a[i] >= x })
@@ -284,13 +328,25 @@ func (p Int8Slice) Len() int           { return len(p) }
 func (p Int8Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p Int8Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
+func cmpInt8(x, y int8) int {
+	if x == y {
+		return 0
+	}
+
+	if x < y {
+		return -1
+	}
+
+	return +1
+}
+
 func (p Int8Slice) Compare(i, j int) int {
-	return CompareInt64(int64(p[i]), int64(p[j]))
+	return cmpInt8(p[i], p[j])
 }
 func (p Int8Slice) CompareFunc(x interface{}) func(int) int {
-	e := int64(x.(int8))
+	e := x.(int8)
 	return func(i int) int {
-		return CompareInt64(int64(p[i]), e)
+		return cmpInt8(p[i], e)
 	}
 }
 
@@ -325,15 +381,17 @@ func (p Int8Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int8Slice) Sort()             { radix(p) }
-func (p Int8Slice) Search(x int8) int { return SearchInt8s(p, x) }
-func (p Int8Slice) Radix()            { radix(p) }
+func (p Int8Slice) Sort()  { radix(p) }
+func (p Int8Slice) Radix() { radix(p) }
+
+func (p Int8Slice) Search(x int8) int           { return SearchInt8s(p, x) }
+func (p Int8Slice) SearchFor(x interface{}) int { return SearchInt8s(p, x.(int8)) }
 
 // Int8s sorts a slice of int8s in increasing order.
 func Int8s(a []int8) { radix(Int8Slice(a)) }
 
-//SearchInt8s searches for x in a sorted slice of int8s and returns the index
-// as specified by sort.Search.  The return value is the index to insert x if x is not present (it could be len(a)).
+// SearchInt8s searches for x in a sorted slice of int8s and returns the index as specified by sort.Search.
+// The return value is the index to insert x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchInt8s(a []int8, x int8) int {
 	return sort.Search(len(a), func(i int) bool { return a[i] >= x })

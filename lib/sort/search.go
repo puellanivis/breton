@@ -4,11 +4,6 @@ import (
 	"sort"
 )
 
-type Searcher interface {
-	Interface
-	Comparer
-}
-
 type Comparer interface {
 	Compare(i, j int) int
 	CompareFunc(x interface{}) func(int) int
@@ -19,12 +14,23 @@ func Search(n int, f func(int) bool) int {
 }
 
 func SearchFor(a interface{}, x interface{}) int {
-	if a, ok := a.(Searcher); ok {
-		f := a.CompareFunc(x)
-		return sort.Search(a.Len(), func(i int) bool { return f(i) >= 0 })
+	type searcherFor interface {
+		SearchFor(x interface{}) int
+	}
+
+	type comparer interface {
+		Len() int
+		Comparer
 	}
 
 	switch a := a.(type) {
+	case searcherFor:
+		return a.SearchFor(x)
+
+	case comparer:
+		f := a.CompareFunc(x)
+		return sort.Search(a.Len(), func(i int) bool { return f(i) >= 0 })
+
 	case []uint:
 		return SearchUints(a, x.(uint))
 	case []uint8:

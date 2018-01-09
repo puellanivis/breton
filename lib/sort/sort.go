@@ -16,11 +16,6 @@ func Sort(a interface{}) {
 
 func Stable(a interface{}) {
 	if a == nil {
-		a = sort.Interface(nil)
-	}
-
-	if a, ok := a.(sort.Interface); ok {
-		sort.Stable(a)
 		return
 	}
 
@@ -60,34 +55,37 @@ func Stable(a interface{}) {
 		sort.Stable(RuneSliceSlice(a))
 
 	default:
-		panic("sort.Stable passed an unknown type")
+		// fallback: use the builtin sort
+		sort.Stable(a.(sort.Interface))
 	}
 }
 
+// we need to wrap these two together to cover all of the operations that need be reversed into one interface.
 type reversable interface {
 	RadixInterface
 	Comparer
 }
 
-type reversed struct {
+// now that the functions are all wrapped up together, we can use a single anonymous interface to wrap this.
+type reverse struct {
 	reversable
 }
 
-func (a reversed) Less(i, j int) bool {
+func (a reverse) Less(i, j int) bool {
 	return !a.reversable.Less(i, j)
 }
 
-func (a reversed) Compare(i, j int) int {
+func (a reverse) Compare(i, j int) int {
 	return -a.reversable.Compare(i, j)
 }
 
-func (a reversed) CompareFunc(x interface{}) func(int) int {
+func (a reverse) CompareFunc(x interface{}) func(int) int {
 	f := a.reversable.CompareFunc(x)
 
 	return func(i int) int { return -f(i) }
 }
 
-func (a reversed) RadixFunc(r int) RadixTest {
+func (a reverse) RadixFunc(r int) RadixTest {
 	f := a.reversable.RadixFunc(r)
 
 	return func(i int) bool {
@@ -96,44 +94,47 @@ func (a reversed) RadixFunc(r int) RadixTest {
 }
 
 func Reverse(a interface{}) sort.Interface {
-	if a, ok := a.(reversable); ok {
-		return &reversed{a}
+	if a == nil {
+		return sort.Reverse(sort.Interface(nil))
 	}
 
 	switch a := a.(type) {
+	case reversable:
+		return &reverse{a}
+
 	case []uint:
-		return reversed{UintSlice(a)}
+		return &reverse{UintSlice(a)}
 	case []uint8:
-		return reversed{Uint8Slice(a)}
+		return &reverse{Uint8Slice(a)}
 	case []uint16:
-		return reversed{Uint16Slice(a)}
+		return &reverse{Uint16Slice(a)}
 	case []uint32:
-		return reversed{Uint32Slice(a)}
+		return &reverse{Uint32Slice(a)}
 	case []uint64:
-		return reversed{Uint64Slice(a)}
+		return &reverse{Uint64Slice(a)}
 
 	case []int:
-		return reversed{IntSlice(a)}
+		return &reverse{IntSlice(a)}
 	case []int8:
-		return reversed{Int8Slice(a)}
+		return &reverse{Int8Slice(a)}
 	case []int16:
-		return reversed{Int16Slice(a)}
+		return &reverse{Int16Slice(a)}
 	case []int32:
-		return reversed{Int32Slice(a)}
+		return &reverse{Int32Slice(a)}
 	case []int64:
-		return reversed{Int64Slice(a)}
+		return &reverse{Int64Slice(a)}
 
 	case []float32:
-		return reversed{Float32Slice(a)}
+		return &reverse{Float32Slice(a)}
 	case []float64:
-		return reversed{Float64Slice(a)}
+		return &reverse{Float64Slice(a)}
 
 	case []string:
-		return reversed{StringSlice(a)}
+		return &reverse{StringSlice(a)}
 	case [][]byte:
-		return reversed{ByteSliceSlice(a)}
+		return &reverse{ByteSliceSlice(a)}
 	case [][]rune:
-		return reversed{RuneSliceSlice(a)}
+		return &reverse{RuneSliceSlice(a)}
 	}
 
 	return sort.Reverse(a.(sort.Interface))
@@ -141,11 +142,7 @@ func Reverse(a interface{}) sort.Interface {
 
 func IsSorted(a interface{}) bool {
 	if a == nil {
-		a = sort.Interface(nil)
-	}
-
-	if a, ok := a.(sort.Interface); ok {
-		return sort.IsSorted(a)
+		return true
 	}
 
 	switch a := a.(type) {
@@ -184,5 +181,5 @@ func IsSorted(a interface{}) bool {
 		return sort.IsSorted(RuneSliceSlice(a))
 	}
 
-	panic("sort.IsSorted passed an unknown type")
+	return sort.IsSorted(a.(sort.Interface))
 }

@@ -21,12 +21,10 @@ func Radix(a interface{}) {
 		return
 	}
 
-	if a, ok := a.(RadixInterface); ok {
-		radix(a)
-		return
-	}
-
 	switch a := a.(type) {
+	case RadixInterface:
+		radix(a)
+
 	case []uint:
 		radix(UintSlice(a))
 	case []uint8:
@@ -58,14 +56,8 @@ func Radix(a interface{}) {
 		radix(StringSlice(a))
 
 	default:
-		// none of these fit, but if it implements sort.Interface
-		// then we can just use the built in sort.Sort anyways.
-		if a, ok := a.(sort.Interface); ok {
-			sort.Sort(a)
-			return
-		}
-
-		panic("sort.Radix was passed an unknown type")
+		// fallback: use the builtin sort.Sort
+		sort.Sort(a.(sort.Interface))
 	}
 }
 
@@ -92,7 +84,7 @@ func quickRadix(a RadixInterface, start, end, radix, last int) {
 	if qsortInstead(r, radix, last) {
 		quickSort(a, start, end, maxDepth(r))
 		return
-	} // */
+	}
 
 	radixSort(a, start, end, radix, last)
 }
@@ -145,7 +137,7 @@ func radixSort(a RadixInterface, start, end, radix, last int) {
 		if qsortInstead(r, radix, last) {
 			quickSort(a, start, end, maxDepth(r))
 			return
-		} // */
+		}
 
 		pivot := radixPass(a.RadixFunc(radix), a.Swap, start, end)
 

@@ -25,6 +25,27 @@ func TestFloat64s(t *testing.T) {
 	}
 }
 
+func TestFloat32s(t *testing.T) {
+	qsortInstead = qsortNever
+
+	l := []float32{42.37, 5.3, -7.5, 2, 3, 0.5, -6, 100000, 0}
+
+	if Float32sAreSorted(l) {
+		t.Error("unsorted float32 list reports as sorted")
+	}
+
+	radix(Float32Slice(l))
+
+	if !Float32sAreSorted(l) {
+		t.Error("after sorting float32 list reports as not sorted")
+		t.Log("Got:", l)
+	}
+
+	if SearchFloat32s(l, 42.37) != 7 {
+		t.Error("binary search failed for float32 list")
+	}
+}
+
 func TestUints(t *testing.T) {
 	qsortInstead = qsortNever
 
