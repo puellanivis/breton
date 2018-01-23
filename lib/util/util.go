@@ -20,18 +20,16 @@ func CopyBytes(b []byte) []byte {
 
 // UniqueStrings returns a sorted list of values where duplicates have been removed.
 func UniqueStrings(values []string) []string {
-	m := make(map[string]bool)
+	var r []string
+	m := make(map[string]struct{})
 
 	for _, v := range values {
-		m[v] = true
+		m[v] = struct{}{}
 	}
-
-	var r []string
 
 	for k := range m {
 		r = append(r, k)
 	}
-
 	sort.Strings(r)
 
 	return r

@@ -16,6 +16,41 @@ var (
 	sigchan = make(chan os.Signal)
 )
 
+func init() {
+	var cancel context.CancelFunc
+	utilCtx, cancel = context.WithCancel(context.Background())
+
+	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
+
+	go func() {
+		killchan := make(chan struct{}, 3)
+
+		for sig := range sigchan {
+			glog.Error("received signal:", sig)
+			cancel()
+
+			select {
+			case killchan <- struct{}{}:
+				go func() {
+					<-time.After(1 * time.Second)
+
+					select {
+					case <-killchan:
+					default:
+					}
+				}()
+
+			default:
+				debug.SetTraceback("all")
+				panic("not responding to signals")
+			}
+		}
+
+		debug.SetTraceback("all")
+		panic("process was force quit")
+	}()
+}
+
 // Context returns a context.Context that will cancel if the program receives any signal that a program may want to cleanup after.
 func Context() context.Context {
 	return utilCtx
@@ -38,53 +73,16 @@ func IsDone(ctx context.Context) bool {
 // shutdown of the program.
 func Quit() {
 	select {
-	case <-sigchan:
-		return
+	case _, closed := <-sigchan:
+		if closed {
+			return
+		}
 	default:
 	}
 
-	// by closing this channel, we cause all reads from sigchan to now
-	// succeed, which means, we essentially make a kill signal, but
-	// without actually causing a signal. (Important for Windows)
+	// by closing this channel, the for range signchan above ends,
+	// which means, we essentially make a kill signal, but
+	// without actually causing a signal.
+	// (Important for Windows, which doesn’t have signaling.)
 	close(sigchan)
-}
-
-func sigHandler(ctx context.Context) context.Context {
-	ctx, cancel := context.WithCancel(ctx)
-
-	killchan := make(chan struct{}, 3)
-	sigchan = make(chan os.Signal)
-
-	signal.Notify(sigchan, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
-
-	go func() {
-		for {
-			select {
-			case sig := <-sigchan:
-				glog.Error("received signal:", sig)
-
-				if !IsDone(ctx) {
-					cancel()
-				}
-
-				select {
-				case killchan <- struct{}{}:
-					go func() {
-						<-time.After(1 * time.Second)
-
-						select {
-						case <-killchan:
-						default:
-						}
-					}()
-
-				default:
-					debug.SetTraceback("all")
-					panic("not responding to signals!")
-				}
-			}
-		}
-	}()
-
-	return ctx
 }

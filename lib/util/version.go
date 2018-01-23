@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	flag "github.com/puellanivis/breton/lib/gnuflag"
@@ -17,7 +18,9 @@ var (
 
 var versionString string
 
-// BUILD is a value that can be set by the go build command-line in order to provide an additional context information for the build.
+// BUILD is a value that can be set by the go build command-line
+// in order to provide additional context information for the build,
+// such as build timestamp, branch, commit id, etc.
 var BUILD = "adhoc"
 
 // Version returns the version information populated during util.Init().
@@ -25,15 +28,15 @@ func Version() string {
 	return versionString
 }
 
-func initVersion(cmdname string, versions ...int) {
+func initVersion(cmdname string, versions ...uint) {
 	var tmp []string
 
 	if len(versions) < 1 {
-		tmp = []string{"0"}
+		tmp = append(tmp, "0")
 	}
 
 	for _, ver := range versions {
-		tmp = append(tmp, fmt.Sprint(ver))
+		tmp = append(tmp, strconv.FormatUint(uint64(ver), 10))
 	}
 
 	versionString = fmt.Sprintf("%s v%s-%s", cmdname, strings.Join(tmp, "."), BUILD)
