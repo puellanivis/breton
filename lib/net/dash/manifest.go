@@ -3,7 +3,6 @@ package dash
 
 import (
 	"context"
-	"errors"
 	"io"
 	"strings"
 	"time"
@@ -11,6 +10,8 @@ import (
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
+
+	"github.com/pkg/errors"
 )
 
 type adaptation struct {
@@ -132,7 +133,11 @@ func New(ctx context.Context, manifest string) (*Manifest, error) {
 		}
 	}
 
-	minTime := m.MinimumUpdatePeriod.Duration
+	minTime, err := m.MinimumUpdatePeriod.Duration()
+	if err != nil {
+		return nil, err
+	}
+
 	// I can’t imagine using a minimum time of less than one millisecond.
 	if minTime < time.Millisecond {
 		minTime = time.Millisecond

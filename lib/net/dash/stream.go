@@ -3,7 +3,6 @@ package dash
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -12,6 +11,8 @@ import (
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/net/dash/mpd"
+
+	"github.com/pkg/errors"
 )
 
 // Stream is a structure holding the information necessary to retreive a#
