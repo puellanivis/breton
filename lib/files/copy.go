@@ -88,13 +88,3 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 
 	return written, err
 }
-
-// CopyWithRunningTimeout performs a series of io.CopyN calls that each has the given timeout.
-// So, this function allows you to copy a continuous stream of data, and yet respond to a disconnect/timeout event.
-//
-// Example: SHOUTcast streamers use a continuous open HTTP request to transfer data,
-// and setting any http.Client.Timeout will limit the whole io.Copy, rather than just each individual Read,
-// meaning that eventually the Timeout will be met, and the io.Copy will error with a exceeded deadline.
-func CopyWithRunningTimeout(ctx context.Context, dst io.Writer, src io.Reader, timeout time.Duration) (written int64, err error) {
-	return Copy(ctx, dst, src, WithWatchdogTimeout(timeout))
-}
