@@ -54,8 +54,8 @@ func flagName(prefix, name string) string {
 	return strings.Join(words, "-")
 }
 
-// arrayWrap is used to make array-based flags that will run the SetterFunc on every element of a split on ","
-func arrayWrap(fn SetterFunc) SetterFunc {
+// arrayWrap is used to make array-based flags that will run the setterFunc on every element of a split on ","
+func arrayWrap(fn setterFunc) setterFunc {
 	return func(s string) error {
 		for _, v := range strings.Split(s, ",") {
 			if err := fn(v); err != nil {
@@ -68,10 +68,15 @@ func arrayWrap(fn SetterFunc) SetterFunc {
 }
 
 // structVar is the work-horse, and does the actual reflection and recursive work.
-func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
+func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 	typ := v.Type()
 
 	for i := 0; i < typ.NumField(); i++ {
+		field := v.Field(i)
+		if !field.CanSet() {
+			continue
+		}
+
 		f := typ.Field(i)
 		name := flagName(prefix, f.Name)
 
@@ -127,8 +132,6 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 			}
 		}
 
-		field := v.Field(i)
-
 		var opts []Option
 		if short != 0 {
 			opts = append(opts, WithShort(short))
@@ -145,8 +148,10 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				field.Set(p)
 			}
 
-			// now, then lets work with the element itself.
-			field = field.Elem()
+			if _, ok := field.Interface().(Value); !ok {
+				// now then, if we don’t implement Value, lets work with the element itself.
+				field = field.Elem()
+			}
 		}
 
 		// We set val such that we can generically just use fs.Var to setup the flag,
@@ -156,7 +161,27 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 		var val Value
 		ptr := unsafe.Pointer(field.UnsafeAddr())
 
+		if field.Kind() != reflect.Ptr {
+			if _, ok := field.Interface().(Value); !ok {
+				f := field.Addr()
+
+				if _, ok := f.Interface().(Value); ok {
+					field = f
+				}
+			}
+		}
+
 		switch v := field.Interface().(type) {
+		case EnumValue:
+			set := &enumValue{
+				val: (*int)(ptr),
+			}
+			val = set
+
+			if tag := f.Tag.Get("values"); tag != "" {
+				set.setValid(strings.Split(tag, ","))
+			}
+
 		case Value:
 			// this is obviously the simplest option… the work is already done.
 			val = v
@@ -174,7 +199,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				u, err := strconv.ParseUint(s, 0, 64)
 				if err != nil {
 					return err
@@ -194,7 +219,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				u, err := strconv.ParseUint(s, 0, 64)
 				if err != nil {
 					return err
@@ -206,7 +231,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 
 		case uint8, uint16, uint32:
 			// here we support a few additional types with generic-ish reflection
-			val = NewFuncWithArg(fmt.Sprint(field), func(s string) error {
+			val = newFunc(fmt.Sprint(field), func(s string) error {
 				u, err := strconv.ParseUint(s, 0, 64)
 				if err != nil {
 					return err
@@ -226,7 +251,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				i, err := strconv.ParseInt(s, 0, 64)
 				if err != nil {
 					return err
@@ -246,7 +271,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				i, err := strconv.ParseInt(s, 0, 64)
 				if err != nil {
 					return err
@@ -258,7 +283,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 
 		case int8, int16, int32:
 			// here we support a few additional types with generic-ish reflection
-			val = NewFuncWithArg(fmt.Sprint(field), func(s string) error {
+			val = newFunc(fmt.Sprint(field), func(s string) error {
 				i, err := strconv.ParseInt(s, 0, 64)
 				if err != nil {
 					return err
@@ -278,7 +303,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				f, err := strconv.ParseFloat(s, 64)
 				if err != nil {
 					return err
@@ -290,7 +315,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 
 		case float32:
 			// here we support float32 with generic-ish reflection
-			val = NewFuncWithArg(fmt.Sprint(field), func(s string) error {
+			val = newFunc(fmt.Sprint(field), func(s string) error {
 				f, err := strconv.ParseFloat(s, 64)
 				if err != nil {
 					return err
@@ -310,14 +335,14 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				*slice = append(*slice, s)
 				return nil
 			}))
 
 		case []byte:
 			// just like string, but stored as []byte
-			val = NewFuncWithArg(fmt.Sprint(field), func(s string) error {
+			val = newFunc(fmt.Sprint(field), func(s string) error {
 				field.SetBytes([]byte(s))
 				return nil
 			})
@@ -332,7 +357,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				d, err := time.ParseDuration(s)
 				if err != nil {
 					return err
@@ -345,7 +370,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 		case url.URL:
 			set := (*url.URL)(ptr)
 
-			val = NewFuncWithArg(fmt.Sprint(field), func(s string) error {
+			val = newFunc(fmt.Sprint(field), func(s string) error {
 				uri, err := url.Parse(s)
 				if err != nil {
 					return err
@@ -362,7 +387,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 				def = fmt.Sprint(*slice)
 			}
 
-			val = NewFuncWithArg(def, arrayWrap(func(s string) error {
+			val = newFunc(def, arrayWrap(func(s string) error {
 				uri, err := url.Parse(s)
 				if err != nil {
 					return err
@@ -383,31 +408,30 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) {
 
 		fs.Var(val, name, usage, opts...)
 	}
+
+	return nil
 }
 
 // FlagStruct uses reflection to take a structure and turn it into a series of flags.
 // It recognizes the struct tags of `flag:"flag-name,short=F,default=defval"` and `desc:"usage"`.
 // The "desc" tag is intended to be much more generic than just for use in this library.
 // To ignore a struct value use the tag `flag:"-"`, and `flag:","` will use the variable’s name.
-func (fs *FlagSet) FlagStruct(prefix string, value interface{}) {
+func (fs *FlagSet) Struct(prefix string, value interface{}) error {
 	v := reflect.ValueOf(value)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
 		panic(fmt.Sprintf("gnuflag.Flags on non-pointer: %v", v.Kind()))
-
 	}
 
 	v = v.Elem()
 
-	switch v.Kind() {
-	case reflect.Struct:
-		fs.structVar(prefix, v)
-
-	default:
+	if v.Kind() != reflect.Struct {
 		panic(fmt.Sprintf("gnuflag.Flags on non-struct: %v", v.Kind()))
 	}
+
+	return fs.structVar(prefix, v)
 }
 
 // Uses the FlagStruct for the default CommandLine flagset.
-func FlagStruct(prefix string, value interface{}) {
-	CommandLine.FlagStruct(prefix, value)
+func Struct(prefix string, value interface{}) error {
+	return CommandLine.Struct(prefix, value)
 }

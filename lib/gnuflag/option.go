@@ -13,6 +13,7 @@ type Option func(*Flag) Option
 func WithShort(shortFlag rune) Option {
 	return func(f *Flag) Option {
 		save := f.Short
+
 		f.Short = shortFlag
 
 		return WithShort(save)

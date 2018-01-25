@@ -11,11 +11,6 @@
 	This declares an integer flag, --flagname, with short flagname -f stored in the pointer ip, with type *int.
 		import flag "github.com/puellanivis/breton/lib/gnuflag"
 		var ip = flag.Int("flagname", 1234, "help message for flagname", flag.WithShort('f'))
-	If you like, you can bind the flag to a variable using the Var() functions.
-		var flagvar int
-		func init() {
-			flag.IntVar(&flagvar, "flagname", 1234, "help message for flagname", flag.WithShort('f'))
-		}
 	Or you can create custom flags that satisfy the Value interface (with
 	pointer receivers) and couple them to flag parsing by
 		flag.Var(&flagVal, "name", "help message for flagname")
@@ -308,16 +303,22 @@ func UnquoteUsage(flag *Flag) (name string, usage string) {
 
 	// Look for a back-quoted name, but avoid the strings package.
 	usage = flag.Usage
-	for i := 0; i < len(usage); i++ {
-		if usage[i] == '`' {
-			for j := i + 1; j < len(usage); j++ {
-				if usage[j] == '`' {
-					name = usage[i+1 : j]
-					usage = usage[:i] + name + usage[j+1:]
+	for i, r := range usage {
+		if r == '`' || r == '·' {
+			l := 1
+			if r == '·' {
+				l = 2
+			}
+
+			for j, r2 := range usage[i+l:] {
+				if r2 == r {
+					j += i + l
+					name = usage[i+l : j]
+					usage = usage[:i] + name + usage[j+l:]
 					return name, usage
 				}
 			}
-			break // Only one back quote; use type name.
+			break // Only one backquote or middot; use type name.
 		}
 	}
 
@@ -377,12 +378,19 @@ func (f *FlagSet) PrintDefaults() {
 		if utf8.RuneCountInString(s) > 7 {
 			// Four spaces before the tab triggers good alignment
 			// for both 4- and 8-space tab stops.
-			s += "\n    \t"
+			s += "\n    "
 		}
 
-		s += strings.Replace(usage, "\n", "\n    \t", -1)
+		s += "\t" + strings.Replace(usage, "\n", "\n    \t", -1)
 
-		if !isZeroValue(flag, flag.DefValue) {
+		// TODO: we should be checking here to make sure the funcValue.value is non zero
+		if f, isFunc := flag.Value.(*funcValue); isFunc {
+			if f.value != "" {
+				// put quotes on the value
+				s += fmt.Sprintf(" (default %q)", f.value)
+			}
+
+		} else if !isZeroValue(flag, flag.DefValue) {
 			if _, ok := flag.Value.(*stringValue); ok {
 				// put quotes on the value
 				s += fmt.Sprintf(" (default %q)", flag.DefValue)
@@ -535,8 +543,9 @@ func (f *FlagSet) setShort(flag *Flag, name rune) {
 	f.short[name] = flag
 }
 
-// Copy defines a flag as a copy of an existing flag. Using the already given name, short, usage, and default.
-// It will panic if you attempt to copy it into a FlagSet where it is already defined.
+// Copy copies an existing flag into this FlagSet.
+// This uses the already given name, short, usage, and default.
+// It will panic if you attempt to copy a Flag into a FlagSet where the name or short name already exist.
 //	fs := flag.NewFlagSet("example", flag.ExitOnError)
 //	fs.Copy(flag.Lookup("output"))
 func (f *FlagSet) Copy(flag *Flag) {
@@ -544,9 +553,8 @@ func (f *FlagSet) Copy(flag *Flag) {
 	f.setShort(flag, flag.Short)
 }
 
-// CopyFrom copies the flag named from the given FlagSet into this FlagSet. defines a flag as a copy of an existing flag.
-// Using the already given name, short, usage, and default.
-// It will panic if you attempt to copy it into a FlagSet where it is already defined.
+// CopyFrom does a lookup of the flagname on the given FlagSet, and the Copies that flag into this Flagset.
+// It will panic if you attempt to copy a Flag into a FlagSet where the name or short name already exist.
 //	fs := flag.NewFlagSet("example", flag.ExitOnError)
 //	fs.CopyFrom(flag.CommandLine, "output")
 func (f *FlagSet) CopyFrom(from *FlagSet, name string) {
@@ -856,11 +864,9 @@ func init() {
 	// Note: This is not CommandLine.Usage = Usage,
 	// because we want any eventual call to use any updated value of Usage,
 	// not the value it has when this line is run.
-	CommandLine.Usage = commandLineUsage
-}
-
-func commandLineUsage() {
-	Usage()
+	CommandLine.Usage = func() {
+		Usage()
+	}
 }
 
 // NewFlagSet returns a new, empty flag set with the specified name and

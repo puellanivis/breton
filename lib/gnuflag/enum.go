@@ -2,67 +2,81 @@ package gnuflag
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 )
 
-// EnumValue describes a String flag that will only accept certain specific values.
-type EnumValue struct {
-	Value   int
+// Enum defines an String flag type that maps to a uint value.
+// It is exported, so that it may be defined in a gnuflags.Struct parameter.
+type EnumValue int
+
+// enumValue describes a String flag that will only accept certain specific values.
+type enumValue struct {
+	val     *int
 	indices map[string]int
 	valid   []string
 }
 
-// NewEnumValue returns an EnumValue that will only accept the given strings.
-func NewEnumValue(valid ...string) *EnumValue {
-	e := &EnumValue{
-		indices: make(map[string]int),
-		valid:   valid,
+// newEnumValue returns an EnumValue that will only accept the given strings.
+func newEnumValue(valid ...string) *enumValue {
+	e := &enumValue{
+		val: new(int),
 	}
 
-	for i, v := range valid {
-		v = strings.ToUpper(v)
-
-		e.indices[v] = i
-	}
+	e.setValid(valid)
 
 	return e
 }
 
-// ValueType permits an ability for the more standard flags library to support
-// a flag displaying values/type allowed beyond the concrete types.
-func (e *EnumValue) ValueType() string {
-	return strings.Join(e.valid, ", ")
-}
+func (e *enumValue) setValid(valid []string) {
+	e.valid = valid
 
-// Copy returns a newly allocated copy of the EnumValue.
-func (e *EnumValue) Copy() interface{} {
-	return &EnumValue{
-		Value:   e.Value,
-		indices: e.indices,
-		valid:   e.valid,
+	e.indices = make(map[string]int)
+	for i, v := range valid {
+		if v == "" {
+			continue
+		}
+
+		v = strings.ToUpper(v)
+
+		e.indices[v] = i
 	}
 }
 
-func newEnumValue(val string, p *EnumValue) *EnumValue {
-	p.Set(val)
-	return p
+// ValueType permits an ability for the more standard flags library to support
+// a flag displaying values/type allowed beyond the concrete types.
+func (e *enumValue) ValueType() string {
+	var filtered []string
+
+	for _, v := range e.valid {
+		if v == "" {
+			continue
+		}
+
+		filtered = append(filtered, v)
+	}
+
+	return strings.Join(filtered, ", ")
 }
 
 // String returns the canonical valid string of the value of the EnumValue.
-func (e *EnumValue) String() string {
-	if e.Value < 0 || e.Value >= len(e.valid) {
-		return ""
+func (e *enumValue) String() string {
+	val := *e.val
+
+	if val < 0 || val >= len(e.valid) {
+		return strconv.Itoa(val)
 	}
-	return e.valid[e.Value]
+
+	return e.valid[val]
 }
 
 // ErrBadEnum is the error returned when attempting to set an enum flag with a value not in the Enum
 var ErrBadEnum = errors.New("bad enum value")
 
 // Set attempts to set the given EnumValue to the given string.
-func (e *EnumValue) Set(s string) error {
+func (e *enumValue) Set(s string) error {
 	if s == "" {
-		e.Value = 0
+		*e.val = 0
 		return nil
 	}
 
@@ -71,33 +85,25 @@ func (e *EnumValue) Set(s string) error {
 		return ErrBadEnum
 	}
 
-	e.Value = v
+	*e.val = v
 	return nil
 }
 
 // Get returns the value of the enum flag. Expect it to be of type int.
-func (e *EnumValue) Get() interface{} {
-	return e.Value
+func (e *enumValue) Get() interface{} {
+	return *e.val
 }
 
-// EnumVar defines an enum flag with specified name, short flagname, usage, and default value. The argument p points to an EnumValue in which to store the value of the flag.
-func (f *FlagSet) EnumVar(p *EnumValue, name string, value string, usage string, options ...Option) {
-	f.Var(newEnumValue(value, p), name, usage, options...)
+// Enum defines an enum flag with specified name, usage, and list of valid values.
+// The return value is the address of an EnumValue variable that stores the value of the flag.
+func (f *FlagSet) Enum(name string, usage string, valid []string, options ...Option) *EnumValue {
+	e := newEnumValue(valid...)
+	f.Var(e, name, usage, options...)
+	return (*EnumValue)(e.val)
 }
 
-// EnumVar defines an enum flag with specified name, short flagname, usage, and default value. The argument p points to an EnumValue in which to store the value of the flag.
-func EnumVar(p *EnumValue, name string, value string, usage string, options ...Option) {
-	CommandLine.Var(newEnumValue(value, p), name, usage, options...)
-}
-
-// Enum defines an enum flag with specified name, shortname, usage, default value, and a list of additional valid values. The return value is the address of an EnumValue variable that stores the value of the flag.
-func (f *FlagSet) Enum(name string, value string, usage string, valid []string, options ...Option) *EnumValue {
-	e := NewEnumValue(valid...)
-	f.EnumVar(e, name, value, usage, options...)
-	return e
-}
-
-// Enum defines an enum flag with specified name, shortname, usage, default value, and a list of additional valid values. The return value is the address of an EnumValue variable that stores the value of the flag.
-func Enum(name string, value string, usage string, valid []string, options ...Option) *EnumValue {
-	return CommandLine.Enum(name, value, usage, valid, options...)
+// Enum defines an enum flag with specified name, usage, and list of valid values.
+// The return value is the address of an EnumValue variable that stores the value of the flag.
+func Enum(name string, usage string, valid []string, options ...Option) *EnumValue {
+	return CommandLine.Enum(name, usage, valid, options...)
 }
