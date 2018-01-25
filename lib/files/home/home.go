@@ -5,7 +5,7 @@ import (
 	"context"
 	"net/url"
 	"os"
-	"strings"
+	"path/filepath"
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/os/user"
@@ -24,10 +24,6 @@ func init() {
 		return
 	}
 
-	if !strings.HasSuffix(userDir, string(os.PathSeparator)) {
-		userDir += string(os.PathSeparator)
-	}
-
 	files.RegisterScheme(&handler{}, "home")
 }
 
@@ -41,7 +37,7 @@ func Filename(uri *url.URL) (string, error) {
 		}
 
 		if dir := u.HomeDir; dir != "" {
-			return dir + uri.Path, nil
+			return filepath.Join(dir, uri.Path), nil
 		}
 	}
 
@@ -52,7 +48,7 @@ func Filename(uri *url.URL) (string, error) {
 		}
 	}
 
-	return userDir + uri.Opaque, nil
+	return filepath.Join(userDir, uri.Opaque), nil
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
