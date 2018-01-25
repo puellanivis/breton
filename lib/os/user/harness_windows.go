@@ -32,8 +32,3 @@ func LookupGroup(name string) (*Group, error) {
 func LookupGroupId(gid string) (*Group, error) {
 	return lookupGroupId(gid)
 }
-
-// GroupIds returns the list of group IDs that the user is a member of.
-func (u *User) GroupIds() ([]string, error) {
-	return listGroups(u)
-}

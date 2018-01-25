@@ -8,16 +8,28 @@ import (
 	"os/user"
 )
 
-type Group struct{ user.Group }
-type User struct{ user.User }
+type Group = user.Group
+type User = user.User
 
-var (
-	LookupGroup   = user.LookupGroup
-	LookupGroupId = user.LookupGroupId
-	Current       = user.Current
-	Lookup        = user.Lookup
-	LookupId      = user.LookupId
-)
+func LookupGroup(name string) (*Group, error) {
+	return user.LookupGroup(name)
+}
+
+func LookupGroupId(gid string) (*Group, error) {
+	return user.LookupGroupId(gid)
+}
+
+func Current() (*User, error) {
+	return user.Current()
+}
+
+func Lookup(username string) (*User, error) {
+	return user.Lookup(username)
+}
+
+func LookupId(uid string) (*User, error) {
+	return user.LookupId(uid)
+}
 
 func CurrentHomeDir() (string, error) {
 	me, err := user.Current()
