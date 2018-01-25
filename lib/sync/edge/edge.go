@@ -53,20 +53,18 @@ import (
 	"sync/atomic"
 )
 
-// Edge defines a synchronization object that deifnes two states Up and Down
+// Edge defines a synchronization object that defines two states Up and Down
 type Edge struct {
 	// hide this value from callers, so that they cannot manipulate it.
 	e int32
 }
 
+var states = []string{ "down", "up" }
+
 // String returns a momentary state of the Edge.
 func (e *Edge) String() string {
 	v := atomic.LoadInt32(&e.e)
-	if v == 0 {
-		return "down"
-	}
-
-	return "up"
+	return states[v]
 }
 
 // Up will ensure that the Edge is in state Up, and returns true only if state changed.
