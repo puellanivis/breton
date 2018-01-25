@@ -10,7 +10,7 @@ import (
 
 var (
 	// Go libraries should not set flags themselves, this is an exception.
-	_ = flag.Func("version", "display version information", func() {
+	_ = flag.BoolFunc("version", "display version information", func() {
 		fmt.Println(versionString)
 		Exit(0)
 	})
