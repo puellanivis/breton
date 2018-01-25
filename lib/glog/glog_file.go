@@ -39,7 +39,7 @@ var logDirs []string
 
 // If non-empty, overrides the choice of directory in which to write logs.
 // See createLogDirs for the full list of possible destinations.
-var logDir = flag.String("log_dir", "", "If non-empty, write log files in this directory")
+var logDir = flag.String("log_dir", "If non-empty, write log files in this directory")
 
 func createLogDirs() {
 	if *logDir != "" {
@@ -54,6 +54,11 @@ var (
 	host     = "unknownhost"
 	userName = "unknownuser"
 )
+
+// This would normally be a thread ID, but NO! NO NO NO NO NO! Go doesn’t have this notion.
+// So, we just precompute a byte slice that is 7-bytes wide, and contains the pid of the program.
+// Yes, this can be slow, because we only do it once at startup.
+var tid = []byte(fmt.Sprintf("%7d", pid))
 
 func init() {
 	h, err := os.Hostname()
