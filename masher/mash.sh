@@ -152,6 +152,8 @@ if [[ -n $TIMESTAMP ]]; then
 	DEPS=$( go list -f "{{.Deps}}" | grep -c -e "\<lib/util\>" )
 	if [[ $DEPS -ne 0 ]]; then
 		GOFLAGS=-ldflags="-X github.com/puellanivis/breton/lib/util.BUILD=$TIMESTAMP"
+	else
+		GOFLAGS=-ldflags="-X main.VersionBuild=$TIMESTAMP"
 	fi
 fi
 
