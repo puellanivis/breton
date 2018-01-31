@@ -7,5 +7,5 @@ import (
 )
 
 func init() {
-	http.Handle("/metrics/prometheus", promhttp.Handler())
+	http.Handle("/metrics/", promhttp.Handler())
 }
