@@ -157,6 +157,7 @@ if [[ -z $IMAGE ]]; then
 		exit 1
 	fi
 
+	HASHID=$(git rev-parse --short HEAD)
 	HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
 	BRANCH=$(basename ${HEAD})
 
@@ -224,11 +225,12 @@ echo "BASE='$BASE'"
 echo "PRJPATH='$PRJPATH'"
 echo "PROJECT='$PROJECT'"
 echo "BRANCH='$BRANCH'"
+echo "HASHID='$HASHID'"
 
 TIMESTAMP=$(date -u +"%Y%m%d.%H%M%S")
 
 echo Using image: $IMAGE
-echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD --timestamp=$TIMESTAMP $@
+echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE --timestamp=$TIMESTAMP --id=$HASHID $@
 
 DOCKER_VERSION="$(docker --version)"
 DOCKER_VERSION=${DOCKER_VERSION%%,*}
@@ -293,7 +295,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
 	${IMAGE} \
-	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE --timestamp=$TIMESTAMP "$@" || exit 1
+	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE --timestamp=$TIMESTAMP --id=$HASHID "$@" || exit 1
 
 if [[ $PROD == "true" ]]; then
 	make push || exit 1

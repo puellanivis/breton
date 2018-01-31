@@ -2,13 +2,17 @@
 
 while [[ "$#" -gt 0 ]]; do
 	key="$1"
+	val="${key#*=}"
 
 	case $key in
 		--cache=*)
-			export GOCACHE=${1#--cache=}
+			export GOCACHE="$val"
 		;;
 		--timestamp=*)
-			TIMESTAMP=${1#--timestamp=}
+			TIMESTAMP="$val"
+		;;
+		--id=*)
+			ID="$val"
 		;;
 
 		--linux)
@@ -147,13 +151,19 @@ if [[ "$NOBUILD" == "true" ]]; then
 	exit 0
 fi
 
+BUILDSTAMP="$TIMESTAMP"
+if [[ -n $ID ]]; then
+        [[ -n $BUILDSTAMP ]] && BUILDSTAMP="${BUILDSTAMP}~"
+	BUILDSTAMP="${BUILDSTAMP}${ID}"
+fi
+
 PROJECT="${PWD##*/}"
-if [[ -n $TIMESTAMP ]]; then
+if [[ -n $BUILDSTAMP ]]; then
 	DEPS=$( go list -f "{{.Deps}}" | grep -c -e "\<lib/util\>" )
 	if [[ $DEPS -ne 0 ]]; then
-		GOFLAGS=-ldflags="-X github.com/puellanivis/breton/lib/util.BUILD=$TIMESTAMP"
+		GOFLAGS=-ldflags="-X github.com/puellanivis/breton/lib/util.BUILD=$BUILDSTAMP"
 	else
-		GOFLAGS=-ldflags="-X main.VersionBuild=$TIMESTAMP"
+		GOFLAGS=-ldflags="-X main.VersionBuild=$BUILDSTAMP"
 	fi
 fi
 
