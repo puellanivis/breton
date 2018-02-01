@@ -17,7 +17,7 @@ var (
 	sigchan = make(chan os.Signal)
 
 	hupMutex sync.Mutex
-	hupchan chan struct{}
+	hupchan  chan struct{}
 )
 
 // HangupChannel provides a receiver channel that will notify the caller of when a SIGHUP signal has been received.
