@@ -59,7 +59,7 @@ type Edge struct {
 	e int32
 }
 
-var states = []string{ "down", "up" }
+var states = []string{"down", "up"}
 
 // String returns a momentary state of the Edge.
 func (e *Edge) String() string {

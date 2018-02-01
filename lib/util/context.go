@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"sync"
 	"syscall"
 	"time"
 
@@ -14,7 +15,46 @@ import (
 var (
 	utilCtx context.Context
 	sigchan = make(chan os.Signal)
+
+	hupMutex sync.Mutex
+	hupchan chan struct{}
 )
+
+// HangupChannel provides a receiver channel that will notify the caller of when a SIGHUP signal has been received.
+// This signal is often used by daemons to be notified of a request to reload configuration data.
+//
+// Note, that if too many SIGHUPs arrive at once, and the signal handler would block trying to send this notification,
+// then it will treat the signal the same as any other terminating signals.
+func HangupChannel() <-chan struct{} {
+	hupMutex.Lock()
+	defer hupMutex.Unlock()
+
+	if hupchan == nil {
+		hupchan = make(chan struct{})
+	}
+
+	return hupchan
+}
+
+// sendHup does the job of locking the hupMutex and trying to send the HUP notification.
+// It will return true if it successfully sends the notification.
+func sendHup() bool {
+	hupMutex.Lock()
+	defer hupMutex.Unlock()
+
+	if hupchan == nil {
+		return false
+	}
+
+	select {
+	case hupchan <- struct{}{}:
+		return true
+	default:
+		glog.Error("too many hangups: terminating")
+	}
+
+	return false
+}
 
 func init() {
 	var cancel context.CancelFunc
@@ -26,7 +66,15 @@ func init() {
 		killchan := make(chan struct{}, 3)
 
 		for sig := range sigchan {
-			glog.Error("received signal:", sig)
+			glog.Errorf("received signal: %s", sig)
+
+			switch sig {
+			case syscall.SIGHUP:
+				if sendHup() {
+					continue
+				}
+			}
+
 			cancel()
 
 			select {
@@ -54,18 +102,6 @@ func init() {
 // Context returns a context.Context that will cancel if the program receives any signal that a program may want to cleanup after.
 func Context() context.Context {
 	return utilCtx
-}
-
-// IsDone is a helper function that without blocking returns true/false
-// if the context is done. (Makes it easier to just, “if done { return }"
-func IsDone(ctx context.Context) bool {
-	select {
-	case <-ctx.Done():
-		return true
-	default:
-	}
-
-	return false
 }
 
 // Quit causes a closure of the signal channel, which causes the signal handler
