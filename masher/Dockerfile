@@ -1,6 +1,6 @@
 # This docker image builds upon the golang docker image to support a more automated process for building
 # golang files.
-FROM golang:1.9
+FROM golang:1.10-rc
 MAINTAINER Cassondra Foesch <puellanivis@gmail.com>
 
 # Setup various environment and argument settings which define the building environment.
@@ -15,6 +15,8 @@ WORKDIR /go/src
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	bsdtar \
 	ca-certificates \
+	lintian \
+	fakeroot \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
 
@@ -64,6 +66,7 @@ RUN go get -v -u \
 	github.com/pkg/errors \
 	gopkg.in/yaml.v2 \
 	github.com/gocql/gocql \
+	github.com/soheilhy/cmux \
 	github.com/prometheus/client_golang/prometheus \
 	github.com/prometheus/client_golang/prometheus/promhttp
 
