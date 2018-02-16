@@ -81,6 +81,12 @@ while [[ $# -gt 0 ]]; do
 		WINDOWSFLAG="--windows"
 	;;
 
+	--pkgonly)
+		LINUXFLAG="--deb"
+		DARWINFLAG=""
+		WINDOWSFLAG=""
+	;;
+
 	--localtest)
 		LOCALTEST="true"
 	;;
@@ -183,11 +189,14 @@ if which go > /dev/null 2>&1 ; then
 	GO_VERSION="$(go version)"
 	GO_VERSION=${GO_VERSION#go version go}
 	GO_VERSION=${GO_VERSION%% *}
-	echo Found Local Go Version: $GO_VERSION
-	case $GO_VERSION in
-		1.9|1.9.*)
-			LOCALTEST="true"
-	esac
+
+	if [[ "$LINUX" != "--deb" ]]; then
+		echo Found Local Go Version: $GO_VERSION
+		case $GO_VERSION in
+			1.9|1.9.*)
+				LOCALTEST="true"
+		esac
+	fi
 fi
 
 if [[ ("$LOCALTEST" == "true") && ("$TEST" != "--notest") ]] ; then
@@ -283,6 +292,14 @@ for p in $MASHER_LIBS; do
 	fi
 done
 IFS=$SAVE_IFS
+
+if [[ ( -r debian/control ) ]]; then
+	if [[ -r ./.gitignore ]]; then
+		grep -qFx -e "debian/whoami" ./.gitignore || echo "debian/whoami" >> ./.gitignore
+	fi
+
+	printf "$(git config user.name) <$(git config user.email)>" > debian/whoami
+fi
 
 ${EXEC} docker run ${FLAGS} --rm \
 	--name "${NAME}" \
