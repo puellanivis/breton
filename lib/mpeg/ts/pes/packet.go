@@ -11,7 +11,7 @@ type packet struct {
 }
 
 const (
-	idPaddingStream = 0xBE
+	idPaddingStream  = 0xBE
 	idPrivateStream2 = 0xBF
 )
 
@@ -52,7 +52,7 @@ func (p *packet) Unmarshal(b []byte) error {
 		return err
 	}
 
-	b = b[6:6+l] // enforce proper boundaries
+	b = b[6 : 6+l] // enforce proper boundaries
 
 	return p.unmarshal(b)
 }
@@ -80,7 +80,7 @@ func (p *packet) Marshal() ([]byte, error) {
 	}
 
 	// len(Manditory PES Header) == 6
-	out := make([]byte, 6 + l)
+	out := make([]byte, 6+l)
 
 	out[0] = 0
 	out[1] = 0

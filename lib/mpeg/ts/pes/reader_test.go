@@ -15,7 +15,7 @@ func TestUnmarshal(t *testing.T) {
 	b := []byte{
 		0, 0, 1,
 		0x42,
-		0, byte(3+len(expected[0])),
+		0, byte(3 + len(expected[0])),
 		0x80, 0x00, 0x00,
 	}
 	b = append(b, expected[0]...)
@@ -23,7 +23,7 @@ func TestUnmarshal(t *testing.T) {
 	b = append(b, []byte{
 		0, 0, 1,
 		0x42,
-		0, byte(3+len(expected[1])),
+		0, byte(3 + len(expected[1])),
 		0x80, 0x00, 0x00,
 	}...)
 	b = append(b, expected[1]...)
@@ -63,7 +63,7 @@ func TestUnmarshal(t *testing.T) {
 	output := make([]byte, 3)
 	for i := 0; i < len(all); i += 3 {
 		expectedLen := 3
-		if i + 3 > len(all) {
+		if i+3 > len(all) {
 			expectedLen = len(all) - i
 		}
 
@@ -77,7 +77,7 @@ func TestUnmarshal(t *testing.T) {
 		}
 
 		output := output[:n]
-		expected := all[i:i+expectedLen]
+		expected := all[i : i+expectedLen]
 
 		if !reflect.DeepEqual(output, expected) {
 			t.Errorf("expected to read %v, but read %v", expected, output)

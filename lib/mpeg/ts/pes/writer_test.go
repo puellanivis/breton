@@ -21,7 +21,7 @@ func TestMarshal(t *testing.T) {
 	expected := []byte{
 		0, 0, 1,
 		0x42,
-		0, byte(3+len(input)),
+		0, byte(3 + len(input)),
 		0x80, 0x00, 0x00,
 	}
 	expected = append(expected, input...)

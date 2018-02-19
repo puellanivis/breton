@@ -4,19 +4,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Stream is a structure defining properties of a Primitive Elementary Stream.
 type Stream struct {
-	ID byte
+	ID byte // Stream ID
 
-	Header Header
+	Header Header // Optional PES Header fields.
 }
 
+// Header is the Optional PES Header defined in SO/IEC 13818-1 and ITU-T H.222.0.
+// It does not currently support any of the options that yield a variable length Header.
 type Header struct {
 	ScrambleControl byte
 
-	Priority bool
+	Priority      bool
 	DataAlignment bool
-	Copyright bool
-	IsOriginal bool
+	Copyright     bool
+	IsOriginal    bool
 
 	padding []byte
 }
@@ -28,24 +31,25 @@ func (h *Header) len() int {
 const (
 	markerBits = 0x80
 
-	maskScramble = 0x30
+	maskScramble  = 0x30
 	shiftScramble = 4
 
-	flagPriority = 0x08
+	flagPriority  = 0x08
 	flagAlignment = 0x04
 	flagCopyright = 0x02
-	flagOriginal = 0x01
+	flagOriginal  = 0x01
 )
 
+// Unmarshal fills in the values of an Optional PES Header from those encoded in the given byte-slice.
 func (h *Header) Unmarshal(b []byte) error {
 	length := 3 + int(b[2]) // full header length
-	b = b[:length] // enforce header length with slice boundaries
+	b = b[:length]          // enforce header length with slice boundaries
 
 	h.ScrambleControl = (b[0] & maskScramble) >> shiftScramble
-	h.Priority = b[0] & flagPriority != 0
-	h.DataAlignment = b[0] & flagAlignment != 0
-	h.Copyright = b[0] & flagCopyright != 0
-	h.IsOriginal = b[0] & flagOriginal != 0
+	h.Priority = b[0]&flagPriority != 0
+	h.DataAlignment = b[0]&flagAlignment != 0
+	h.Copyright = b[0]&flagCopyright != 0
+	h.IsOriginal = b[0]&flagOriginal != 0
 
 	// where the padding starts
 	padStart := 3
@@ -59,8 +63,9 @@ func (h *Header) Unmarshal(b []byte) error {
 	return nil
 }
 
+// Marshal returns a byte-slice that is the encoding of a given Optional PES Header.
 func (h *Header) Marshal() ([]byte, error) {
-	if h.ScrambleControl &^ 0x03 != 0 {
+	if h.ScrambleControl&^0x03 != 0 {
 		return nil, errors.Errorf("invalid scramble control: 0x%02x", h.ScrambleControl)
 	}
 
@@ -85,6 +90,8 @@ func (h *Header) Marshal() ([]byte, error) {
 	}
 
 	out[1] = 0
+	// The following fields are not supported and given is their presumed values:
+	// They would need to be implemented in the following order, as they are concatted one-after-another.
 	// PTS/DTS = both not included
 	// ESCR = false
 	// ES Rate = false
