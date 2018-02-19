@@ -30,13 +30,28 @@ func (r *Reader) mustRead(b []byte) error {
 }
 
 func (r *Reader) Read(b []byte) (n int, err error) {
-	for r.buf.Len() >= len(b) {
-		return r.buf.Read(b)
+	if r.buf.Len() > 0 {
+		var err error
+
+		n, err = r.buf.Read(b)
+		if err != nil {
+			return n, err
+		}
+
+		if n == len(b) {
+			return n, nil
+		}
 	}
 
 	hdr := make([]byte, 6)
 	if err := r.mustRead(hdr); err != nil {
-		return 0, err
+		if err == io.EOF && n != 0 {
+			// only return err == io.EOF,
+			// if we have not read anything from the buffer.
+			return n, nil
+		}
+
+		return n, err
 	}
 
 	pkt := &packet{
@@ -45,21 +60,23 @@ func (r *Reader) Read(b []byte) (n int, err error) {
 
 	l, err := pkt.preUnmarshal(hdr)
 	if err != nil {
-		return 0, err
+		return n, err
 	}
 
 	body := make([]byte, l)
-	if err := r.mustRead(body); err != nil {
-		return 0, err
+	if err = r.mustRead(body); err != nil {
+		return n, err
 	}
 
-	if err := pkt.unmarshal(body); err != nil {
-		return 0, err
+	if err = pkt.unmarshal(body); err != nil {
+		return n, err
 	}
 
-	if _, err = r.buf.Write(pkt.payload); err != nil {
-		return 0, err
+	m := copy(b[n:], pkt.payload)
+
+	if m < len(pkt.payload) {
+		_, err = r.buf.Write(pkt.payload[m:])
 	}
 
-	return r.buf.Read(b)
+	return n+m, err
 }
