@@ -1,6 +1,7 @@
 package dvb
 
 import (
+	"reflect"
 	"testing"
 
 	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
@@ -25,7 +26,7 @@ func TestServiceDescriptor(t *testing.T) {
 
 	d, err := desc.Unmarshal(b)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Unmarshal: %+v", err)
 	}
 
 	service, ok := d.(*ServiceDescriptor)
@@ -45,4 +46,12 @@ func TestServiceDescriptor(t *testing.T) {
 		t.Errorf("wrong name name, expected %q got %q", name, service.Name)
 	}
 
+	b, err = service.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %+v", err)
+	}
+
+	if !reflect.DeepEqual(b, testServiceDescriptor) {
+		t.Errorf("Marshal: unexpected results\nexpected: [% 2X]\ngot:      [% 2X]", testServiceDescriptor, b)
+	}
 }
