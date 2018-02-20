@@ -46,7 +46,7 @@ func (s *Stream) String() string {
 			out = append(out, "ORIG")
 		}
 
-		if s.PTS != nil  {
+		if s.PTS != nil {
 			out = append(out, fmt.Sprintf("PTS:x%09x", *s.PTS))
 		}
 
@@ -82,7 +82,7 @@ type Header struct {
 	extLen int
 
 	extFlags byte
-	padding []byte
+	padding  []byte
 }
 
 const (
