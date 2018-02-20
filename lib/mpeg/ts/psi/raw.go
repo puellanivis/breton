@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-type raw struct{
-	ID byte
+type raw struct {
+	ID      byte
 	Private bool
-	
+
 	Syntax *SectionSyntax
 
 	Data []byte
@@ -41,12 +41,12 @@ func (psi *raw) String() string {
 
 const (
 	flagSectionSyntax = 0x80
-	flagPrivate = 0x40
+	flagPrivate       = 0x40
 )
 
 func (psi *raw) Unmarshal(b []byte) error {
 	psi.ID = b[0]
-	psi.Private = b[1] & flagPrivate != 0
+	psi.Private = b[1]&flagPrivate != 0
 
 	syn, data, crc, err := CommonUnmarshal(b)
 	if err != nil {

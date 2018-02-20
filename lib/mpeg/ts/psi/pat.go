@@ -9,7 +9,7 @@ import (
 
 type ProgramMap struct {
 	ProgramNumber uint16
-	PID uint16
+	PID           uint16
 }
 
 type PAT struct {
@@ -63,19 +63,19 @@ func (pat *PAT) Unmarshal(b []byte) error {
 	pat.Syntax = syn
 	pat.crc = crc
 
-	pat.Map = make([]ProgramMap, len(data) / 4)
+	pat.Map = make([]ProgramMap, len(data)/4)
 	for i := range pat.Map {
 		b := data[i*4:]
 
 		pat.Map[i].ProgramNumber = (uint16(b[0]) << 8) | uint16(b[1])
-		pat.Map[i].PID           = (uint16(b[2] & 0x1F) << 8) | uint16(b[3])
+		pat.Map[i].PID = (uint16(b[2]&0x1F) << 8) | uint16(b[3])
 	}
 
 	return nil
 }
 
 func (pat *PAT) Marshal() ([]byte, error) {
-	data := make([]byte, len(pat.Map) * 4)
+	data := make([]byte, len(pat.Map)*4)
 
 	for i := range pat.Map {
 		b := data[i*4:]
@@ -89,4 +89,3 @@ func (pat *PAT) Marshal() ([]byte, error) {
 
 	return CommonMarshal(tableidPAT, false, pat.Syntax, data)
 }
-

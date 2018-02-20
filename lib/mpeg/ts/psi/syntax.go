@@ -5,17 +5,17 @@ import (
 	"strings"
 )
 
-type SectionSyntax struct{
-	TableIDExtension uint16
-	Version uint8
-	Current bool
-	SectionNumber uint8
+type SectionSyntax struct {
+	TableIDExtension  uint16
+	Version           uint8
+	Current           bool
+	SectionNumber     uint8
 	LastSectionNumber uint8
 }
 
 const (
 	shiftSyntaxVersion = 1
-	maskSyntaxVersion = 0x1F
+	maskSyntaxVersion  = 0x1F
 
 	flagSyntaxCurrent = 0x01
 )
@@ -30,7 +30,7 @@ func (s *SectionSyntax) String() string {
 		out = append(out, "CUR")
 	}
 
-	if s.SectionNumber | s.LastSectionNumber != 0 {
+	if s.SectionNumber|s.LastSectionNumber != 0 {
 		out = append(out, fmt.Sprintf("SecNum:x%02x LastSec:x%02x", s.SectionNumber, s.LastSectionNumber))
 	}
 
@@ -40,7 +40,7 @@ func (s *SectionSyntax) String() string {
 func (s *SectionSyntax) Unmarshal(b []byte) error {
 	s.TableIDExtension = (uint16(b[0]) << 8) | uint16(b[1])
 	s.Version = (b[2] >> shiftSyntaxVersion) & maskSyntaxVersion
-	s.Current = b[2] & flagSyntaxCurrent != 0
+	s.Current = b[2]&flagSyntaxCurrent != 0
 	s.SectionNumber = b[3]
 	s.LastSectionNumber = b[4]
 
@@ -52,7 +52,7 @@ func (s *SectionSyntax) Marshal() ([]byte, error) {
 
 	b[0] = byte((s.TableIDExtension >> 8) & 0xFF)
 	b[1] = byte(s.TableIDExtension & 0xFF)
-	b[2] = 0xC0 | (s.Version & maskSyntaxVersion) << shiftSyntaxVersion
+	b[2] = 0xC0 | (s.Version&maskSyntaxVersion)<<shiftSyntaxVersion
 
 	if s.Current {
 		b[2] |= flagSyntaxCurrent

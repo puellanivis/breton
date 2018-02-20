@@ -1,7 +1,6 @@
 package psi
 
-import (
-)
+import ()
 
 var tableRegistry = make(map[uint8]func() PSI)
 
@@ -9,7 +8,7 @@ func Register(id uint8, fn func() PSI) {
 	tableRegistry[id] = fn
 }
 
-type PSI interface{
+type PSI interface {
 	TableID() uint8
 
 	Marshal() ([]byte, error)

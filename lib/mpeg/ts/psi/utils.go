@@ -46,20 +46,20 @@ func CommonMarshal(id uint8, private bool, syn *SectionSyntax, data []byte) ([]b
 	copy(b[start:], data)
 
 	// TODO(puellanivis): calculate CRC32
-	copy(b[l-4:], []byte{ 0xde, 0xad, 0xbe, 0xef })
+	copy(b[l-4:], []byte{0xde, 0xad, 0xbe, 0xef})
 
 	return b, nil
 }
 
 func CommonUnmarshal(b []byte) (syn *SectionSyntax, data []byte, crc uint32, err error) {
-	secLen := int(b[1] & 0x0F) << 8 | int(b[2])
+	secLen := int(b[1]&0x0F)<<8 | int(b[2])
 	if secLen > 1021 {
 		return nil, nil, 0, errors.New("section_length may not exceed 1021")
 	}
 
 	start := 3
 
-	if b[1] & flagSectionSyntax != 0 {
+	if b[1]&flagSectionSyntax != 0 {
 		syn = new(SectionSyntax)
 
 		if err := syn.Unmarshal(b[3:]); err != nil {
@@ -70,10 +70,10 @@ func CommonUnmarshal(b []byte) (syn *SectionSyntax, data []byte, crc uint32, err
 		secLen -= 5
 	}
 
-	end := start+secLen-4
+	end := start + secLen - 4
 	data = b[start:end]
 
-	for _, b := range b[end:end+4] {
+	for _, b := range b[end : end+4] {
 		crc = (crc << 8) | uint32(b)
 	}
 
