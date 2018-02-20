@@ -19,7 +19,7 @@ const (
 	ServiceTypeHEVCTV   = 0x1F
 )
 
-var dvbServiceTypeName = map[ServiceType]string{
+var dvbServiceTypeNames = map[ServiceType]string{
 	ServiceTypeTV:       "TV",
 	ServiceTypeRadio:    "Radio",
 	ServiceTypeTeletext: "Teletext",
@@ -30,22 +30,22 @@ var dvbServiceTypeName = map[ServiceType]string{
 }
 
 func (t ServiceType) String() string {
-	if s, ok := dvbServiceTypeName[t]; ok {
+	if s, ok := dvbServiceTypeNames[t]; ok {
 		return s
 	}
 
 	return fmt.Sprintf("x%02X", uint8(t))
 }
 
-type Service struct {
+type ServiceDescriptor struct {
 	Type ServiceType
 
 	Provider string
 	Name     string
 }
 
-func (d *Service) String() string {
-	return fmt.Sprintf("{DVBService %v P:%s N:%s}", d.Type, d.Provider, d.Name)
+func (d *ServiceDescriptor) String() string {
+	return fmt.Sprintf("{dvb.Service %v P:%s N:%s}", d.Type, d.Provider, d.Name)
 }
 
 const (
@@ -53,20 +53,20 @@ const (
 )
 
 func init() {
-	desc.Register(tagDVBService, func() desc.Descriptor { return new(Service) })
+	desc.Register(tagDVBService, func() desc.Descriptor { return new(ServiceDescriptor) })
 }
 
-func (d *Service) Tag() uint8 {
+func (d *ServiceDescriptor) Tag() uint8 {
 	return tagDVBService
 }
 
-func (d *Service) Len() int {
+func (d *ServiceDescriptor) Len() int {
 	return 5 + len(d.Provider) + len(d.Name)
 }
 
-func (d *Service) Unmarshal(b []byte) error {
+func (d *ServiceDescriptor) Unmarshal(b []byte) error {
 	if b[0] != tagDVBService {
-		return errors.Errorf("TableID mismatch: x%02X != x%02X", b[0], tagDVBService)
+		return errors.Errorf("descriptor_tag mismatch: x%02X != x%02X", b[0], tagDVBService)
 	}
 
 	l := int(b[1])
@@ -90,7 +90,7 @@ func (d *Service) Unmarshal(b []byte) error {
 	return nil
 }
 
-func (d *Service) Marshal() ([]byte, error) {
+func (d *ServiceDescriptor) Marshal() ([]byte, error) {
 	l := 3 + len(d.Provider) + len(d.Name)
 	if l > 0xFF {
 		return nil, errors.Errorf("descriptor data field too large: %d", l)
@@ -102,15 +102,11 @@ func (d *Service) Marshal() ([]byte, error) {
 	b[1] = byte(l)
 	b[2] = byte(d.Type)
 
-	b = b[3:]
+	b[3] = byte(len(d.Provider))
+	n := copy(b[4:], d.Provider)
 
-	b[0] = byte(len(d.Provider))
-	n := copy(b[1:], d.Provider)
-
-	b = b[1+n:]
-
-	b[0] = byte(len(d.Name))
-	copy(b[1:], d.Name)
+	b[4+n] = byte(len(d.Name))
+	copy(b[5+n:], d.Name)
 
 	return b, nil
 }
