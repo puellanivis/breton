@@ -22,7 +22,7 @@ func TestMarshaling(t *testing.T) {
 	//   00000000 00000000 00000000 00001101 10000000 00000000
 	//      0   0    0   0    0   0    0   d    8   0    0   0
 
-	expected := []byte{ 0x00, 0x00, 0x00, 0x0d, 0x80, 0x00 }
+	expected := []byte{0x00, 0x00, 0x00, 0x0d, 0x80, 0x00}
 	b, err := pcr.Marshal()
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,7 @@ func TestMarshaling(t *testing.T) {
 	//   11111111 11111111 11111111 11111111 10000001 11111111
 	//      f   f    f   f    f   f    f   f    8   1    f   f
 
-	expected = []byte{ 0xff, 0xff, 0xff, 0xff, 0x81, 0xff }
+	expected = []byte{0xff, 0xff, 0xff, 0xff, 0x81, 0xff}
 	b, err = pcr.Marshal()
 	if err != nil {
 		t.Fatal(err)
@@ -62,7 +62,7 @@ func TestMarshaling(t *testing.T) {
 	//   11111001 11011011 11001010 11101000 10000001 01011011
 	//      f   9    d   b    c   a    e   8    8   1    5   b
 
-	expected = []byte{ 0xf9, 0xdb, 0xca, 0xe8, 0x81, 0x5b }
+	expected = []byte{0xf9, 0xdb, 0xca, 0xe8, 0x81, 0x5b}
 	b, err = pcr.Marshal()
 	if err != nil {
 		t.Fatal(err)
