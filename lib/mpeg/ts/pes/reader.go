@@ -8,6 +8,7 @@ import (
 )
 
 // Reader implements an io.Reader that decodes an Elementary Stream from Packetized Elementary Stream.
+// The Stream field is set anew after every packet that is read.
 type Reader struct {
 	Stream
 
