@@ -1,7 +1,6 @@
 package descriptor
 
-import (
-)
+import ()
 
 var (
 	descriptorRegistry = make(map[uint8]func() Descriptor)
@@ -15,7 +14,6 @@ type Descriptor interface {
 	Tag() uint8
 	Len() int
 
-	// Marshal and Unmarshal produce the payload
 	Marshal() ([]byte, error)
 	Unmarshal([]byte) error
 }
