@@ -10,11 +10,6 @@ type packet struct {
 	payload []byte
 }
 
-const (
-	idPaddingStream  = 0xBE
-	idPrivateStream2 = 0xBF
-)
-
 func (p *packet) preUnmarshal(b []byte) (int, error) {
 	if b[0] != 0 || b[1] != 0 || b[2] != 1 {
 		return 0, errors.New("bad start prefix")
@@ -34,11 +29,12 @@ func (p *packet) unmarshal(b []byte) error {
 		// Optional PES Header not present for these streams.
 
 	default:
-		if err := p.stream.Header.Unmarshal(b); err != nil {
+		l, err := p.stream.unmarshalHeader(b)
+		if err != nil {
 			return err
 		}
 
-		b = b[p.stream.Header.len():]
+		b = b[l:]
 	}
 
 	p.payload = append([]byte{}, b...)
@@ -67,7 +63,7 @@ func (p *packet) Marshal() ([]byte, error) {
 	default:
 		var err error
 
-		h, err = p.stream.Header.Marshal()
+		h, err = p.stream.marshalHeader()
 		if err != nil {
 			return nil, err
 		}
