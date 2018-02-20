@@ -7,7 +7,7 @@ import (
 	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
 )
 
-var testSDTService = []byte{
+var testService = []byte{
 	0x00, 0x01, // service_id = x0001
 	0xfd,     // reserved_future_use(0xfc) | EIT_present_follow_flag
 	0xf0, 20, // running_status(0x7) | free_CA_mode, descriptors_loop_length & 0xFF
@@ -19,22 +19,22 @@ var testSDTService = []byte{
 	9, 'S', 'e', 'r', 'v', 'i', 'c', 'e', '0', '1', // service_name
 }
 
-func TestSDTService(t *testing.T) {
-	b := testSDTService
+func TestService(t *testing.T) {
+	b := testService
 
-	s := new(SDTService)
+	s := new(Service)
 
 	l, err := s.unmarshal(b)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
 
-	if l != len(testSDTService) {
-		t.Errorf("SDTService.Unmarshal returned wrong length read, expected %d, got %d", len(testSDTService), l)
+	if l != len(testService) {
+		t.Errorf("Service.Unmarshal returned wrong length read, expected %d, got %d", len(testService), l)
 	}
 
-	expected := &SDTService{
-		ServiceID:     1,
+	expected := &Service{
+		ID:            1,
 		EITSchedule:   false,
 		EITPresent:    true,
 		RunningStatus: 0x7,
@@ -57,7 +57,7 @@ func TestSDTService(t *testing.T) {
 		t.Fatalf("Marshal: %+v", err)
 	}
 
-	if !reflect.DeepEqual(b, testSDTService) {
-		t.Errorf("Marshal: unexpected results\nexpected: [% 2X]\ngot:      [% 2X]", testSDTService, b)
+	if !reflect.DeepEqual(b, testService) {
+		t.Errorf("Marshal: unexpected results\nexpected: [% 2X]\ngot:      [% 2X]", testService, b)
 	}
 }

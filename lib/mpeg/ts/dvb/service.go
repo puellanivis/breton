@@ -33,8 +33,8 @@ func (rs RunningStatus) String() string {
 	return fmt.Sprintf("x%X", uint8(rs))
 }
 
-type SDTService struct {
-	ServiceID     uint16
+type Service struct {
+	ID     uint16
 	EITSchedule   bool
 	EITPresent    bool
 	RunningStatus RunningStatus
@@ -43,10 +43,10 @@ type SDTService struct {
 	Descriptors []desc.Descriptor
 }
 
-func (s *SDTService) String() string {
+func (s *Service) String() string {
 	out := []string{
 		"DVB:Service",
-		fmt.Sprintf("ID:x%04x", s.ServiceID),
+		fmt.Sprintf("ID:x%04x", s.ID),
 	}
 
 	if s.EITSchedule {
@@ -80,11 +80,11 @@ const (
 	flagFreeCA = 0x10
 )
 
-func (s *SDTService) marshal() ([]byte, error) {
+func (s *Service) marshal() ([]byte, error) {
 	b := make([]byte, 5)
 
-	b[0] = byte((s.ServiceID >> 8) & 0xff)
-	b[1] = byte(s.ServiceID & 0xff)
+	b[0] = byte((s.ID >> 8) & 0xff)
+	b[1] = byte(s.ID & 0xff)
 	b[2] = 0xFC
 
 	if s.EITSchedule {
@@ -117,8 +117,8 @@ func (s *SDTService) marshal() ([]byte, error) {
 	return b, nil
 }
 
-func (s *SDTService) unmarshal(b []byte) (int, error) {
-	s.ServiceID = uint16(b[0])<<8 | uint16(b[1])
+func (s *Service) unmarshal(b []byte) (int, error) {
+	s.ID = uint16(b[0])<<8 | uint16(b[1])
 	s.EITSchedule = b[2]&flagEITSchedule != 0
 	s.EITPresent = b[2]&flagEITPresent != 0
 	s.RunningStatus = RunningStatus((b[3] >> shiftRunningStatus) & maskRunningStatus)

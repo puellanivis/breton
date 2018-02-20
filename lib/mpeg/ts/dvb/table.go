@@ -13,7 +13,7 @@ type ServiceDescriptorTable struct {
 
 	OriginalNetworkID uint16
 
-	Services []*SDTService
+	Services []*Service
 
 	crc uint32
 }
@@ -65,7 +65,7 @@ func (sdt *ServiceDescriptorTable) Unmarshal(b []byte) error {
 
 	start := 3 // original_network_id uint16 + reserved_future_use uint8
 	for start < len(data) {
-		s := new(SDTService)
+		s := new(Service)
 
 		l, err := s.unmarshal(data[start:])
 		if err != nil {

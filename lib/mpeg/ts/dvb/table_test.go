@@ -50,9 +50,9 @@ func TestSDT(t *testing.T) {
 			Current:          true,
 		},
 		OriginalNetworkID: 0xff01,
-		Services: []*SDTService{
-			&SDTService{
-				ServiceID:     1,
+		Services: []*Service{
+			&Service{
+				ID:            1,
 				RunningStatus: Running,
 				Descriptors: []desc.Descriptor{
 					&ServiceDescriptor{
