@@ -44,9 +44,10 @@ type SDTService struct {
 }
 
 func (s *SDTService) String() string {
-	var out []string
-
-	out = append(out, fmt.Sprintf("ServiceID:x%04x", s.ServiceID))
+	out := []string{
+		"DVB:Service",
+		fmt.Sprintf("ID:x%04x", s.ServiceID),
+	}
 
 	if s.EITSchedule {
 		out = append(out, "EIT_SCHED")

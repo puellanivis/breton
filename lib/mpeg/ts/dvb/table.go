@@ -31,7 +31,9 @@ func (sdt *ServiceDescriptorTable) TableID() uint8 {
 }
 
 func (sdt *ServiceDescriptorTable) String() string {
-	var out []string
+	out := []string{
+		"DVB:SDT",
+	}
 
 	if sdt.Syntax != nil {
 		out = append(out, fmt.Sprint(sdt.Syntax))
