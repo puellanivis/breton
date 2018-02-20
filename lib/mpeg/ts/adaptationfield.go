@@ -3,7 +3,8 @@ package ts
 import (
 	"fmt"
 	"strings"
-
+	
+	"github.com/pkg/errors"
 	"github.com/puellanivis/breton/lib/mpeg/ts/pcr"
 )
 
@@ -103,11 +104,19 @@ const (
 	flagAFESeamlessSplice = 0x20
 )
 
+func (af *AdaptationField) marshal() ([]byte, error) {
+	return nil, errors.New("unimplemented")
+}
+
 func (af *AdaptationField) unmarshal(b []byte) (int, error) {
-	length := int(b[0])
+	if b[0] == 0 {
+		return 1, nil
+	}
+
+	length := int(b[0]) + 1
 
 	// trim so that OOB access will panic
-	b = b[:length+1]
+	b = b[:length]
 
 	af.Discontinuity = b[1]&flagAFDiscontinuity != 0
 	af.RandomAccess = b[1]&flagAFRandomAccess != 0
