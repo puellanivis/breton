@@ -8,6 +8,7 @@ import (
 )
 
 type RunningStatus uint8
+
 const (
 	NotRunning RunningStatus = iota + 1
 	Starting
@@ -18,10 +19,10 @@ const (
 
 var runningStatusNames = map[RunningStatus]string{
 	NotRunning: "NOT_RUN",
-	Starting: "START",
-	Pausing: "PAUSE",
-	Running: "RUN",
-	OffAir: "OFF_AIR",
+	Starting:   "START",
+	Pausing:    "PAUSE",
+	Running:    "RUN",
+	OffAir:     "OFF_AIR",
 }
 
 func (rs RunningStatus) String() string {
@@ -33,11 +34,11 @@ func (rs RunningStatus) String() string {
 }
 
 type SDTService struct {
-	ServiceID uint16
-	EITSchedule bool
-	EITPresent bool
+	ServiceID     uint16
+	EITSchedule   bool
+	EITPresent    bool
 	RunningStatus RunningStatus
-	FreeCA bool
+	FreeCA        bool
 
 	Descriptors []desc.Descriptor
 }
@@ -70,14 +71,13 @@ func (s *SDTService) String() string {
 
 const (
 	flagEITSchedule = 0x02
-	flagEITPresent = 0x01
+	flagEITPresent  = 0x01
 
 	shiftRunningStatus = 5
-	maskRunningStatus = 0x07
+	maskRunningStatus  = 0x07
 
 	flagFreeCA = 0x10
 )
-
 
 func (s *SDTService) Marshal() ([]byte, error) {
 	b := make([]byte, 5)
@@ -117,13 +117,13 @@ func (s *SDTService) Marshal() ([]byte, error) {
 }
 
 func (s *SDTService) Unmarshal(b []byte) (int, error) {
-	s.ServiceID = uint16(b[0]) << 8 | uint16(b[1])
-	s.EITSchedule = b[2] & flagEITSchedule != 0
-	s.EITPresent = b[2] & flagEITPresent != 0
-	s.RunningStatus = RunningStatus((b[3] >> shiftRunningStatus) & maskRunningStatus) 
-	s.FreeCA = b[3] & flagFreeCA != 0
+	s.ServiceID = uint16(b[0])<<8 | uint16(b[1])
+	s.EITSchedule = b[2]&flagEITSchedule != 0
+	s.EITPresent = b[2]&flagEITPresent != 0
+	s.RunningStatus = RunningStatus((b[3] >> shiftRunningStatus) & maskRunningStatus)
+	s.FreeCA = b[3]&flagFreeCA != 0
 
-	loopLen := int(b[3] & 0x0F) << 8 | int(b[4])
+	loopLen := int(b[3]&0x0F)<<8 | int(b[4])
 
 	start := 0
 	b = b[5:]
@@ -138,5 +138,5 @@ func (s *SDTService) Unmarshal(b []byte) (int, error) {
 		s.Descriptors = append(s.Descriptors, pd)
 	}
 
-	return start+5, nil
+	return start + 5, nil
 }

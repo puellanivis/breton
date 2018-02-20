@@ -12,7 +12,7 @@ var testServiceDescriptor = []byte{
 	18,   // descriptor_length
 	0x01, // service_type(DVB-TV)
 
-	6, 'F', 'F', 'm', 'p', 'e', 'g',                // service_provider_name
+	6, 'F', 'F', 'm', 'p', 'e', 'g', // service_provider_name
 	9, 'S', 'e', 'r', 'v', 'i', 'c', 'e', '0', '1', // service_name
 }
 

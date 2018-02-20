@@ -9,14 +9,14 @@ import (
 
 var testSDTService = []byte{
 	0x00, 0x01, // service_id = x0001
-	0xfd,       // reserved_future_use(0xfc) | EIT_present_follow_flag
-	0xf0, 20,   // running_status(0x7) | free_CA_mode, descriptors_loop_length & 0xFF
-        0x48,       // descriptor_tag(service_descriptor_tag)
-	18,         // descriptor_length
-        0x01,       // service_type(DVB-TV)
+	0xfd,     // reserved_future_use(0xfc) | EIT_present_follow_flag
+	0xf0, 20, // running_status(0x7) | free_CA_mode, descriptors_loop_length & 0xFF
+	0x48, // descriptor_tag(service_descriptor_tag)
+	18,   // descriptor_length
+	0x01, // service_type(DVB-TV)
 
-        6, 'F', 'F', 'm', 'p', 'e', 'g',                // service_provider_name
-        9, 'S', 'e', 'r', 'v', 'i', 'c', 'e', '0', '1', // service_name
+	6, 'F', 'F', 'm', 'p', 'e', 'g', // service_provider_name
+	9, 'S', 'e', 'r', 'v', 'i', 'c', 'e', '0', '1', // service_name
 }
 
 func TestSDTService(t *testing.T) {
@@ -34,16 +34,16 @@ func TestSDTService(t *testing.T) {
 	}
 
 	expected := &SDTService{
-		ServiceID: 1,
-		EITSchedule: false,
-		EITPresent: true,
+		ServiceID:     1,
+		EITSchedule:   false,
+		EITPresent:    true,
 		RunningStatus: 0x7,
-		FreeCA: true,
+		FreeCA:        true,
 		Descriptors: []desc.Descriptor{
 			&ServiceDescriptor{
-				Type: ServiceTypeTV,
+				Type:     ServiceTypeTV,
 				Provider: "FFmpeg",
-				Name: "Service01",
+				Name:     "Service01",
 			},
 		},
 	}

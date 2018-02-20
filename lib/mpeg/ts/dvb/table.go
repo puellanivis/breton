@@ -59,7 +59,7 @@ func (sdt *ServiceDescriptorTable) Unmarshal(b []byte) error {
 	sdt.Syntax = syn
 	sdt.crc = crc
 
-	sdt.OriginalNetworkID = uint16(data[0]) << 8 | uint16(data[1])
+	sdt.OriginalNetworkID = uint16(data[0])<<8 | uint16(data[1])
 
 	start := 3 // original_network_id uint16 + reserved_future_use uint8
 	for start < len(data) {
