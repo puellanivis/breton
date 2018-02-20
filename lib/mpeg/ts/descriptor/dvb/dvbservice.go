@@ -1,9 +1,10 @@
-package descriptor
+package dvb
 
 import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
 )
 
 type DVBServiceType uint8
@@ -50,6 +51,10 @@ func (d *DVBService) String() string {
 const (
 	tagDVBService uint8 = 0x48
 )
+
+func init() {
+	desc.Register(tagDVBService, func() desc.Descriptor { return new(DVBService) })
+}
 
 func (d *DVBService) Tag() uint8 {
 	return tagDVBService

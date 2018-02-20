@@ -1,7 +1,9 @@
-package descriptor
+package dvb
 
 import (
 	"testing"
+
+	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
 )
 
 func TestDVBServe(t *testing.T) {
@@ -22,7 +24,7 @@ func TestDVBServe(t *testing.T) {
 
 	b[1] = byte(len(b) - 2)
 
-	d, err := Unmarshal(b)
+	d, err := desc.Unmarshal(b)
 	if err != nil {
 		t.Fatal(err)
 	}
