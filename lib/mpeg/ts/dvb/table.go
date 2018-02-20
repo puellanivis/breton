@@ -67,7 +67,7 @@ func (sdt *ServiceDescriptorTable) Unmarshal(b []byte) error {
 	for start < len(data) {
 		s := new(SDTService)
 
-		l, err := s.Unmarshal(data[start:])
+		l, err := s.unmarshal(data[start:])
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func (sdt *ServiceDescriptorTable) Marshal() ([]byte, error) {
 	data[2] = 0xFF // reserved_future_use
 
 	for _, s := range sdt.Services {
-		sb, err := s.Marshal()
+		sb, err := s.marshal()
 		if err != nil {
 			return nil, err
 		}

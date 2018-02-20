@@ -80,7 +80,7 @@ const (
 	flagFreeCA = 0x10
 )
 
-func (s *SDTService) Marshal() ([]byte, error) {
+func (s *SDTService) marshal() ([]byte, error) {
 	b := make([]byte, 5)
 
 	b[0] = byte((s.ServiceID >> 8) & 0xff)
@@ -117,7 +117,7 @@ func (s *SDTService) Marshal() ([]byte, error) {
 	return b, nil
 }
 
-func (s *SDTService) Unmarshal(b []byte) (int, error) {
+func (s *SDTService) unmarshal(b []byte) (int, error) {
 	s.ServiceID = uint16(b[0])<<8 | uint16(b[1])
 	s.EITSchedule = b[2]&flagEITSchedule != 0
 	s.EITPresent = b[2]&flagEITPresent != 0

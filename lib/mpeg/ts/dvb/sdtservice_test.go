@@ -24,7 +24,7 @@ func TestSDTService(t *testing.T) {
 
 	s := new(SDTService)
 
-	l, err := s.Unmarshal(b)
+	l, err := s.unmarshal(b)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -52,7 +52,7 @@ func TestSDTService(t *testing.T) {
 		t.Errorf("Unmarshal: expected %v, go %v", expected, s)
 	}
 
-	b, err = expected.Marshal()
+	b, err = expected.marshal()
 	if err != nil {
 		t.Fatalf("Marshal: %+v", err)
 	}
