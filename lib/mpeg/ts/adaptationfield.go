@@ -7,7 +7,7 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/pcr"
 )
 
-type AdaptionField struct {
+type AdaptationField struct {
 	Discontinuity bool
 	RandomAccess  bool
 	Priority      bool
@@ -34,7 +34,7 @@ type AdaptionField struct {
 	Stuffing int
 }
 
-func (af *AdaptionField) String() string {
+func (af *AdaptationField) String() string {
 	var out []string
 
 	if af.Discontinuity {
@@ -103,7 +103,7 @@ const (
 	flagAFESeamlessSplice = 0x20
 )
 
-func (af *AdaptionField) Unmarshal(b []byte) (int, error) {
+func (af *AdaptationField) unmarshal(b []byte) (int, error) {
 	length := int(b[0])
 
 	// trim so that OOB access will panic
