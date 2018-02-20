@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-type Source struct{
+type Source struct {
 	t time.Time
 }
 
@@ -14,10 +14,9 @@ func NewSource() *Source {
 	}
 }
 
-func (s *Source) Read() *PCR {
-	d := time.Since(s.t)
-
-	return &PCR{
-		base: uint64((d * 27) / time.Microsecond) & pcrModulo,
-	}
+func (s *Source) Read(pcr *PCR) {
+	// There is a possible discontinuity due to math overflow at (time.Duration(1 << 64) / 27)
+	// However, math says that should be at about ~21.65 years on average.
+	// If a stream is running for that long, this code could go haywire.
+	pcr.Set(time.Since(s.t))
 }
