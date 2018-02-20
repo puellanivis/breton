@@ -6,7 +6,7 @@ import (
 	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
 )
 
-func TestDVBServe(t *testing.T) {
+func TestServiceDescriptor(t *testing.T) {
 	const (
 		provider = "FFmpeg"
 		name     = "Service01"
@@ -29,13 +29,13 @@ func TestDVBServe(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	service, ok := d.(*DVBService)
+	service, ok := d.(*Service)
 	if !ok {
-		t.Fatalf("wrong type, expected *DVBService, got %T", d)
+		t.Fatalf("wrong type, expected *Service, got %T", d)
 	}
 
-	if service.Type != DVBServiceTypeTV {
-		t.Errorf("wrong service type, expected x%02X got x%02X", uint8(DVBServiceTypeTV), uint8(service.Type))
+	if service.Type != ServiceTypeTV {
+		t.Errorf("wrong service type, expected x%02X got x%02X", uint8(ServiceTypeTV), uint8(service.Type))
 	}
 
 	if service.Provider != provider {
