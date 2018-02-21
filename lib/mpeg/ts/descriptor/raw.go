@@ -12,7 +12,7 @@ type raw struct {
 }
 
 func (d *raw) String() string {
-	return fmt.Sprintf("{tag:x%02x data[%d]}", d.tag, len(d.data))
+	return fmt.Sprintf("{tag:x%02X data[%d]}", d.tag, len(d.data))
 }
 
 func (d *raw) Tag() uint8 {

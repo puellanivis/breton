@@ -3,7 +3,7 @@ package ts
 import (
 	"fmt"
 	"strings"
-	
+
 	"github.com/pkg/errors"
 	"github.com/puellanivis/breton/lib/mpeg/ts/pcr"
 )

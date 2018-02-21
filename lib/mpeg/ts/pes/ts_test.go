@@ -11,11 +11,11 @@ func TestTimestampEncoding(t *testing.T) {
 	expected := []byte{0x01, 0x00, 0x01, 0x00, 0x01}
 
 	if !reflect.DeepEqual(b, expected) {
-		t.Errorf("encodeTS(0x%09x): expected [% 2x] got [% 2x]", inputTS, expected, b)
+		t.Errorf("encodeTS(0x%09X): expected [% 2X] got [% 2X]", inputTS, expected, b)
 	}
 
 	if ts := decodeTS(b); *ts != inputTS {
-		t.Errorf("decodeTS·encodeTS: expected 0x%09x got 0x%09x", inputTS, *ts)
+		t.Errorf("decodeTS·encodeTS: expected 0x%09X got 0x%09X", inputTS, *ts)
 	}
 
 	inputTS = 0x1FFFFFFFF
@@ -23,11 +23,11 @@ func TestTimestampEncoding(t *testing.T) {
 	expected = []byte{0x0f, 0xff, 0xff, 0xff, 0xff}
 
 	if !reflect.DeepEqual(b, expected) {
-		t.Errorf("encodeTS(0x%09x): expected [% 2x] got [% 2x]", inputTS, expected, b)
+		t.Errorf("encodeTS(0x%09X): expected [% 2X] got [% 2X]", inputTS, expected, b)
 	}
 
 	if ts := decodeTS(b); *ts != inputTS {
-		t.Errorf("decodeTS·encodeTS: expected 0x%09x got 0x%09x", inputTS, *ts)
+		t.Errorf("decodeTS·encodeTS: expected 0x%09X got 0x%09X", inputTS, *ts)
 	}
 
 	inputTS = 0x1F3B795D1
@@ -41,10 +41,10 @@ func TestTimestampEncoding(t *testing.T) {
 	expected = []byte{0x0f, 0xce, 0xdf, 0x2b, 0xa3}
 
 	if !reflect.DeepEqual(b, expected) {
-		t.Errorf("encodeTS(0x%09x): expected [% 2x] got [% 2x]", inputTS, expected, b)
+		t.Errorf("encodeTS(0x%09X): expected [% 2X] got [% 2X]", inputTS, expected, b)
 	}
 
 	if ts := decodeTS(b); *ts != inputTS {
-		t.Errorf("decodeTS·encodeTS: expected 0x%09x got 0x%09x", inputTS, *ts)
+		t.Errorf("decodeTS·encodeTS: expected 0x%09X got 0x%09X", inputTS, *ts)
 	}
 }

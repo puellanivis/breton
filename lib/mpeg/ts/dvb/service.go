@@ -34,7 +34,7 @@ func (rs RunningStatus) String() string {
 }
 
 type Service struct {
-	ID     uint16
+	ID            uint16
 	EITSchedule   bool
 	EITPresent    bool
 	RunningStatus RunningStatus
@@ -46,7 +46,7 @@ type Service struct {
 func (s *Service) String() string {
 	out := []string{
 		"DVB:Service",
-		fmt.Sprintf("ID:x%04x", s.ID),
+		fmt.Sprintf("ID:x%04X", s.ID),
 	}
 
 	if s.EITSchedule {

@@ -10,7 +10,7 @@ import (
 )
 
 type program struct {
-	mu sync.Mutex
+	mu    sync.Mutex
 	ready chan struct{}
 
 	err error
@@ -38,7 +38,7 @@ func (p *program) String() string {
 	<-p.ready
 
 	out := []string{
-		fmt.Sprintf("PID:x%04x", p.pid),
+		fmt.Sprintf("PID:x%04X", p.pid),
 	}
 
 	if p.rd != nil {
@@ -70,7 +70,7 @@ func (p *program) Read(b []byte) (n int, err error) {
 			return 0, p.err
 		}
 
-		return 0, errors.Errorf("program pid=0x%04x is not open for reading", p.pid)
+		return 0, errors.Errorf("program pid 0x%04X is not open for reading", p.pid)
 	}
 
 	return p.rd.Read(b)
@@ -84,7 +84,7 @@ func (p *program) Write(b []byte) (n int, err error) {
 			return 0, p.err
 		}
 
-		return 0, errors.Errorf("program pid=0x%04x is not open for writing", p.pid)
+		return 0, errors.Errorf("program pid 0x%04X is not open for writing", p.pid)
 	}
 
 	return p.wr.Write(b)

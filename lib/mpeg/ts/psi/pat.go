@@ -33,7 +33,7 @@ func (pat *PAT) String() string {
 		out = append(out, fmt.Sprintf("x%X:x%X", m.ProgramNumber, m.PID))
 	}
 
-	out = append(out, fmt.Sprintf("crc:%08x", pat.crc))
+	out = append(out, fmt.Sprintf("crc:x%08X", pat.crc))
 
 	return fmt.Sprintf("{%s}", strings.Join(out, " "))
 }

@@ -17,16 +17,16 @@ var _ = glog.Info
 type Demux struct {
 	src io.Reader
 
-	closed chan struct{}
+	closed   chan struct{}
 	patReady chan struct{}
-	debug  func(*Packet)
+	debug    func(*Packet)
 
 	mu       sync.Mutex
 	programs map[uint16]*bufpipe.Pipe
 	pat      map[uint16]uint16
 
-	complete chan struct{}
-	pending  map[uint16]*bufpipe.Pipe
+	complete  chan struct{}
+	pending   map[uint16]*bufpipe.Pipe
 	pendingWG sync.WaitGroup
 }
 
@@ -46,15 +46,15 @@ func WithDebug(fn func(*Packet)) DemuxOption {
 
 func NewDemux(rd io.Reader, opts ...DemuxOption) *Demux {
 	d := &Demux{
-		src:    rd,
+		src: rd,
 
-		closed: make(chan struct{}),
+		closed:   make(chan struct{}),
 		patReady: make(chan struct{}),
 
 		programs: make(map[uint16]*bufpipe.Pipe),
 
 		complete: make(chan struct{}),
-		pending: make(map[uint16]*bufpipe.Pipe),
+		pending:  make(map[uint16]*bufpipe.Pipe),
 	}
 
 	for _, opt := range opts {
@@ -106,7 +106,7 @@ func (d *Demux) getPipe(ctx context.Context, pid uint16) (*bufpipe.Pipe, error) 
 	defer d.mu.Unlock()
 
 	if _, exists := d.programs[pid]; exists {
-		return nil, errors.Errorf("pid 0x%04x is already assigned", pid)
+		return nil, errors.Errorf("pid 0x%04X is already assigned", pid)
 	}
 
 	pipe := d.pending[pid]
@@ -127,7 +127,7 @@ func (d *Demux) getPipe(ctx context.Context, pid uint16) (*bufpipe.Pipe, error) 
 
 func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, error) {
 	if streamID == 0 {
-		return nil, errors.Errorf("stream_id 0x%04x is invalid", streamID)
+		return nil, errors.Errorf("stream_id 0x%04X is invalid", streamID)
 	}
 
 	select {
@@ -149,7 +149,7 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 
 		pmtPID, ok := pat[streamID]
 		if !ok {
-			p.err = errors.Errorf("no PMT found for stream_id=%04x", streamID)
+			p.err = errors.Errorf("no PMT found for stream_id 0x%04X", streamID)
 			return
 		}
 
@@ -204,7 +204,7 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 
 func (d *Demux) ReaderByPID(ctx context.Context, pid uint16, isPES bool) (io.ReadCloser, error) {
 	if pid == pidNULL {
-		return nil, errors.Errorf("pid 0x%04x is invalid", pid)
+		return nil, errors.Errorf("pid 0x%04X is invalid", pid)
 	}
 
 	select {
@@ -227,11 +227,11 @@ func (d *Demux) ReaderByPID(ctx context.Context, pid uint16, isPES bool) (io.Rea
 	close(ready)
 
 	return &program{
-		ready:  ready,
+		ready: ready,
 
-		pid:    pid,
+		pid: pid,
 
-		rd:     rd,
+		rd: rd,
 		closer: func() error {
 			d.mu.Lock()
 			defer d.mu.Unlock()

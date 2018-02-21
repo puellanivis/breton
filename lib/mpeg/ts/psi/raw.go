@@ -27,7 +27,7 @@ func (psi *raw) SectionSyntax() *SectionSyntax {
 func (psi *raw) String() string {
 	var out []string
 
-	out = append(out, fmt.Sprintf("TID:x%02x", psi.ID))
+	out = append(out, fmt.Sprintf("TID:x%02X", psi.ID))
 	if psi.Private {
 		out = append(out, "PRIV")
 	}
@@ -38,7 +38,7 @@ func (psi *raw) String() string {
 
 	out = append(out, fmt.Sprintf("Data[%d]", len(psi.Data)))
 
-	out = append(out, fmt.Sprintf("crc:%08x", psi.crc))
+	out = append(out, fmt.Sprintf("crc:x%08X", psi.crc))
 
 	return fmt.Sprintf("{%s}", strings.Join(out, " "))
 }

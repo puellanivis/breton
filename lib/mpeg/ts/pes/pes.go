@@ -47,19 +47,19 @@ func (s *Stream) String() string {
 		}
 
 		if s.PTS != nil {
-			out = append(out, fmt.Sprintf("PTS:x%09x", *s.PTS))
+			out = append(out, fmt.Sprintf("PTS:x%09X", *s.PTS))
 		}
 
 		if s.DTS != nil {
-			out = append(out, fmt.Sprintf("DTS:x%09x", *s.DTS))
+			out = append(out, fmt.Sprintf("DTS:x%09X", *s.DTS))
 		}
 
 		if s.extFlags != 0 {
-			out = append(out, fmt.Sprintf("flags:%02x", s.extFlags))
+			out = append(out, fmt.Sprintf("flags:%02X", s.extFlags))
 		}
 
 		if len(s.padding) > 0 {
-			out = append(out, fmt.Sprintf("padding[%d]{% 2x}", len(s.padding), s.padding))
+			out = append(out, fmt.Sprintf("padding[%d]{% 2X}", len(s.padding), s.padding))
 		}
 	}
 
@@ -142,7 +142,7 @@ func (h *Header) unmarshalHeader(b []byte) (int, error) {
 // marshalHeader returns a byte-slice that is the encoding of a given Optional PES Header.
 func (h *Header) marshalHeader() ([]byte, error) {
 	if h.ScrambleControl&^0x03 != 0 {
-		return nil, errors.Errorf("invalid scramble control: 0x%02x", h.ScrambleControl)
+		return nil, errors.Errorf("invalid scramble control: 0x%02X", h.ScrambleControl)
 	}
 
 	out := make([]byte, 3)

@@ -17,8 +17,8 @@ type StreamData struct {
 
 func (esd *StreamData) String() string {
 	out := []string{
-		fmt.Sprintf("Type:x%02x", esd.Type),
-		fmt.Sprintf("PID:x%04x", esd.PID),
+		fmt.Sprintf("Type:x%02X", esd.Type),
+		fmt.Sprintf("PID:x%04X", esd.PID),
 	}
 
 	for _, d := range esd.Descriptors {

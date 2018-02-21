@@ -28,7 +28,7 @@ func (pmt *PMT) String() string {
 	}
 
 	if pmt.PCRPID != 0x1fff {
-		out = append(out, fmt.Sprintf("PCRPID:x%04x", pmt.PCRPID))
+		out = append(out, fmt.Sprintf("PCRPID:x%04X", pmt.PCRPID))
 	}
 
 	for _, d := range pmt.Descriptors {

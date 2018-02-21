@@ -29,7 +29,7 @@ func TestMarshaling(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(b, expected) {
-		t.Errorf("pcr.Marshal: expected [% 2x], got [% 2x]", expected, b)
+		t.Errorf("pcr.Marshal: expected [% 2X], got [% 2X]", expected, b)
 	}
 
 	pcr.base = pcrModulo
@@ -49,7 +49,7 @@ func TestMarshaling(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(b, expected) {
-		t.Errorf("pcr.Marshal: expected [% 2x], got [% 2x]", expected, b)
+		t.Errorf("pcr.Marshal: expected [% 2X], got [% 2X]", expected, b)
 	}
 
 	pcr.base = 0x1F3B795D1
@@ -69,7 +69,7 @@ func TestMarshaling(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(b, expected) {
-		t.Errorf("pcr.Marshal: expected [% 2x], got [% 2x]", expected, b)
+		t.Errorf("pcr.Marshal: expected [% 2X], got [% 2X]", expected, b)
 	}
 
 }

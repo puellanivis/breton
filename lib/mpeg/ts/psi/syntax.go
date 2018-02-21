@@ -22,8 +22,8 @@ const (
 
 func (s *SectionSyntax) String() string {
 	out := []string{
-		fmt.Sprintf("TIE:x%04x", s.TableIDExtension),
-		fmt.Sprintf("VER:%x", s.Version),
+		fmt.Sprintf("TIE:x%04X", s.TableIDExtension),
+		fmt.Sprintf("VER:%X", s.Version),
 	}
 
 	if s.Current {
@@ -31,7 +31,7 @@ func (s *SectionSyntax) String() string {
 	}
 
 	if s.SectionNumber|s.LastSectionNumber != 0 {
-		out = append(out, fmt.Sprintf("SecNum:x%02x LastSec:x%02x", s.SectionNumber, s.LastSectionNumber))
+		out = append(out, fmt.Sprintf("SecNum:x%02X LastSec:x%02X", s.SectionNumber, s.LastSectionNumber))
 	}
 
 	return fmt.Sprintf("{%s}", strings.Join(out, " "))

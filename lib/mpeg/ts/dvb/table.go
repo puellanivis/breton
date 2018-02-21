@@ -43,7 +43,7 @@ func (sdt *ServiceDescriptorTable) String() string {
 		out = append(out, fmt.Sprint(sdt.Syntax))
 	}
 
-	out = append(out, fmt.Sprintf("OrigNetID:%04x", sdt.OriginalNetworkID))
+	out = append(out, fmt.Sprintf("OrigNetID:%04X", sdt.OriginalNetworkID))
 
 	for _, s := range sdt.Services {
 		out = append(out, s.String())
