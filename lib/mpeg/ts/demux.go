@@ -280,6 +280,12 @@ func (d *Demux) Close() <-chan error {
 				errch <- err
 			}
 		}
+
+		select {
+		case <-d.closed:
+		default:
+			close(d.closed)
+		}
 	}()
 
 	return errch
