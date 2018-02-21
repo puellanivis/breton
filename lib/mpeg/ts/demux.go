@@ -396,14 +396,26 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 		var ver byte = 0xFF
 
 		for {
-			if _, err := rdPAT.Read(b); err != nil {
+			n, err := rdPAT.Read(b)
+			if err != nil {
 				select {
 				case <-done:
 				default:
 					errch <- err
 				}
 
-				return
+				select {
+				case <-d.patReady:
+					return
+				default:
+				}
+
+				continue
+			}
+
+			if n < 1 {
+				// empty-reads are real possibilities.
+				continue
 			}
 
 			tbl, err := psi.Unmarshal(b)
@@ -414,7 +426,13 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 					errch <- err
 				}
 
-				return
+				select {
+				case <-d.patReady:
+					return
+				default:
+				}
+
+				continue
 			}
 
 			pat, ok := tbl.(*psi.PAT)
