@@ -54,6 +54,10 @@ func (pmt *PMT) TableID() uint8 {
 	return tableidPMT
 }
 
+func (pmt *PMT) SectionSyntax() *SectionSyntax {
+	return pmt.Syntax
+}
+
 func (pmt *PMT) Unmarshal(b []byte) error {
 	if b[0] != tableidPMT {
 		return errors.Errorf("table_id mismatch: x%02X != x%02X", b[0], tableidPMT)

@@ -10,6 +10,7 @@ func Register(id uint8, fn func() PSI) {
 
 type PSI interface {
 	TableID() uint8
+	SectionSyntax() *SectionSyntax
 
 	Marshal() ([]byte, error)
 	Unmarshal([]byte) error

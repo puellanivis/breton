@@ -30,6 +30,10 @@ func (sdt *ServiceDescriptorTable) TableID() uint8 {
 	return tableidSDT
 }
 
+func (sdt *ServiceDescriptorTable) SectionSyntax() *psi.SectionSyntax {
+	return sdt.Syntax
+}
+
 func (sdt *ServiceDescriptorTable) String() string {
 	out := []string{
 		"DVB:SDT",
