@@ -10,136 +10,175 @@ import (
 
 // Pipe defines an io.Reader and io.Writer where data given to Write will be buffered until a corresponding Read.
 type Pipe struct {
+	once sync.Once
 	mu sync.Mutex
 
 	closed chan struct{}
 	ready  chan struct{}
 
+	noAutoFlush bool
 	b bytes.Buffer
 }
 
-// New returns a new Pipe that will close if the context.Context given is canceled.
-func New(ctx context.Context) *Pipe {
-	// initial state is not-closed, and not-ready
-	p := &Pipe{
-		closed: make(chan struct{}),
-		ready:  make(chan struct{}),
+func (p *Pipe) init() {
+	p.closed = make(chan struct{})
+	p.ready = make(chan struct{})
+}
+
+// New returns a new Pipe with the given Options, and will be closed if the given context.Context is canceled.
+// If a nil context is given, then no context-dependent closing will be done.
+func New(ctx context.Context, opts ...Option) *Pipe {
+	p := new(Pipe)
+	p.once.Do(p.init)
+
+	for _, opt := range opts {
+		_ = opt(p)
 	}
 
+	if ctx != nil {
+		p.CloseOnContext(ctx)
+	}
+
+	return p
+}
+
+// CloseOnContext will close the Pipe if the given context.Context is canceled.
+// A single Pipe can be setup to close on multiple different and even independent contexts.
+// With great power, comes great responsibility. Use wisely.
+func (p *Pipe) CloseOnContext(ctx context.Context) {
 	go func() {
-		// watch the context, if it closes, then close this pipe.
+		// Watch the context, if it closes, then Close this pipe.
 		select {
 		case <-ctx.Done():
 			p.Close()
 		case <-p.closed:
 		}
 	}()
+}
 
-	return p
+func (p *Pipe) doEmptyBuffer() error {
+	select {
+	case <-p.closed:
+		return io.EOF
+	default:
+	}
+
+	// We have to check these separately,
+	// because by Go standards, a select picks between ready channels randomly.
+	// And we need to ensure these are tested sequentially.
+
+	select {
+	case <-p.ready:
+		// The ready channel is closed, so remake it so future Readers will block.
+		p.ready = make(chan struct{})
+
+	default:
+		// The ready channel is already reopened, so don't open it again.
+	}
+
+	return nil
 }
 
 // Read blocks until data is available on the buffer, then performs a locked Read on the underlying buffer.
 func (p *Pipe) Read(b []byte) (n int, err error) {
-	// we want to block here outside of the mutex lock, so we can block waiting for data
-	// while at the same time also not holding the mutex.
+	p.once.Do(p.init)
+
+	// We want to block here outside of the mutex lock,
+	// so we can block waiting for data while at the same time also not holding the mutex.
+	// Otherwise, we could not Write to the Pipe!
 	<-p.ready
 
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
 	if p.b.Len() == 0 {
-		// no data on the pipe, can happen when two Readers block on the mutex at the same time.
-
-		select {
-		case <-p.closed:
-			// we're closed, so return EOF now
-			return 0, io.EOF
-		default:
-		}
-
-		select {
-		case <-p.ready:
-			// the ready channel is closed, so remake it so we later block
-			p.ready = make(chan struct{})
-
-		default:
-			// the ready channel is already reopened, so don't open it again
-		}
-
-		// report that we intentionally read 0-bytes, with no error.
-		return 0, nil
+		return 0, p.doEmptyBuffer()
 	}
 
 	n, err = p.b.Read(b)
 
 	if p.b.Len() == 0 {
-		// no data on the pipe
+		_ = p.doEmptyBuffer()
 
-		select {
-		case <-p.closed:
-			// we're closed, so don't try and reopen ready
-			return n, err
-		default:
-		}
-
-		select {
-		case <-p.ready:
-			// the ready channel is closed, so remake it so we later block
-			p.ready = make(chan struct{})
-
-		default:
-			// the ready channel is already reopened, so don't open it again
-		}
+		return n, nil
 	}
 
 	return n, err
 }
 
-// Write performs an locked Write to the underlying buffer, and potentially unblocks any Read waiting on data.
+func (p *Pipe) prewrite() error {
+	select {
+	case <-p.closed:
+		// One cannot write/flush a closed pipe.
+		return io.ErrClosedPipe
+	default:
+	}
+
+	return nil
+}
+
+// Write performs an locked Write to the underlying buffer.
+// If AutoFlush is enabled (the default), it will also unblock any blocked Readers.
 func (p *Pipe) Write(b []byte) (n int, err error) {
+	p.once.Do(p.init)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	select {
-	case <-p.closed:
-		// cannot write to a closed pipe
-		return 0, io.ErrClosedPipe
-	default:
+	if err := p.prewrite(); err != nil {
+		return 0, err
 	}
 
 	n, err = p.b.Write(b)
 
-	if err == nil && n > 0 {
-		// we wrote data to the buffer, so there is data now, notify any Read that is blocking.
-
-		select {
-		case <-p.ready:
-			// already marked as ready, so we don't need to mark it ready again
-		default:
-			close(p.ready)
-		}
+	if !p.noAutoFlush && n > 0 {
+		p.flush()
 	}
 
 	return n, err
 }
 
-// Close locks the Pipe, then marks it as closed, then unblocks any Readers waiting on data.
-func (p *Pipe) Close() error {
+func (p *Pipe) flush() {
+	select {
+	case <-p.ready:
+		// Pipe is already marked as ready, so we don't need to mark it ready again.
+	default:
+		close(p.ready)
+	}
+}
+
+// Flush will unblock any blocked Readers.
+// This could cause them to read zero bytes of data.
+func (p *Pipe) Flush() error {
+	p.once.Do(p.init)
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	// ensure we are closed _before_ notifying readers that it is ready
+	if err := p.prewrite(); err != nil {
+		return err
+	}
+
+	p.flush()
+
+	return nil
+}
+
+func (p *Pipe) close() {
 	select {
 	case <-p.closed:
 	default:
 		close(p.closed)
 	}
+}
 
-	select {
-	case <-p.ready:
-	default:
-		close(p.ready)
-	}
+// Close will close the Pipe, and unblock any blocked Readers.
+func (p *Pipe) Close() error {
+	p.once.Do(p.init)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Order is vitally important here: close then flush.
+	p.close()
+	p.flush()
 
 	return nil
 }
