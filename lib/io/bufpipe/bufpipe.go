@@ -10,7 +10,7 @@ import (
 
 // Pipe defines an io.Reader and io.Writer where data given to Write will be buffered until a corresponding Read.
 type Pipe struct {
-	sync.Mutex
+	mu sync.Mutex
 
 	closed chan struct{}
 	ready  chan struct{}
@@ -44,8 +44,8 @@ func (p *Pipe) Read(b []byte) (n int, err error) {
 	// while at the same time also not holding the mutex.
 	<-p.ready
 
-	p.Lock()
-	defer p.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	if p.b.Len() == 0 {
 		// no data on the pipe, can happen when two Readers block on the mutex at the same time.
@@ -97,8 +97,8 @@ func (p *Pipe) Read(b []byte) (n int, err error) {
 
 // Write performs an locked Write to the underlying buffer, and potentially unblocks any Read waiting on data.
 func (p *Pipe) Write(b []byte) (n int, err error) {
-	p.Lock()
-	defer p.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	select {
 	case <-p.closed:
@@ -125,8 +125,8 @@ func (p *Pipe) Write(b []byte) (n int, err error) {
 
 // Close locks the Pipe, then marks it as closed, then unblocks any Readers waiting on data.
 func (p *Pipe) Close() error {
-	p.Lock()
-	defer p.Unlock()
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	// ensure we are closed _before_ notifying readers that it is ready
 	select {
