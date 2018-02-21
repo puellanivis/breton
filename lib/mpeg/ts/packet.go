@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
 
 type TransportScrambleControl byte
@@ -28,7 +27,6 @@ type Packet struct {
 	Continuity byte
 
 	payload []byte
-	PSI     psi.PSI
 }
 
 func (p *Packet) String() string {
@@ -57,11 +55,7 @@ func (p *Packet) String() string {
 		out = append(out, fmt.Sprintf("AF:%+v", p.AdaptationField))
 	}
 
-	switch {
-	case p.PSI != nil:
-		out = append(out, fmt.Sprintf("%v", p.PSI))
-
-	case len(p.payload) > 0:
+	if len(p.payload) > 0 {
 		pl := fmt.Sprintf("payload[%d]", len(p.payload))
 
 		if len(p.payload) > 4 {
@@ -120,21 +114,7 @@ func (p *Packet) Unmarshal(b []byte) error {
 	}
 
 	if b[3]&0x10 != 0 {
-		b := b[start:]
-
-		if p.PUSI {
-			if b[0] != 0 || b[1] != 0 || b[2] != 1 {
-				psi, err := psi.Unmarshal(b)
-				if err != nil {
-					return err
-				}
-
-				p.PSI = psi
-				return nil
-			}
-		}
-
-		p.payload = append([]byte{}, b...)
+		p.payload = append([]byte{}, b[start:]...)
 	}
 
 	return nil
@@ -179,19 +159,7 @@ func (p *Packet) Marshal() ([]byte, error) {
 		start += n
 	}
 
-	switch {
-	case p.PSI != nil:
-		packet[3] |= 0x20
-
-		b, err := p.PSI.Marshal()
-		if err != nil {
-			return nil, err
-		}
-
-		n := copy(packet[start:], b)
-		start += n
-
-	case len(p.payload) > 0:
+	if len(p.payload) > 0 {
 		packet[3] |= 0x20
 
 		n := copy(packet[start:], p.payload)
