@@ -12,7 +12,7 @@ type packet struct {
 
 func (p *packet) preUnmarshal(b []byte) (int, error) {
 	if b[0] != 0 || b[1] != 0 || b[2] != 1 {
-		return 0, errors.New("bad start prefix")
+		return 0, errors.Errorf("bad start prefix [% 2X]", b[:3])
 	}
 
 	if p.stream == nil {
