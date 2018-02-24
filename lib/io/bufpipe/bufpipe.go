@@ -16,7 +16,8 @@ type Pipe struct {
 	closed chan struct{}
 	ready  chan struct{}
 
-	noAutoFlush bool
+	autoFlush int
+
 	b bytes.Buffer
 }
 
@@ -130,8 +131,10 @@ func (p *Pipe) Write(b []byte) (n int, err error) {
 
 	n, err = p.b.Write(b)
 
-	if !p.noAutoFlush && n > 0 {
-		p.flush()
+	if err == nil {
+		if p.autoFlush >= 0 && p.b.Len() > p.autoFlush {
+			p.flush()
+		}
 	}
 
 	return n, err
