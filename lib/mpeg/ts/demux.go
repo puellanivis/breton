@@ -112,7 +112,7 @@ func (d *Demux) getPipe(ctx context.Context, pid uint16) (*bufpipe.Pipe, error) 
 	pipe := d.pending[pid]
 	if pipe == nil {
 		// We assign a context closer below, so don’t assign it here.
-		pipe = bufpipe.New(nil, bufpipe.WithAutoFlush(false))
+		pipe = bufpipe.New(nil, bufpipe.WithNoAutoFlush())
 	}
 	delete(d.pending, pid)
 
@@ -314,7 +314,7 @@ func (d *Demux) get(pkt *Packet) (wr *bufpipe.Pipe, debug func(*Packet)) {
 	// Make a new bufpipe.Pipe with no context closer.
 	// A context closer will be attached,
 	// only if this is transformed from pending.
-	wr = bufpipe.New(nil, bufpipe.WithAutoFlush(false))
+	wr = bufpipe.New(nil, bufpipe.WithNoAutoFlush())
 
 	d.pending[pkt.PID] = wr
 
