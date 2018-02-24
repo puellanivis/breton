@@ -16,7 +16,7 @@ type AdaptationField struct {
 	PCR  *pcr.PCR
 	OPCR *pcr.PCR
 
-	SpliceCountdown byte
+	SpliceCountdown *byte
 
 	PrivateData []byte
 
@@ -58,8 +58,8 @@ func (af *AdaptationField) String() string {
 		out = append(out, fmt.Sprintf("OPCR:%v", af.OPCR))
 	}
 
-	if af.SpliceCountdown > 0 {
-		out = append(out, fmt.Sprintf("SpliceCountdown:%d", af.SpliceCountdown))
+	if af.SpliceCountdown != nil {
+		out = append(out, fmt.Sprintf("SpliceCountdown:%d", *af.SpliceCountdown))
 	}
 
 	if len(af.PrivateData) > 0 {
@@ -99,12 +99,107 @@ const (
 	flagAFPrivateData   = 0x02
 	flagAFExtension     = 0x01
 
-	flagAFELTW            = 0x80
-	flagAFEPiecewiseRate  = 0x40
-	flagAFESeamlessSplice = 0x20
+	flagAFExtLTW            = 0x80
+	flagAFExtPiecewiseRate  = 0x40
+	flagAFExtSeamlessSplice = 0x20
+
+	flagAFExtLTWValid   = 0x80
 )
 
 func (af *AdaptationField) marshal() ([]byte, error) {
+	if af == nil {
+		// “empty” Adaptation Field is just one byte saying nothing more.
+		return []byte{ 0 }, nil
+	}
+
+	b := make([]byte, 2)
+
+	if af.Discontinuity {
+		b[1] |= flagAFDiscontinuity
+	}
+	if af.RandomAccess {
+		b[1] |= flagAFRandomAccess
+	}
+	if af.Priority {
+		b[1] |= flagAFPriority
+	}
+
+	if af.PCR != nil {
+		b[1] |= flagAFPCR
+		
+		pcr, err := af.PCR.Marshal()
+		if err != nil {
+			return nil, err
+		}
+
+		b = append(b, pcr...)
+	}
+
+	if af.OPCR != nil {
+		b[1] |= flagAFOPCR
+		
+		opcr, err := af.OPCR.Marshal()
+		if err != nil {
+			return nil, err
+		}
+
+		b = append(b, opcr...)
+	}
+
+	if af.SpliceCountdown != nil  {
+		b[1] |= flagAFSplicePoint
+		b = append(b, *af.SpliceCountdown)
+	}
+
+	if af.PrivateData != nil {
+		b[1] |= flagAFPrivateData
+		b = append(b, af.PrivateData...)
+	}
+
+	if af.LegalTimeWindow.Value != nil || af.PiecewiseRate != nil || af.SeamlessSplice.DTS != nil {
+		ext := make([]byte, 2)
+
+		if af.LegalTimeWindow.Value != nil {
+			ext[1] |= flagAFExtLTW
+
+			ext = append(ext,
+				byte((*af.LegalTimeWindow.Value >> 8) & 0x7F),
+				byte(*af.LegalTimeWindow.Value & 0xFF),
+			)
+
+			if af.LegalTimeWindow.Valid {
+				ext[2] |= flagAFExtLTWValid
+			}
+		}
+
+		if af.PiecewiseRate != nil {
+			ext[1] |= flagAFExtPiecewiseRate
+
+			ext = append(ext,
+				byte((*af.PiecewiseRate >> 16) & 0x3F),
+				byte((*af.PiecewiseRate >> 8) & 0xFF),
+				byte(*af.PiecewiseRate & 0xFF),
+			)
+		}
+
+		if af.SeamlessSplice.DTS != nil {
+			ext[1] |= flagAFExtSeamlessSplice
+
+			ext = append(ext,
+				byte((af.SeamlessSplice.Type & 0x0F) << 4) | byte((*af.SeamlessSplice.DTS >> 29) & 0xE) | 1,
+				byte((*af.SeamlessSplice.DTS >> 23) & 0xFF),
+				byte((*af.SeamlessSplice.DTS >> 14) & 0xFE) | 1,
+				byte((*af.SeamlessSplice.DTS >> 7) & 0xFF),
+				byte((*af.SeamlessSplice.DTS << 1) & 0xFE) | 1,
+			)
+		}
+
+		ext[0] = byte(len(ext)-1)
+
+		b = append(b, ext...)
+	}
+
+	b[0] = byte(len(b)-1)
 	return nil, errors.New("unimplemented")
 }
 
@@ -141,7 +236,8 @@ func (af *AdaptationField) unmarshal(b []byte) (int, error) {
 	}
 
 	if b[1]&flagAFSplicePoint != 0 {
-		af.SpliceCountdown = b[start]
+		sc := b[start]
+		af.SpliceCountdown = &sc
 		start++
 	}
 
@@ -160,7 +256,7 @@ func (af *AdaptationField) unmarshal(b []byte) (int, error) {
 		ext := b[start : start+l]
 		start += l
 
-		if ext[0]&flagAFELTW != 0 {
+		if ext[0]&flagAFExtLTW != 0 {
 			b := ext[start:]
 
 			af.LegalTimeWindow.Valid = b[0]&0x80 != 0
@@ -171,7 +267,7 @@ func (af *AdaptationField) unmarshal(b []byte) (int, error) {
 			start += 2
 		}
 
-		if ext[0]&flagAFEPiecewiseRate != 0 {
+		if ext[0]&flagAFExtPiecewiseRate != 0 {
 			b := ext[start:]
 
 			pwr := uint32(b[0]&0x3F)<<16 | uint32(b[1])<<8 | uint32(b[2])
@@ -180,7 +276,7 @@ func (af *AdaptationField) unmarshal(b []byte) (int, error) {
 			start += 3
 		}
 
-		if ext[0]&flagAFESeamlessSplice != 0 {
+		if ext[0]&flagAFExtSeamlessSplice != 0 {
 			b := ext[start:]
 
 			af.SeamlessSplice.Type = (b[0] >> 4) & 0x0F
