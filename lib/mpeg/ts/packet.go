@@ -58,8 +58,8 @@ func (p *Packet) String() string {
 	if len(p.payload) > 0 {
 		pl := fmt.Sprintf("payload[%d]", len(p.payload))
 
-		if len(p.payload) > 4 {
-			pl = fmt.Sprintf("%s{ % 2X… }", pl, p.payload[:4])
+		if len(p.payload) > 16 {
+			pl = fmt.Sprintf("%s{ % 2X… }", pl, p.payload[:16])
 		}
 
 		out = append(out, pl)
