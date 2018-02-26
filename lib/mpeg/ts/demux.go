@@ -218,7 +218,7 @@ func (d *Demux) ReaderByPID(ctx context.Context, pid uint16, isPES bool) (io.Rea
 		return nil, err
 	}
 
-	rd := io.Reader(pipe)
+	var rd io.Reader = pipe
 	if isPES {
 		rd = pes.NewReader(rd)
 	}
