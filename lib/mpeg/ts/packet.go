@@ -22,7 +22,7 @@ type Packet struct {
 	PUSI     bool
 	Priority bool
 
-	TransportScrambleControl
+	ScrambleControl TransportScrambleControl
 	*AdaptationField
 	Continuity byte
 
@@ -43,7 +43,7 @@ func (p *Packet) String() string {
 		out = append(out, "PRI")
 	}
 
-	switch p.TransportScrambleControl {
+	switch p.ScrambleControl {
 	case ScrambleNone:
 	case ScrambleEven:
 		out = append(out, "EVEN")
@@ -95,7 +95,7 @@ func (p *Packet) Unmarshal(b []byte) error {
 
 	p.PID = (uint16(b[1]&0x1f) << 8) | uint16(b[2])
 
-	p.TransportScrambleControl = TransportScrambleControl((b[3] >> 6) & 0x03)
+	p.ScrambleControl = TransportScrambleControl((b[3] >> 6) & 0x03)
 	p.Continuity = b[3] & 0x0f
 
 	start := 4
@@ -144,7 +144,7 @@ func (p *Packet) Marshal() ([]byte, error) {
 	packet[1] |= byte((p.PID & 0x1f) >> 8)
 	packet[2] = byte(p.PID & 0xff)
 
-	packet[3] = byte((p.TransportScrambleControl&0x03)<<6) | byte(p.Continuity&0x0f)
+	packet[3] = byte((p.ScrambleControl&0x03)<<6) | byte(p.Continuity&0x0f)
 
 	start := 4
 	if p.AdaptationField != nil {
