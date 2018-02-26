@@ -100,7 +100,7 @@ func (p *Pipe) ReadAll() (buf []byte, err error) {
 	buf = make([]byte, p.b.Len())
 
 	_, err = p.b.Read(buf)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return nil, err
 	}
 
