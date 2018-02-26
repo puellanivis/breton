@@ -172,12 +172,14 @@ func (h *Header) marshalHeader() ([]byte, error) {
 	if h.PTS != nil {
 		pts = encodeTS(*h.PTS)
 		pts[0] |= 0x20
+		out[1] |= 0x80
 	}
 
 	if h.DTS != nil {
 		dts = encodeTS(*h.DTS)
 		pts[0] |= 0x10
 		dts[0] |= 0x10
+		out[1] |= 0x40
 	}
 
 	if len(pts) > 0 {
