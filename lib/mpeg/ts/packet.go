@@ -60,6 +60,8 @@ func (p *Packet) String() string {
 
 		if len(p.payload) > 16 {
 			pl = fmt.Sprintf("%s{ % 2X… }", pl, p.payload[:16])
+		} else {
+			pl = fmt.Sprintf("%s{ % 2X }", pl, p.payload)
 		}
 
 		out = append(out, pl)
@@ -73,9 +75,8 @@ const (
 	flagPUSI     = 0x40
 	flagPriority = 0x20
 
-	maskTSC        = 0xc0
-	maskAFC        = 0x30
-	maskContinuity = 0xf
+	flagPayload         = 0x10
+	flagAdaptationField = 0x20
 
 	pktLen = 188
 )
@@ -100,7 +101,7 @@ func (p *Packet) Unmarshal(b []byte) error {
 
 	start := 4
 
-	if b[3]&0x20 != 0 {
+	if b[3]&flagAdaptationField != 0 {
 		af := new(AdaptationField)
 
 		l, err := af.unmarshal(b[start:])
@@ -113,7 +114,7 @@ func (p *Packet) Unmarshal(b []byte) error {
 		start += l
 	}
 
-	if b[3]&0x10 != 0 {
+	if b[3]&flagPayload != 0 {
 		p.payload = append([]byte{}, b[start:]...)
 	}
 
@@ -141,14 +142,14 @@ func (p *Packet) Marshal() ([]byte, error) {
 		packet[1] |= flagPriority
 	}
 
-	packet[1] |= byte((p.PID & 0x1f) >> 8)
+	packet[1] |= byte((p.PID >> 8) & 0x1f)
 	packet[2] = byte(p.PID & 0xff)
 
 	packet[3] = byte((p.ScrambleControl&0x03)<<6) | byte(p.Continuity&0x0f)
 
 	start := 4
 	if p.AdaptationField != nil {
-		packet[3] |= 0x10
+		packet[3] |= flagAdaptationField
 
 		b, err := p.AdaptationField.marshal()
 		if err != nil {
@@ -160,10 +161,14 @@ func (p *Packet) Marshal() ([]byte, error) {
 	}
 
 	if len(p.payload) > 0 {
-		packet[3] |= 0x20
+		packet[3] |= flagPayload
 
 		n := copy(packet[start:], p.payload)
 		start += n
+
+		if n < len(p.payload) {
+			return nil, errors.Errorf("short packet: %d", start)
+		}
 	}
 
 	return packet, nil
