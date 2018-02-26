@@ -1,6 +1,7 @@
 package ts
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -36,6 +37,10 @@ type AdaptationField struct {
 }
 
 func (af *AdaptationField) String() string {
+	if af == nil {
+		return "{}"
+	}
+
 	var out []string
 
 	if af.Discontinuity {
@@ -106,6 +111,46 @@ const (
 	flagAFExtLTWValid   = 0x80
 )
 
+func (af *AdaptationField) len() int {
+	if af == nil {
+		return 0
+	}
+
+	l := 2
+
+	if af.PCR != nil {
+		l += 6
+	}
+
+	if af.OPCR != nil {
+		l += 6
+	}
+
+	if af.SpliceCountdown != nil  {
+		l++
+	}
+
+	l += len(af.PrivateData)
+
+	if af.LegalTimeWindow.Value != nil || af.PiecewiseRate != nil || af.SeamlessSplice.DTS != nil {
+		l += 2
+
+		if af.LegalTimeWindow.Value != nil {
+			l += 2
+		}
+
+		if af.PiecewiseRate != nil {
+			l += 3
+		}
+
+		if af.SeamlessSplice.DTS != nil {
+			l += 5
+		}
+	}
+
+	return l + af.Stuffing
+}
+
 func (af *AdaptationField) marshal() ([]byte, error) {
 	if af == nil {
 		// “empty” Adaptation Field is just one byte saying nothing more.
@@ -152,7 +197,12 @@ func (af *AdaptationField) marshal() ([]byte, error) {
 	}
 
 	if af.PrivateData != nil {
+		if len(af.PrivateData) > 0xFF {
+			return nil, errors.Errorf("private_data length exceeds 255: %d", len(af.PrivateData))
+		}
+
 		b[1] |= flagAFPrivateData
+		b = append(b, byte(len(af.PrivateData) & 0xFF))
 		b = append(b, af.PrivateData...)
 	}
 
@@ -199,8 +249,12 @@ func (af *AdaptationField) marshal() ([]byte, error) {
 		b = append(b, ext...)
 	}
 
+	if af.Stuffing > 0 {
+		b = append(b, bytes.Repeat([]byte{ 0xFF }, af.Stuffing)...)
+	}
+
 	b[0] = byte(len(b)-1)
-	return nil, errors.New("unimplemented")
+	return b, nil
 }
 
 func (af *AdaptationField) unmarshal(b []byte) (int, error) {
