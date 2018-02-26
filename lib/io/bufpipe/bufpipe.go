@@ -80,6 +80,37 @@ func (p *Pipe) doEmptyBuffer() error {
 	return nil
 }
 
+// ReadAll blocks until data is available on the buffer,
+// then returns a Read of the entire contents of the underlying buffer.
+func (p *Pipe) ReadAll() (buf []byte, err error) {
+	p.once.Do(p.init)
+
+	// We want to block here outside of the mutex lock,
+	// so we can block waiting for data while at the same time also not holding the mutex.
+	// Otherwise, we could not Write to the Pipe!
+	<-p.ready
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.b.Len() == 0 {
+		return nil, p.doEmptyBuffer()
+	}
+
+	buf = make([]byte, p.b.Len())
+
+	_, err = p.b.Read(buf)
+	if err != nil {
+		return nil, err
+	}
+
+	if p.b.Len() != 0 {
+		panic("ReadAll did not empty buffer")
+	}
+
+	return buf, p.doEmptyBuffer()
+}
+
 // Read blocks until data is available on the buffer, then performs a locked Read on the underlying buffer.
 func (p *Pipe) Read(b []byte) (n int, err error) {
 	p.once.Do(p.init)
