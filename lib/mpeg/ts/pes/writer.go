@@ -35,5 +35,14 @@ func (w *Writer) Write(b []byte) (n int, err error) {
 		return 0, err
 	}
 
-	return w.dst.Write(b2)
+	n, err = w.dst.Write(b2)
+	if err != nil {
+		return 0, err
+	}
+
+	if n < len(b2) {
+		return 0, io.ErrShortWrite
+	}
+
+	return len(b), nil
 }
