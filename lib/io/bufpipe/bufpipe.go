@@ -15,8 +15,10 @@ type Pipe struct {
 
 	closed chan struct{}
 	ready  chan struct{}
+	empty  chan struct{}
 
 	autoFlush int
+	maxOutstanding int
 
 	b bytes.Buffer
 }
@@ -24,6 +26,9 @@ type Pipe struct {
 func (p *Pipe) init() {
 	p.closed = make(chan struct{})
 	p.ready = make(chan struct{})
+
+	p.empty = make(chan struct{})
+	close(p.empty)
 }
 
 // New returns a new Pipe with the given Options, and will be closed if the given context.Context is canceled.
@@ -58,6 +63,13 @@ func (p *Pipe) CloseOnContext(ctx context.Context) {
 }
 
 func (p *Pipe) doEmptyBuffer() error {
+	select {
+	case <-p.empty:
+		// Pipe is already marked as empty, so we don't need to mark it empty again.
+	default:
+		close(p.empty)
+	}
+
 	select {
 	case <-p.closed:
 		return io.EOF
@@ -158,6 +170,36 @@ func (p *Pipe) Write(b []byte) (n int, err error) {
 
 	if err := p.prewrite(); err != nil {
 		return 0, err
+	}
+
+	if p.maxOutstanding > 0 && p.b.Len() + len(b) > p.maxOutstanding {
+		// We will be watching this channel outside of lock,
+		// so we have to have a local copy.
+		empty := p.empty
+
+		select {
+		case <-empty:
+			// We only update the empty channel here,
+			// because this is the only codepath that depends upon it.
+			empty = make(chan struct{})
+			p.empty = empty
+		default:
+		}
+
+		p.flush() // flush, just to make sure.
+		p.mu.Unlock()
+
+		select {
+		case <-empty:
+		case <-p.closed:
+		}
+
+		p.mu.Lock()
+
+		// Need to recheck state, because we were unlocked.
+		if err := p.prewrite(); err != nil {
+			return 0, err
+		}
 	}
 
 	n, err = p.b.Write(b)

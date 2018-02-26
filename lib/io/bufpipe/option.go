@@ -26,3 +26,19 @@ func WithAutoFlush(size int) Option {
 func WithNoAutoFlush() Option {
 	return WithAutoFlush(-1)
 }
+
+// WithMaxOutstanding sets the maximal size of the internal buffer before a Read is forced.
+// If this value is set to be greater than zero, if any Write would cause the internal buffer to exceed this value,
+// then that Write will block until a Read is performed that empties the internal buffer.
+func WithMaxOutstanding(size int) Option {
+	return func(p *Pipe) Option {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+
+		save := p.maxOutstanding
+
+		p.maxOutstanding = size
+
+		return WithMaxOutstanding(save)
+	}
+}
