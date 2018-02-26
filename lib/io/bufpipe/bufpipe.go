@@ -120,7 +120,9 @@ func (p *Pipe) ReadAll() (buf []byte, err error) {
 		panic("ReadAll did not empty buffer")
 	}
 
-	return buf, p.doEmptyBuffer()
+	_ = p.doEmptyBuffer()
+
+	return buf, nil
 }
 
 // Read blocks until data is available on the buffer, then performs a locked Read on the underlying buffer.
