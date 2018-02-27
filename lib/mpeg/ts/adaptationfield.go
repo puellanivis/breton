@@ -109,6 +109,8 @@ const (
 	flagAFExtSeamlessSplice = 0x20
 
 	flagAFExtLTWValid   = 0x80
+
+	adaptationFieldMinLength = 2
 )
 
 func (af *AdaptationField) len() int {
@@ -153,8 +155,9 @@ func (af *AdaptationField) len() int {
 
 func (af *AdaptationField) marshal() ([]byte, error) {
 	if af == nil {
-		// “empty” Adaptation Field is just one byte saying nothing more.
-		return []byte{ 0 }, nil
+		// If we got here, we already set that there is an AdaptationField…
+		// If so, return an empty AdaptationField, not a not-there AdaptationField.
+		return []byte{ 1, 0 }, nil
 	}
 
 	b := make([]byte, 2)
