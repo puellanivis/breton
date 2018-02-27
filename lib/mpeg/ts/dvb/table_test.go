@@ -11,7 +11,7 @@ import (
 var testSDT = []byte{
 	0x00,     // pointer_value
 	0x42,     // table_id
-	0xC0, 37, // section_syntax_indicator | private | section_length_bits
+	0xF0, 37, // section_syntax_indicator | private | section_length_bits
 	0x00, 0x01, // transport_stream_id
 	0xC1,       // reserved | version_number | current_indicator
 	0x00, 0x00, // section_number, last_section_number
