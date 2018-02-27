@@ -1,6 +1,7 @@
 package ts
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -26,7 +27,7 @@ type Packet struct {
 	*AdaptationField
 	Continuity byte
 
-	payload []byte
+	Payload []byte
 }
 
 func (p *Packet) String() string {
@@ -55,13 +56,13 @@ func (p *Packet) String() string {
 		out = append(out, fmt.Sprintf("AF:%+v", p.AdaptationField))
 	}
 
-	if len(p.payload) > 0 {
-		pl := fmt.Sprintf("payload[%d]", len(p.payload))
+	if len(p.Payload) > 0 {
+		pl := fmt.Sprintf("Payload[%d]", len(p.Payload))
 
-		if len(p.payload) > 16 {
-			pl = fmt.Sprintf("%s{ % 2X… }", pl, p.payload[:16])
+		if len(p.Payload) > 16 {
+			pl = fmt.Sprintf("%s{ % 2X… }", pl, p.Payload[:16])
 		} else {
-			pl = fmt.Sprintf("%s{ % 2X }", pl, p.payload)
+			pl = fmt.Sprintf("%s{ % 2X }", pl, p.Payload)
 		}
 
 		out = append(out, pl)
@@ -78,15 +79,17 @@ const (
 	flagPayload         = 0x10
 	flagAdaptationField = 0x20
 
-	pktLen = 188
+	packetLength       = 188
+	packetHeaderLength = 4
+	packetMaxPayload   = packetLength - packetHeaderLength
 )
 
 func (p *Packet) Bytes() []byte {
-	return p.payload
+	return p.Payload
 }
 
 func (p *Packet) Unmarshal(b []byte) error {
-	if len(b) != pktLen || b[0] != 'G' {
+	if len(b) != packetLength || b[0] != 'G' {
 		return errors.Errorf("invalid packet %v", b[:4])
 	}
 
@@ -115,18 +118,20 @@ func (p *Packet) Unmarshal(b []byte) error {
 	}
 
 	if b[3]&flagPayload != 0 {
-		p.payload = append([]byte{}, b[start:]...)
+		p.Payload = append([]byte{}, b[start:]...)
 	}
 
 	return nil
 }
+
+var fullPadding = bytes.Repeat([]byte{ 0xFF }, packetLength)
 
 func (p *Packet) Marshal() ([]byte, error) {
 	if p.PID > 0x1fff {
 		return nil, errors.Errorf("PID %d is greater than maximum 0x1fff", p.PID)
 	}
 
-	packet := make([]byte, pktLen)
+	packet := make([]byte, packetLength)
 
 	packet[0] = 'G'
 
@@ -160,16 +165,18 @@ func (p *Packet) Marshal() ([]byte, error) {
 		start += n
 	}
 
-	if len(p.payload) > 0 {
+	if len(p.Payload) > 0 {
 		packet[3] |= flagPayload
 
-		n := copy(packet[start:], p.payload)
+		n := copy(packet[start:], p.Payload)
 		start += n
 
-		if n < len(p.payload) {
-			return nil, errors.Errorf("short packet: %d", start)
+		if n < len(p.Payload) {
+			return nil, errors.Errorf("short packet: %d < %d", n, len(p.Payload))
 		}
 	}
+
+	copy(packet[start:], fullPadding)
 
 	return packet, nil
 }
