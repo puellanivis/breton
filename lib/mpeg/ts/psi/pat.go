@@ -95,7 +95,7 @@ func (pat *PAT) Marshal() ([]byte, error) {
 		b[0] = byte((pat.Map[i].ProgramNumber >> 8) & 0xFF)
 		b[1] = byte(pat.Map[i].ProgramNumber & 0xFF)
 
-		b[2] = byte((pat.Map[i].PID >> 8) & 0x1F) | 0xE0
+		b[2] = byte((pat.Map[i].PID>>8)&0x1F) | 0xE0
 		b[3] = byte(pat.Map[i].PID & 0xFF)
 	}
 

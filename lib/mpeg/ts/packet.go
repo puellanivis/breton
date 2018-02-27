@@ -124,7 +124,7 @@ func (p *Packet) Unmarshal(b []byte) error {
 	return nil
 }
 
-var fullPadding = bytes.Repeat([]byte{ 0xFF }, packetLength)
+var fullPadding = bytes.Repeat([]byte{0xFF}, packetLength)
 
 func (p *Packet) Marshal() ([]byte, error) {
 	if p.PID > 0x1fff {

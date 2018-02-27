@@ -32,7 +32,7 @@ func CommonMarshal(id uint8, private bool, syn *SectionSyntax, data []byte) ([]b
 	if secLen > 1021 {
 		return nil, errors.New("section_length may not exceed 1021")
 	}
-	b[2] |= byte((secLen >> 8) & 0x0F) | 0x30
+	b[2] |= byte((secLen>>8)&0x0F) | 0x30
 	b[3] = byte(secLen & 0xFF)
 
 	if syn != nil {
@@ -74,7 +74,7 @@ func CommonUnmarshal(b []byte) (syn *SectionSyntax, data []byte, crc uint32, err
 	if start >= len(b) {
 		return nil, nil, 0, errors.New("buffer too short")
 	}
-	if end + 4 > len(b) {
+	if end+4 > len(b) {
 		return nil, nil, 0, errors.New("section_length overruns buffer")
 	}
 	if end < 0 {

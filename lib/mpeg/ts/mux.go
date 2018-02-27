@@ -22,7 +22,7 @@ type sink struct {
 	sync.Mutex
 	io.Writer
 
-	ticker chan struct{}
+	ticker  chan struct{}
 	counter int
 }
 
@@ -44,10 +44,10 @@ func (s *sink) Write(b []byte) (n int, err error) {
 	return n, err
 }
 
-type pmtDetails struct{
+type pmtDetails struct {
 	pid uint16
 	pmt *psi.PMT
-	wr io.WriteCloser
+	wr  io.WriteCloser
 }
 
 func (pmt *pmtDetails) marshalPacket(continuity byte) ([]byte, error) {
@@ -57,10 +57,10 @@ func (pmt *pmtDetails) marshalPacket(continuity byte) ([]byte, error) {
 	}
 
 	pkt := &Packet{
-		PID: pmt.pid,
-		PUSI: true,
+		PID:        pmt.pid,
+		PUSI:       true,
 		Continuity: continuity & 0xF,
-		Payload: b,
+		Payload:    b,
 	}
 
 	return pkt.Marshal()
@@ -72,14 +72,14 @@ type Mux struct {
 	pcrSrc *pcr.Source
 
 	closed chan struct{}
-	ready chan struct{}
+	ready  chan struct{}
 
-	mu sync.Mutex
+	mu          sync.Mutex
 	outstanding sync.WaitGroup
 
 	nextStreamPID uint16
-	pat map[uint16]uint16
-	pmts map[uint16]*pmtDetails
+	pat           map[uint16]uint16
+	pmts          map[uint16]*pmtDetails
 }
 
 type MuxOption func(*Mux) MuxOption
@@ -105,7 +105,7 @@ func NewMux(wr io.Writer, opts ...MuxOption) *Mux {
 
 		pcrSrc: pcr.NewSource(),
 
-		closed:   make(chan struct{}),
+		closed: make(chan struct{}),
 		ready:  make(chan struct{}),
 
 		nextStreamPID: 0x100,
@@ -152,13 +152,13 @@ func (m *Mux) Writer(ctx context.Context, streamID uint16) (io.WriteCloser, erro
 		pmt: &psi.PMT{
 			Syntax: &psi.SectionSyntax{
 				TableIDExtension: streamID,
-				Current: true,
+				Current:          true,
 			},
 			PCRPID: pid,
 			Streams: []*psi.StreamData{
 				&psi.StreamData{
 					Type: 0x03, // TODO: don’t hardcode audio like this.
-					PID: pid,
+					PID:  pid,
 				},
 			},
 		},
@@ -182,7 +182,6 @@ func (m *Mux) Writer(ctx context.Context, streamID uint16) (io.WriteCloser, erro
 
 const (
 	maxLengthAllowingStuffing = packetMaxPayload - adaptationFieldMinLength
-
 )
 
 func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
@@ -230,8 +229,8 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 			case pusi:
 				af = &AdaptationField{
 					Discontinuity: discontinuity,
-					RandomAccess: true,		// TODO: make this configurable.
-					PCR: new(pcr.PCR),
+					RandomAccess:  true, // TODO: make this configurable.
+					PCR:           new(pcr.PCR),
 				}
 
 				m.pcrSrc.Read(af.PCR)
@@ -263,16 +262,15 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 			}
 
 			pkt := &Packet{
-				PID: pid,
-				PUSI: pusi,
-				Continuity: continuity,
+				PID:             pid,
+				PUSI:            pusi,
+				Continuity:      continuity,
 				AdaptationField: af,
-				Payload: data[:l],
+				Payload:         data[:l],
 			}
 
 			pusi = false
 			continuity = (continuity + 1) & 0x0F
-
 
 			b, err := pkt.Marshal()
 			if err != nil {
@@ -425,14 +423,14 @@ func (m *Mux) writePAT(w io.Writer) error {
 	for key := range pat {
 		keys = append(keys, key)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] } )
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
 	tbl := &psi.PAT{
 		Syntax: &psi.SectionSyntax{
 			TableIDExtension: 0x1,
-			Current: true,
+			Current:          true,
 		},
-		Map:    make([]psi.ProgramMap, len(keys)),
+		Map: make([]psi.ProgramMap, len(keys)),
 	}
 
 	for i, key := range keys {
@@ -456,10 +454,10 @@ func (m *Mux) preamble(continuity byte) error {
 	}
 
 	pkt := &Packet{
-		PID: pidPAT,
-		PUSI: true,
+		PID:        pidPAT,
+		PUSI:       true,
 		Continuity: continuity & 0x0F,
-		Payload: preamble.Bytes(),
+		Payload:    preamble.Bytes(),
 	}
 
 	b, err := pkt.Marshal()
