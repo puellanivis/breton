@@ -467,7 +467,7 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 			close(errch)
 		}()
 
-		b := make([]byte, pktLen)
+		b := make([]byte, packetLength)
 
 		for {
 			select {
