@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/io/bufpipe"
+	"github.com/puellanivis/breton/lib/mpeg/ts/packet"
 	"github.com/puellanivis/breton/lib/mpeg/ts/pcr"
 	"github.com/puellanivis/breton/lib/mpeg/ts/pes"
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
@@ -56,7 +57,7 @@ func (pmt *pmtDetails) marshalPacket(continuity byte) ([]byte, error) {
 		return nil, err
 	}
 
-	pkt := &Packet{
+	pkt := &packet.Packet{
 		PID:        pmt.pid,
 		PUSI:       true,
 		Continuity: continuity & 0xF,
@@ -84,7 +85,7 @@ type Mux struct {
 
 type MuxOption func(*Mux) MuxOption
 
-/*func WithDebug(fn func(*Packet)) MuxOption {
+/*func WithDebug(fn func(*packet.Packet)) MuxOption {
 	return func(m *Mux) MuxOption {
 		m.mu.Lock()
 		defer m.mu.Unlock()
@@ -181,7 +182,7 @@ func (m *Mux) Writer(ctx context.Context, streamID uint16) (io.WriteCloser, erro
 }
 
 const (
-	maxLengthAllowingStuffing = packetMaxPayload - adaptationFieldMinLength
+	maxLengthAllowingStuffing = packet.MaxPayload - packet.AdaptationFieldMinLength
 )
 
 func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
@@ -218,7 +219,7 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 		pusi := true
 
 		for len(data) > 0 {
-			var af *AdaptationField
+			var af *packet.AdaptationField
 			var l int
 
 			switch {
@@ -227,7 +228,7 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 				// don’t do anything
 
 			case pusi:
-				af = &AdaptationField{
+				af = &packet.AdaptationField{
 					Discontinuity: discontinuity,
 					RandomAccess:  true, // TODO: make this configurable.
 					PCR:           new(pcr.PCR),
@@ -239,29 +240,29 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 
 			case len(data) < maxLengthAllowingStuffing:
 				// If the remaining payload is small enough to add stuffing and finish this sequence.
-				af = &AdaptationField{
+				af = &packet.AdaptationField{
 					Stuffing: maxLengthAllowingStuffing - len(data),
 				}
 
-			case len(data) < packetMaxPayload:
+			case len(data) < packet.MaxPayload:
 				// We don’t have enough room to add stuffing and finish this sequence.
 				// So, we add an empty AdaptationField here with 0-bytes of stuffing,
 				// which adds 2-bytes to the header, and overflows the last byte
 				// of payload into the next packet,  where we will surely have enough room
 				// to actually add stuffing.
 				// TODO: check if we can just say adaptation_field_length is 0, which would add only one-byte instead of two?
-				af = &AdaptationField{}
+				af = &packet.AdaptationField{}
 			}
 
 			if isPES {
-				l = packetMaxPayload - af.len()
+				l = packet.MaxPayload - af.Len()
 
 				if l > len(data) {
 					glog.Errorf("calculated bad payload length: %d > %d", l, len(data))
 				}
 			}
 
-			pkt := &Packet{
+			pkt := &packet.Packet{
 				PID:             pid,
 				PUSI:            pusi,
 				Continuity:      continuity,
@@ -276,10 +277,6 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 			if err != nil {
 				glog.Errorf("%+v", err)
 				return
-			}
-
-			if len(b) != packetLength {
-				panic("packet marshaled to size other than 188")
 			}
 
 			if _, err := m.sink.Write(b); err != nil {
@@ -453,7 +450,7 @@ func (m *Mux) preamble(continuity byte) error {
 		return err
 	}
 
-	pkt := &Packet{
+	pkt := &packet.Packet{
 		PID:        pidPAT,
 		PUSI:       true,
 		Continuity: continuity & 0x0F,

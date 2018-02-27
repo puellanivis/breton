@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/io/bufpipe"
+	"github.com/puellanivis/breton/lib/mpeg/ts/packet"
 	"github.com/puellanivis/breton/lib/mpeg/ts/pes"
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
@@ -19,7 +20,7 @@ type Demux struct {
 
 	closed   chan struct{}
 	patReady chan struct{}
-	debug    func(*Packet)
+	debug    func(*packet.Packet)
 
 	mu       sync.Mutex
 	programs map[uint16]*bufpipe.Pipe
@@ -32,7 +33,7 @@ type Demux struct {
 
 type DemuxOption func(*Demux) DemuxOption
 
-func WithDebug(fn func(*Packet)) DemuxOption {
+func WithDebug(fn func(*packet.Packet)) DemuxOption {
 	return func(d *Demux) DemuxOption {
 		d.mu.Lock()
 		defer d.mu.Unlock()
@@ -291,7 +292,7 @@ func (d *Demux) Close() <-chan error {
 	return errch
 }
 
-func (d *Demux) get(pkt *Packet) (wr *bufpipe.Pipe, debug func(*Packet)) {
+func (d *Demux) get(pkt *packet.Packet) (wr *bufpipe.Pipe, debug func(*packet.Packet)) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -326,7 +327,7 @@ func (d *Demux) readOne(b []byte) (error, bool) {
 		return err, true
 	}
 
-	pkt := new(Packet)
+	pkt := new(packet.Packet)
 	if err := pkt.Unmarshal(b); err != nil {
 		return err, false
 	}
@@ -467,7 +468,7 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 			close(errch)
 		}()
 
-		b := make([]byte, packetLength)
+		b := make([]byte, packet.Length)
 
 		for {
 			select {
