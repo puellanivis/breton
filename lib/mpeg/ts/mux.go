@@ -25,12 +25,16 @@ type Mux struct {
 
 	closed chan struct{}
 	ready  chan struct{}
+	chain  chan struct{} // chain is used to ensure that the first packet of each stream is in order.
 
 	mu          sync.Mutex
 	outstanding sync.WaitGroup
 }
 
 func NewMux(wr io.Writer, opts ...Option) *Mux {
+	chain := make(chan struct{})
+	close(chain)
+
 	m := &Mux{
 		TransportStream: TransportStream{
 			sink:   wr,
@@ -41,6 +45,7 @@ func NewMux(wr io.Writer, opts ...Option) *Mux {
 
 		closed: make(chan struct{}),
 		ready:  make(chan struct{}),
+		chain:  chain,
 	}
 
 	for _, opt := range opts {
@@ -80,7 +85,7 @@ const (
 	maxLengthAllowingStuffing = packet.MaxPayload - packet.AdaptationFieldMinLength
 )
 
-func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool) {
+func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool, next chan struct{}) {
 	defer func() {
 		if err := rd.Close(); err != nil {
 			glog.Error("packetizer: 0x%04X: rd.Close: %+v", pid, err)
@@ -177,10 +182,25 @@ func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool) {
 				return
 			}
 
+			if next != nil {
+				close(next)
+				next = nil
+			}
+
 			data = data[l:]
 		}
 	}
 
+}
+
+func (m *Mux) chainLink() (<-chan struct{}, chan struct{}) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	wait, next := m.chain, make(chan struct{})
+	m.chain = next
+
+	return wait, next
 }
 
 func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.WriteCloser, error) {
@@ -202,7 +222,12 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 	// if !isPES: bufpipe.Pipe -> Packetizer
 	// if  isPES: bufpipe.Pipe -> ReadAll -> pes.Writer -> io.Pipe -> Packetizer
 
+	var wait <-chan struct{}
+	var next chan struct{}
+
 	if isPES {
+		wait, next = m.chainLink()
+
 		var wr io.WriteCloser
 
 		rd, wr = io.Pipe() // synchronous pipe, don’t write to it without a Reader available.
@@ -256,9 +281,13 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 
 			// Here, we wait until we’ve written the initial PAT and PMTs.
 			<-m.ready
+
+			// Here, we wait for our turn in the chain,
+			// to ensure a deterministic order of first packets.
+			<-wait
 		}
 
-		m.packetizer(rd, pid, isPES)
+		m.packetizer(rd, pid, isPES, next)
 	}()
 
 	ready := make(chan struct{})
