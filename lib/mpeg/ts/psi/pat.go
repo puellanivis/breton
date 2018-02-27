@@ -12,6 +12,14 @@ type ProgramMap struct {
 	PID           uint16
 }
 
+func (pm *ProgramMap) Set(pnum, pid uint16) {
+	pm.ProgramNumber = pnum
+	if pid > 0x1FFF {
+		panic("PAT pids cannot exceed 0x1FFF")
+	}
+	pm.PID = pid
+}
+
 type PAT struct {
 	Syntax *SectionSyntax
 
@@ -87,7 +95,7 @@ func (pat *PAT) Marshal() ([]byte, error) {
 		b[0] = byte((pat.Map[i].ProgramNumber >> 8) & 0xFF)
 		b[1] = byte(pat.Map[i].ProgramNumber & 0xFF)
 
-		b[2] = byte((pat.Map[i].PID >> 8) & 0x1F)
+		b[2] = byte((pat.Map[i].PID >> 8) & 0x1F) | 0xE0
 		b[3] = byte(pat.Map[i].PID & 0xFF)
 	}
 
