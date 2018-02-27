@@ -1,7 +1,6 @@
 package bufpipe
 
-import (
-)
+import ()
 
 type Option func(*Pipe) Option
 

@@ -11,13 +11,13 @@ import (
 // Pipe defines an io.Reader and io.Writer where data given to Write will be buffered until a corresponding Read.
 type Pipe struct {
 	once sync.Once
-	mu sync.Mutex
+	mu   sync.Mutex
 
 	closed chan struct{}
 	ready  chan struct{}
 	empty  chan struct{}
 
-	autoFlush int
+	autoFlush      int
 	maxOutstanding int
 
 	b bytes.Buffer
@@ -174,7 +174,7 @@ func (p *Pipe) Write(b []byte) (n int, err error) {
 		return 0, err
 	}
 
-	if p.maxOutstanding > 0 && p.b.Len() + len(b) > p.maxOutstanding {
+	if p.maxOutstanding > 0 && p.b.Len()+len(b) > p.maxOutstanding {
 		// We will be watching this channel outside of lock,
 		// so we have to have a local copy.
 		empty := p.empty
