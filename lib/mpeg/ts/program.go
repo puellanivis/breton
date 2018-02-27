@@ -12,18 +12,19 @@ import (
 )
 
 type ProgramType byte
+
 const (
 	ProgramTypeVideo ProgramType = 0x01
 	ProgramTypeAudio ProgramType = 0x03
-	ProgramTypeAAC ProgramType = 0x0F
+	ProgramTypeAAC   ProgramType = 0x0F
 
 	ProgramTypeUnknown ProgramType = 0x09 // TODO: this is a guess?
 )
 
-type ProgramDetails struct{
+type ProgramDetails struct {
 	pid uint16
 	pmt *psi.PMT
-	wr io.WriteCloser
+	wr  io.WriteCloser
 }
 
 func (pd *ProgramDetails) PMTPID() uint16 {
@@ -61,10 +62,10 @@ func (pd *ProgramDetails) marshalPacket(continuity byte) ([]byte, error) {
 	}
 
 	pkt := &packet.Packet{
-		PID: pd.pid,
-		PUSI: true,
+		PID:        pd.pid,
+		PUSI:       true,
 		Continuity: continuity & 0x0F,
-		Payload: b,
+		Payload:    b,
 	}
 
 	return pkt.Marshal()

@@ -20,7 +20,7 @@ type Demux struct {
 
 	src io.Reader
 
-	closed   chan struct{}
+	closed chan struct{}
 
 	mu       sync.Mutex
 	programs map[uint16]*bufpipe.Pipe
@@ -34,7 +34,7 @@ func NewDemux(rd io.Reader, opts ...Option) *Demux {
 	d := &Demux{
 		src: rd,
 
-		closed:   make(chan struct{}),
+		closed: make(chan struct{}),
 
 		programs: make(map[uint16]*bufpipe.Pipe),
 

@@ -55,24 +55,24 @@ func (ts *TransportStream) getUpdateRate() time.Duration {
 	return ts.updateRate
 }
 
-type TransportStream struct{
+type TransportStream struct {
 	sink io.Writer
 
 	ticker  chan struct{}
 	counter int
 
 	once sync.Once
-	mu sync.Mutex
+	mu   sync.Mutex
 
-	debug func(*packet.Packet)
+	debug      func(*packet.Packet)
 	updateRate time.Duration
 
 	patReady chan struct{}
-	pat map[uint16]uint16
-	pmts map[uint16]*ProgramDetails
+	pat      map[uint16]uint16
+	pmts     map[uint16]*ProgramDetails
 
 	nextStreamPID uint16
-	lastStreamID uint16
+	lastStreamID  uint16
 }
 
 func (ts *TransportStream) init() {
@@ -164,13 +164,13 @@ func (ts *TransportStream) NewProgram(streamID uint16, typ ProgramType) (*Progra
 		pmt: &psi.PMT{
 			Syntax: &psi.SectionSyntax{
 				TableIDExtension: streamID,
-				Current: true,
+				Current:          true,
 			},
 			PCRPID: pid,
 			Streams: []*psi.StreamData{
 				&psi.StreamData{
 					Type: byte(typ),
-					PID: pid,
+					PID:  pid,
 				},
 			},
 		},
@@ -231,5 +231,3 @@ func (ts *TransportStream) GetPMTs() map[uint16]*ProgramDetails {
 
 	return ts.pmts
 }
-
-

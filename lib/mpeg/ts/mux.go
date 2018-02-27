@@ -33,7 +33,7 @@ type Mux struct {
 func NewMux(wr io.Writer, opts ...Option) *Mux {
 	m := &Mux{
 		TransportStream: TransportStream{
-			sink: wr,
+			sink:   wr,
 			ticker: make(chan struct{}),
 		},
 
@@ -269,7 +269,7 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 
 		pid: pid,
 
-		wr:     pipe,
+		wr: pipe,
 		closer: func() error {
 			return pipe.Close()
 		},
@@ -351,10 +351,10 @@ func (m *Mux) preamble(continuity byte) error {
 		}
 
 		pkts = append(pkts, &packet.Packet{
-			PID: pd.PMTPID(),
-			PUSI: true,
+			PID:        pd.PMTPID(),
+			PUSI:       true,
 			Continuity: continuity,
-			Payload: payload,
+			Payload:    payload,
 		})
 	}
 
