@@ -48,7 +48,7 @@ func (r *Reader) Read(b []byte) (n int, err error) {
 		}
 	}
 
-	hdr := make([]byte, 6)
+	hdr := make([]byte, mandatoryHeaderLength)
 	if err := r.mustRead(hdr); err != nil {
 		if err == io.EOF && n != 0 {
 			// only return err == io.EOF,

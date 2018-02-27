@@ -10,6 +10,8 @@ import (
 const (
 	idPaddingStream  = 0xBE
 	idPrivateStream2 = 0xBF
+
+	mandatoryHeaderLength = 6
 )
 
 // Stream is a structure defining properties of a Primitive Elementary Stream.
@@ -17,6 +19,24 @@ type Stream struct {
 	ID byte // Stream ID
 
 	Header // Optional PES Header fields.
+}
+
+func (s *Stream) HeaderLength() (int, error) {
+	l := mandatoryHeaderLength
+
+	switch s.ID {
+	case idPaddingStream, idPrivateStream2:
+		// Optional PES Header not present for these streams.
+	default:
+		h, err := s.marshalHeader()
+		if err != nil {
+			return 0, err
+		}
+
+		l += len(h)
+	}
+
+	return l, nil
 }
 
 // String implements fmt.Stringer

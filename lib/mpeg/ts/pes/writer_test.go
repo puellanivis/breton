@@ -27,9 +27,18 @@ func TestMarshal(t *testing.T) {
 	expected = append(expected, input...)
 	expectedWriteLength := len(input)
 
+	hlen, err := wr.HeaderLength()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	if hlen != 9 {
+		t.Errorf("expected HeaderLength of 9 bytes, but got %d", hlen)
+	}
+
 	n, err := wr.Write(input)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	if n != expectedWriteLength {
@@ -46,7 +55,7 @@ func TestMarshal(t *testing.T) {
 
 	n, err = wr.Write(input)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("%+v", err)
 	}
 
 	if n != expectedWriteLength {

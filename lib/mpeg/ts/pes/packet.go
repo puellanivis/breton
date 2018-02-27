@@ -1,6 +1,8 @@
 package pes
 
 import (
+	"bytes"
+
 	"github.com/pkg/errors"
 )
 
@@ -10,8 +12,10 @@ type packet struct {
 	payload []byte
 }
 
+var startCodePrefix = []byte{0, 0, 1}
+
 func (p *packet) preUnmarshal(b []byte) (int, error) {
-	if b[0] != 0 || b[1] != 0 || b[2] != 1 {
+	if !bytes.HasPrefix(b, startCodePrefix) {
 		return 0, errors.Errorf("bad start prefix [% 2X]", b[:3])
 	}
 
@@ -29,12 +33,12 @@ func (p *packet) unmarshal(b []byte) error {
 		// Optional PES Header not present for these streams.
 
 	default:
-		l, err := p.stream.unmarshalHeader(b)
+		hlen, err := p.stream.unmarshalHeader(b)
 		if err != nil {
 			return err
 		}
 
-		b = b[l:]
+		b = b[hlen:]
 	}
 
 	p.payload = append([]byte{}, b...)
@@ -48,9 +52,10 @@ func (p *packet) Unmarshal(b []byte) error {
 		return err
 	}
 
-	b = b[6 : 6+l] // enforce proper boundaries
+	// trim mandatory header (already consumed by preMarshal)
+	b = b[mandatoryHeaderLength:]
 
-	return p.unmarshal(b)
+	return p.unmarshal(b[:l]) // enforce length with slice boundaries.
 }
 
 func (p *packet) Marshal() ([]byte, error) {
@@ -75,18 +80,16 @@ func (p *packet) Marshal() ([]byte, error) {
 		return nil, errors.Errorf("packet size too big: header:%d payload:%d", len(h), len(p.payload))
 	}
 
-	// len(Manditory PES Header) == 6
-	out := make([]byte, 6+l)
+	out := make([]byte, mandatoryHeaderLength+l)
 
-	out[0] = 0
-	out[1] = 0
-	out[2] = 1
+	copy(out, startCodePrefix)
+
 	out[3] = p.stream.ID
-
 	out[4] = byte((l >> 8) & 0xff)
 	out[5] = byte(l & 0xff)
 
-	start := 6 + copy(out[6:], h)
+	start := mandatoryHeaderLength
+	start += copy(out[start:], h)
 
 	copy(out[start:], p.payload)
 
