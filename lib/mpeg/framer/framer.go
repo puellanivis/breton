@@ -18,7 +18,7 @@ func splitterFunc() bufio.SplitFunc {
 				return 0, nil, nil
 			}
 
-			if data[0] != 0xFF && data[1] & 0xF0 != 0xF0 {
+			if data[0] != 0xFF && data[1]&0xF0 != 0xF0 {
 				return 0, nil, errors.New("MPEG sync word missing")
 			}
 
@@ -44,7 +44,7 @@ func splitterFunc() bufio.SplitFunc {
 			}
 
 			advance += j
-			if data[advance+1] & 0xF0 == 0xF0 {
+			if data[advance+1]&0xF0 == 0xF0 {
 				return advance, data[:advance], nil
 			}
 		}
