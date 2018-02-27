@@ -72,18 +72,18 @@ func (pmt *PMT) Unmarshal(b []byte) error {
 	pmt.crc = crc
 
 	pmt.PCRPID = uint16(data[0]&0x1F)<<8 | uint16(data[1])
-
-	start := 4
 	pinfo_length := int(data[2]&0x03)<<8 | int(data[3])
 
-	pmt.Descriptors = make([]desc.Descriptor, pinfo_length)
-	for i := range pmt.Descriptors {
+	start := 4
+	end := pinfo_length + start
+
+	for start < end {
 		d, err := desc.Unmarshal(data[start:])
 		if err != nil {
 			return err
 		}
 
-		pmt.Descriptors[i] = d
+		pmt.Descriptors = append(pmt.Descriptors, d)
 
 		start += d.Len()
 	}
@@ -92,16 +92,14 @@ func (pmt *PMT) Unmarshal(b []byte) error {
 		b := data[start:]
 
 		esd := new(StreamData)
-		if err := esd.unmarshal(b); err != nil {
+		l, err := esd.unmarshal(b)
+		if err != nil {
 			return err
 		}
 
 		pmt.Streams = append(pmt.Streams, esd)
 
-		start += 5
-		for _, d := range esd.Descriptors {
-			start += d.Len()
-		}
+		start += l
 	}
 
 	return nil

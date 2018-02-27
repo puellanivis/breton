@@ -28,27 +28,27 @@ func (esd *StreamData) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(out, " "))
 }
 
-func (esd *StreamData) unmarshal(b []byte) error {
+func (esd *StreamData) unmarshal(b []byte) (int, error) {
 	esd.Type = b[0]
 	esd.PID = uint16(b[1]&0x1f)<<8 | uint16(b[2])
 
 	l := int(b[3]&0x3)<<8 | int(b[4])
 
 	start := 5
+	end := start + l
 
-	esd.Descriptors = make([]desc.Descriptor, l)
-	for i := range esd.Descriptors {
+	for start < end {
 		d, err := desc.Unmarshal(b[start:])
 		if err != nil {
-			return err
+			return start, err
 		}
 
-		esd.Descriptors[i] = d
+		esd.Descriptors = append(esd.Descriptors, d)
 
 		start += d.Len()
 	}
 
-	return nil
+	return start, nil
 }
 
 func (esd *StreamData) marshal() ([]byte, error) {
