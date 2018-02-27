@@ -25,7 +25,7 @@ func TestMarshal(t *testing.T) {
 		0x80, 0x00, 0x00,
 	}
 	expected = append(expected, input...)
-	expectedWriteLength := len(expected)
+	expectedWriteLength := len(input)
 
 	n, err := wr.Write(input)
 	if err != nil {
