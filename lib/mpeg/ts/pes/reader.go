@@ -68,6 +68,10 @@ func (r *Reader) Read(b []byte) (n int, err error) {
 		return n, err
 	}
 
+	if l == 0 {
+		return n, errors.New("video PES packets with length == 0 unsupported")
+	}
+
 	body := make([]byte, l)
 	if err = r.mustRead(body); err != nil {
 		return n, err
