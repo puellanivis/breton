@@ -175,31 +175,7 @@ func (p *Pipe) Write(b []byte) (n int, err error) {
 	}
 
 	if p.maxOutstanding > 0 && p.b.Len()+len(b) > p.maxOutstanding {
-		// We will be watching this channel outside of lock,
-		// so we have to have a local copy.
-		empty := p.empty
-
-		select {
-		case <-empty:
-			// We only update the empty channel here,
-			// because this is the only codepath that depends upon it.
-			empty = make(chan struct{})
-			p.empty = empty
-		default:
-		}
-
-		p.flush() // flush, just to make sure.
-		p.mu.Unlock()
-
-		select {
-		case <-empty:
-		case <-p.closed:
-		}
-
-		p.mu.Lock()
-
-		// Need to recheck state, because we were unlocked.
-		if err := p.prewrite(); err != nil {
+		if err := p.sync(); err != nil {
 			return 0, err
 		}
 	}
@@ -238,6 +214,47 @@ func (p *Pipe) Flush() error {
 	p.flush()
 
 	return nil
+}
+
+func (p *Pipe) sync() error {
+	// We will be watching this channel outside of lock,
+	// so we have to have a local copy.
+	empty := p.empty
+
+	select {
+	case <-empty:
+		// We only update the empty channel here,
+		// because this is the only codepath that depends upon it.
+		empty = make(chan struct{})
+		p.empty = empty
+	default:
+	}
+
+	p.flush() // flush, just to make sure.
+	p.mu.Unlock()
+
+	select {
+	case <-empty:
+	case <-p.closed:
+	}
+
+	p.mu.Lock()
+
+	return p.prewrite()
+}
+
+// Sync will unblock any blocked Readers, and block until the internal buffer is empty.
+// This could cause them to read zero bytes of data.
+func (p *Pipe) Sync() error {
+	p.once.Do(p.init)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if err := p.prewrite(); err != nil {
+		return err
+	}
+
+	return p.sync()
 }
 
 func (p *Pipe) close() {
