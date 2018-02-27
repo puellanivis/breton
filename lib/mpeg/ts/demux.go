@@ -16,41 +16,25 @@ import (
 var _ = glog.Info
 
 type Demux struct {
+	TransportStream
+
 	src io.Reader
 
 	closed   chan struct{}
-	patReady chan struct{}
-	debug    func(*packet.Packet)
 
 	mu       sync.Mutex
 	programs map[uint16]*bufpipe.Pipe
-	pat      map[uint16]uint16
 
 	complete  chan struct{}
 	pending   map[uint16]*bufpipe.Pipe
 	pendingWG sync.WaitGroup
 }
 
-type DemuxOption func(*Demux) DemuxOption
-
-func WithDebug(fn func(*packet.Packet)) DemuxOption {
-	return func(d *Demux) DemuxOption {
-		d.mu.Lock()
-		defer d.mu.Unlock()
-
-		save := d.debug
-		d.debug = fn
-
-		return WithDebug(save)
-	}
-}
-
-func NewDemux(rd io.Reader, opts ...DemuxOption) *Demux {
+func NewDemux(rd io.Reader, opts ...Option) *Demux {
 	d := &Demux{
 		src: rd,
 
 		closed:   make(chan struct{}),
-		patReady: make(chan struct{}),
 
 		programs: make(map[uint16]*bufpipe.Pipe),
 
@@ -59,7 +43,7 @@ func NewDemux(rd io.Reader, opts ...DemuxOption) *Demux {
 	}
 
 	for _, opt := range opts {
-		_ = opt(d)
+		_ = opt(&d.TransportStream)
 	}
 
 	return d
@@ -69,38 +53,6 @@ const (
 	pidPAT  uint16 = 0
 	pidNULL uint16 = 0x1FFF
 )
-
-func (d *Demux) getPAT() map[uint16]uint16 {
-	<-d.patReady
-
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	return d.pat
-}
-
-func (d *Demux) setPAT(pat *psi.PAT) {
-	newPAT := make(map[uint16]uint16)
-
-	if pat != nil {
-		for _, m := range pat.Map {
-			newPAT[m.ProgramNumber] = m.PID
-		}
-	}
-
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	if pat != nil {
-		d.pat = newPAT
-	}
-
-	select {
-	case <-d.patReady:
-	default:
-		close(d.patReady)
-	}
-}
 
 func (d *Demux) getPipe(ctx context.Context, pid uint16) (*bufpipe.Pipe, error) {
 	d.mu.Lock()
@@ -146,7 +98,7 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 		defer d.pendingWG.Done()
 		defer p.makeReady()
 
-		pat := d.getPAT()
+		pat := d.GetPAT()
 
 		pmtPID, ok := pat[streamID]
 		if !ok {
@@ -296,20 +248,22 @@ func (d *Demux) get(pkt *packet.Packet) (wr *bufpipe.Pipe, debug func(*packet.Pa
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	debug = d.getDebug()
+
 	wr = d.programs[pkt.PID]
 	if wr != nil {
-		return wr, d.debug
+		return wr, debug
 	}
 
 	select {
 	case <-d.complete:
-		return nil, d.debug
+		return nil, debug
 	default:
 	}
 
 	wr = d.pending[pkt.PID]
 	if wr != nil {
-		return wr, d.debug
+		return wr, debug
 	}
 
 	// Make a new bufpipe.Pipe with no context closer.
@@ -319,7 +273,7 @@ func (d *Demux) get(pkt *packet.Packet) (wr *bufpipe.Pipe, debug func(*packet.Pa
 
 	d.pending[pkt.PID] = wr
 
-	return wr, d.debug
+	return wr, debug
 }
 
 func (d *Demux) readOne(b []byte) (error, bool) {
@@ -405,10 +359,12 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 		for {
 			n, err := rdPAT.Read(b)
 			if err != nil {
-				select {
-				case <-done:
-				default:
-					errch <- err
+				if err != io.EOF {
+					select {
+					case <-done:
+					default:
+						errch <- err
+					}
 				}
 
 				select {
@@ -445,6 +401,7 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 			pat, ok := tbl.(*psi.PAT)
 			if !ok {
 				errch <- errors.Errorf("unexpected table on pid 0x0000: %v", tbl.TableID())
+				continue
 			}
 
 			if pat.Syntax != nil {
@@ -454,7 +411,12 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 				ver = pat.Syntax.Version
 			}
 
-			d.setPAT(pat)
+			newPAT := make(map[uint16]uint16)
+			for _, m := range pat.Map {
+				newPAT[m.ProgramNumber] = m.PID
+			}
+
+			d.setPAT(newPAT)
 		}
 	}()
 

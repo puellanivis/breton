@@ -1,7 +1,6 @@
 package ts
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"sort"
@@ -19,56 +18,8 @@ import (
 
 var _ = glog.Info
 
-type sink struct {
-	sync.Mutex
-	io.Writer
-
-	ticker  chan struct{}
-	counter int
-}
-
-func (s *sink) Write(b []byte) (n int, err error) {
-	s.Lock()
-	defer s.Unlock()
-
-	n, err = s.Writer.Write(b)
-
-	s.counter--
-	if s.counter <= 0 {
-		select {
-		case s.ticker <- struct{}{}:
-			s.counter += 15 // TODO: make configurable
-		default:
-		}
-	}
-
-	return n, err
-}
-
-type pmtDetails struct {
-	pid uint16
-	pmt *psi.PMT
-	wr  io.WriteCloser
-}
-
-func (pmt *pmtDetails) marshalPacket(continuity byte) ([]byte, error) {
-	b, err := pmt.pmt.Marshal()
-	if err != nil {
-		return nil, err
-	}
-
-	pkt := &packet.Packet{
-		PID:        pmt.pid,
-		PUSI:       true,
-		Continuity: continuity & 0xF,
-		Payload:    b,
-	}
-
-	return pkt.Marshal()
-}
-
 type Mux struct {
-	sink sink
+	TransportStream
 
 	pcrSrc *pcr.Source
 
@@ -77,30 +28,12 @@ type Mux struct {
 
 	mu          sync.Mutex
 	outstanding sync.WaitGroup
-
-	nextStreamPID uint16
-	pat           map[uint16]uint16
-	pmts          map[uint16]*pmtDetails
 }
 
-type MuxOption func(*Mux) MuxOption
-
-/*func WithDebug(fn func(*packet.Packet)) MuxOption {
-	return func(m *Mux) MuxOption {
-		m.mu.Lock()
-		defer m.mu.Unlock()
-
-		save := m.debug
-		m.debug = fn
-
-		return WithDebug(save)
-	}
-}*/
-
-func NewMux(wr io.Writer, opts ...MuxOption) *Mux {
+func NewMux(wr io.Writer, opts ...Option) *Mux {
 	m := &Mux{
-		sink: sink{
-			Writer: wr,
+		TransportStream: TransportStream{
+			sink: wr,
 			ticker: make(chan struct{}),
 		},
 
@@ -108,28 +41,16 @@ func NewMux(wr io.Writer, opts ...MuxOption) *Mux {
 
 		closed: make(chan struct{}),
 		ready:  make(chan struct{}),
-
-		nextStreamPID: 0x100,
 	}
 
 	for _, opt := range opts {
-		_ = opt(m)
+		_ = opt(&m.TransportStream)
 	}
 
 	return m
 }
 
-func (m *Mux) assignPID() uint16 {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	ret := m.nextStreamPID
-	m.nextStreamPID++
-
-	return ret
-}
-
-func (m *Mux) Writer(ctx context.Context, streamID uint16) (io.WriteCloser, error) {
+func (m *Mux) Writer(ctx context.Context, streamID uint16, typ ProgramType) (io.WriteCloser, error) {
 	if streamID == 0 {
 		return nil, errors.Errorf("stream_id 0x%04X is invalid", streamID)
 	}
@@ -140,55 +61,29 @@ func (m *Mux) Writer(ctx context.Context, streamID uint16) (io.WriteCloser, erro
 	default:
 	}
 
-	pid := m.assignPID()
-	pmtPID := pid << 4
-
-	wr, err := m.WriterByPID(ctx, pmtPID, false)
+	pd, err := m.NewProgram(streamID, typ)
 	if err != nil {
 		return nil, err
 	}
 
-	pmt := &pmtDetails{
-		pid: pmtPID,
-		pmt: &psi.PMT{
-			Syntax: &psi.SectionSyntax{
-				TableIDExtension: streamID,
-				Current:          true,
-			},
-			PCRPID: pid,
-			Streams: []*psi.StreamData{
-				&psi.StreamData{
-					Type: 0x03, // TODO: don’t hardcode audio like this.
-					PID:  pid,
-				},
-			},
-		},
-		wr: wr,
+	wr, err := m.WriterByPID(ctx, pd.PMTPID(), false)
+	if err != nil {
+		return nil, err
 	}
 
-	if m.pat == nil {
-		m.pat = make(map[uint16]uint16)
-	}
+	pd.wr = wr
 
-	m.pat[streamID] = pmtPID
-
-	if m.pmts == nil {
-		m.pmts = make(map[uint16]*pmtDetails)
-	}
-
-	m.pmts[pid] = pmt
-
-	return m.WriterByPID(ctx, pid, true)
+	return m.WriterByPID(ctx, pd.StreamPID(), true)
 }
 
 const (
 	maxLengthAllowingStuffing = packet.MaxPayload - packet.AdaptationFieldMinLength
 )
 
-func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
+func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool) {
 	defer func() {
 		if err := rd.Close(); err != nil {
-			glog.Error("packetizer: rd.Close: %+v", err)
+			glog.Error("packetizer: 0x%04X: rd.Close: %+v", pid, err)
 		}
 	}()
 
@@ -207,10 +102,14 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 		n, err := rd.Read(buf)
 		if err != nil {
 			if err != io.EOF {
-				glog.Errorf("packetizer : 0x%04x : %+v", pid, err)
+				glog.Errorf("packetizer: 0x%04X: %+v", pid, err)
 			}
 
 			return
+		}
+
+		if n == len(buf) {
+			glog.Warningf("packetizer: 0x%04X: unexpected full read of packet buffer")
 		}
 
 		// trunc the buffer to only what was read.
@@ -220,12 +119,10 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 
 		for len(data) > 0 {
 			var af *packet.AdaptationField
-			var l int
 
 			switch {
 			case !isPES:
-				l = len(data)
-				// don’t do anything
+				// Don’t do anything, PSI tables don’t get an AdaptationField.
 
 			case pusi:
 				af = &packet.AdaptationField{
@@ -254,12 +151,14 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 				af = &packet.AdaptationField{}
 			}
 
-			if isPES {
-				l = packet.MaxPayload - af.Len()
+			l := packet.MaxPayload - af.Len()
 
-				if l > len(data) {
-					glog.Errorf("calculated bad payload length: %d > %d", l, len(data))
+			if l > len(data) {
+				if isPES {
+					glog.Errorf("calculated bad payload space: %d > %d", l, len(data))
 				}
+
+				l = len(data)
 			}
 
 			pkt := &packet.Packet{
@@ -273,14 +172,8 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 			pusi = false
 			continuity = (continuity + 1) & 0x0F
 
-			b, err := pkt.Marshal()
-			if err != nil {
-				glog.Errorf("%+v", err)
-				return
-			}
-
-			if _, err := m.sink.Write(b); err != nil {
-				glog.Errorf("m.sink.Write: 0x%04x: %+v", pid, err)
+			if _, err := m.writePackets(pkt); err != nil {
+				glog.Errorf("m.writePackets: 0x%04X: %+v", pid, err)
 				return
 			}
 
@@ -291,7 +184,7 @@ func (m *Mux) packetizer(pid uint16, isPES bool, rd io.ReadCloser) {
 }
 
 func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.WriteCloser, error) {
-	glog.Infof("pid:x%04x, isPES:%v", pid, isPES)
+	glog.Infof("pid:x%04X, isPES:%v", pid, isPES)
 
 	if pid == pidNULL {
 		return nil, errors.Errorf("pid 0x%04X is invalid", pid)
@@ -299,22 +192,17 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 
 	select {
 	case <-m.closed:
-		return nil, errors.New("Mux is closed")
+		return nil, errors.Errorf("pid 0x%04X: mux is closed", pid)
 	default:
 	}
 
-	ready := make(chan struct{})
-	close(ready)
-
-	ctx, cancel := context.WithCancel(ctx)
 	pipe := bufpipe.New(ctx)
+
 	var rd io.ReadCloser = pipe
-	// if !isPES: pipe -> ReadAll -> Packetize -> Marshal -> sink.Write
+	// if !isPES: bufpipe.Pipe -> Packetizer
+	// if  isPES: bufpipe.Pipe -> ReadAll -> pes.Writer -> io.Pipe -> Packetizer
 
 	if isPES {
-		// We only want to wg.Wait on PES streams.
-		m.outstanding.Add(1)
-
 		var wr io.WriteCloser
 
 		rd, wr = io.Pipe() // synchronous pipe, don’t write to it without a Reader available.
@@ -322,11 +210,19 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 		pesWR := pes.NewWriter(0xC0, wr) // TODO: don’t hardcode a value for audio.
 		//pesWR.Stream.Header.PTS = new(uint64) // we would need to extract this from the input stream…
 
-		// 176      : first payload size minus len(AF{PCR:xxx})
-		// - 9      : PES header size
-		// 14 * 184 : 14 packets of full payload
-		// 182      : 1 packet with enough room for len(AF{Stuffing:xxx})
-		bufpipe.WithMaxOutstanding(176 - 9 + 14*184 + 182)(pipe) // TODO: don’t hard code thise.
+		pesHdrLen, err := pesWR.HeaderLength()
+		if err != nil {
+			return nil, err
+		}
+
+		// 176                       : first payload size (MaxPayload - len(AF{PCR:xxx}))
+		// pes.HeaderLength          : PES header size
+		// 14 * packet.MaxPayload    : 14 packets of full payload
+		// maxLengthAllowingStuffing : 1 packet with enough room for len(AF{Stuffing:xxx})
+		// = |PUSI:payload[176]|, 14 × |payload[184]|, |AF{Stuffing}:payload[<182]|
+
+		// TODO: don’t hard code thise.
+		bufpipe.WithMaxOutstanding(176 - pesHdrLen + 14*packet.MaxPayload + maxLengthAllowingStuffing)(pipe)
 		bufpipe.WithNoAutoFlush()(pipe)
 
 		go func() {
@@ -342,11 +238,16 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 				}
 
 				if _, err := pesWR.Write(data); err != nil {
-					glog.Errorf("mpeg/ts/pes.Writer: %+v", err)
+					glog.Errorf("mpeg/ts/pes.Writer.Write: %+v", err)
 					return
 				}
 			}
 		}()
+	}
+
+	if isPES {
+		// We only want to wg.Wait on PES streams.
+		m.outstanding.Add(1)
 	}
 
 	go func() {
@@ -357,18 +258,19 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 			<-m.ready
 		}
 
-		m.packetizer(pid, isPES, rd)
+		m.packetizer(rd, pid, isPES)
 	}()
+
+	ready := make(chan struct{})
+	close(ready)
 
 	return &program{
 		ready: ready,
 
 		pid: pid,
 
-		wr: pipe,
+		wr:     pipe,
 		closer: func() error {
-			cancel()
-
 			return pipe.Close()
 		},
 	}, nil
@@ -399,22 +301,8 @@ func (m *Mux) markReady() {
 	}
 }
 
-func (m *Mux) getPAT() map[uint16]uint16 {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return m.pat
-}
-
-func (m *Mux) getPMTs() map[uint16]*pmtDetails {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	return m.pmts
-}
-
-func (m *Mux) writePAT(w io.Writer) error {
-	pat := m.getPAT()
+func (m *Mux) marshalPAT() ([]byte, error) {
+	pat := m.GetPAT()
 
 	var keys []uint16
 	for key := range pat {
@@ -422,65 +310,56 @@ func (m *Mux) writePAT(w io.Writer) error {
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
 
+	pmap := make([]psi.ProgramMap, len(keys))
+	for i, key := range keys {
+		pmap[i].Set(key, pat[key])
+	}
+
 	tbl := &psi.PAT{
 		Syntax: &psi.SectionSyntax{
 			TableIDExtension: 0x1,
 			Current:          true,
 		},
-		Map: make([]psi.ProgramMap, len(keys)),
+		Map: pmap,
 	}
 
-	for i, key := range keys {
-		tbl.Map[i].Set(key, pat[key])
-	}
-
-	b, err := tbl.Marshal()
-	if err != nil {
-		return err
-	}
-
-	_, err = w.Write(b)
-	return err
+	return tbl.Marshal()
 }
 
+// this needs to be moved into sink, as right now it violates sink’s internal details.
 func (m *Mux) preamble(continuity byte) error {
-	preamble := new(bytes.Buffer)
+	var pkts []*packet.Packet
 
-	if err := m.writePAT(preamble); err != nil {
-		return err
-	}
+	continuity = continuity & 0x0F
 
-	pkt := &packet.Packet{
-		PID:        pidPAT,
-		PUSI:       true,
-		Continuity: continuity & 0x0F,
-		Payload:    preamble.Bytes(),
-	}
-
-	b, err := pkt.Marshal()
+	payload, err := m.marshalPAT()
 	if err != nil {
 		return err
 	}
 
-	m.sink.Lock()
-	defer m.sink.Unlock()
+	pkts = append(pkts, &packet.Packet{
+		PID:        pidPAT,
+		PUSI:       true,
+		Continuity: continuity,
+		Payload:    payload,
+	})
 
-	m.sink.counter += 15
+	for _, pd := range m.GetPMTs() {
+		payload, err := pd.pmt.Marshal()
+		if err != nil {
+			return err
+		}
 
-	if _, err := m.sink.Writer.Write(b); err != nil {
-		return err
+		pkts = append(pkts, &packet.Packet{
+			PID: pd.PMTPID(),
+			PUSI: true,
+			Continuity: continuity,
+			Payload: payload,
+		})
 	}
 
-	for _, pmt := range m.getPMTs() {
-		b, err := pmt.marshalPacket(continuity)
-		if err != nil {
-			return err
-		}
-
-		_, err = m.sink.Writer.Write(b)
-		if err != nil {
-			return err
-		}
+	if _, err := m.writePackets(pkts...); err != nil {
+		return err
 	}
 
 	m.markReady()
@@ -512,11 +391,11 @@ func (m *Mux) Serve(ctx context.Context) <-chan error {
 		}()
 
 		// TODO: what do the specifications say?
-		timer := time.NewTimer(5 * time.Millisecond)
+		timer := time.NewTimer(m.getUpdateRate())
 		defer timer.Stop()
 
 		for {
-			timer.Reset(5 * time.Millisecond)
+			timer.Reset(m.getUpdateRate())
 
 			select {
 			case <-ctx.Done():
@@ -524,7 +403,7 @@ func (m *Mux) Serve(ctx context.Context) <-chan error {
 			case <-m.closed:
 				return
 			case <-timer.C:
-			case <-m.sink.ticker:
+			case <-m.ticker:
 			}
 
 			if err := m.preamble(continuity); err != nil {

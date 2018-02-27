@@ -7,7 +7,68 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/puellanivis/breton/lib/mpeg/ts/packet"
+	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
+
+type ProgramType byte
+const (
+	ProgramTypeVideo ProgramType = 0x01
+	ProgramTypeAudio ProgramType = 0x03
+	ProgramTypeAAC ProgramType = 0x0F
+
+	ProgramTypeUnknown ProgramType = 0x09 // TODO: this is a guess?
+)
+
+type ProgramDetails struct{
+	pid uint16
+	pmt *psi.PMT
+	wr io.WriteCloser
+}
+
+func (pd *ProgramDetails) PMTPID() uint16 {
+	return pd.pid
+}
+
+func (pd *ProgramDetails) StreamID() uint16 {
+	if pd.pmt == nil {
+		return 0
+	}
+
+	if pd.pmt.Syntax == nil {
+		return 0
+	}
+
+	return pd.pmt.Syntax.TableIDExtension
+}
+
+func (pd *ProgramDetails) StreamPID() uint16 {
+	if pd.pmt == nil {
+		return 0
+	}
+
+	if len(pd.pmt.Streams) < 1 {
+		return 0
+	}
+
+	return pd.pmt.Streams[0].PID
+}
+
+func (pd *ProgramDetails) marshalPacket(continuity byte) ([]byte, error) {
+	b, err := pd.pmt.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	pkt := &packet.Packet{
+		PID: pd.pid,
+		PUSI: true,
+		Continuity: continuity & 0x0F,
+		Payload: b,
+	}
+
+	return pkt.Marshal()
+}
 
 type program struct {
 	mu    sync.Mutex
