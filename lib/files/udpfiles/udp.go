@@ -134,6 +134,11 @@ func (w *writer) Write(b []byte) (n int, err error) {
 	return n, nil
 }
 
+const (
+	FieldLocalAddress = "local_addr"
+	FieldPacketSize = "pkt_size"
+)
+
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	raddr, err := net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
@@ -143,7 +148,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	var laddr *net.UDPAddr
 
 	q := uri.Query()
-	if addr := q.Get("local_addr"); addr != "" {
+	if addr := q.Get(FieldLocalAddress); addr != "" {
 		laddr, err = net.ResolveUDPAddr("udp", addr)
 	}
 
@@ -157,7 +162,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		Info:    wrapper.NewInfo(uri, 0, time.Now()),
 	}
 
-	if pkt_size := q.Get("pkt_size"); pkt_size != "" {
+	if pkt_size := q.Get(FieldPacketSize); pkt_size != "" {
 		sz, err := strconv.ParseInt(pkt_size, 0, strconv.IntSize)
 		if err != nil {
 			return w, err
