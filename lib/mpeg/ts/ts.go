@@ -11,6 +11,8 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
 
+const PacketSize = packet.Length
+
 type Option func(*TransportStream) Option
 
 func WithDebug(fn func(*packet.Packet)) Option {
