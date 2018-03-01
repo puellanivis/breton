@@ -4,10 +4,11 @@ package aboutfiles
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
-	"strings"
+	"syscall"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -23,7 +24,7 @@ func init() {
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return nil, os.ErrInvalid
+	return nil, &os.PathError{ "create", uri.String(), os.ErrInvalid}
 }
 
 type fn func() ([]byte, error)
@@ -36,6 +37,12 @@ func notfound() ([]byte, error) {
 	return nil, os.ErrNotExist
 }
 
+var ErrUnresolvable = errors.New("unresolvable address")
+
+func unresolvable() ([]byte, error) {
+	return nil, ErrUnresolvable
+}
+
 func version() ([]byte, error) {
 	return append([]byte(util.Version()), '\n'), nil
 }
@@ -46,9 +53,10 @@ var (
 		"blank":         blank,
 		"cache":         blank,
 		"invalid":       notfound,
-		"legacy-compat": notfound,
+		"html-kind":     unresolvable,
+		"legacy-compat": unresolvable,
 		"plugins":       plugins,
-		"srcdoc":        notfound,
+		"srcdoc":        unresolvable,
 		"version":       version,
 	}
 )
@@ -79,11 +87,12 @@ func about() ([]byte, error) {
 	var list []string
 
 	for name := range aboutMap {
-		if name == "" {
-			continue
+		uri := &url.URL{
+			Scheme: "about",
+			Opaque: name,
 		}
 
-		list = append(list, name)
+		list = append(list, uri.String())
 	}
 
 	return listOf(list)
@@ -91,7 +100,7 @@ func about() ([]byte, error) {
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, os.ErrInvalid
+		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
 	}
 
 	path := uri.Path
@@ -101,12 +110,12 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 	f, ok := aboutMap[path]
 	if !ok {
-		return nil, os.ErrNotExist
+		return nil, &os.PathError{"open", uri.String(), os.ErrNotExist}
 	}
 
 	data, err := f()
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"open", uri.String(), err}
 	}
 
 	return wrapper.NewReaderFromBytes(data, uri, time.Now()), nil
@@ -114,7 +123,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, os.ErrInvalid
+		return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
 	}
 
 	path := uri.Path
@@ -122,26 +131,42 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		path = uri.Opaque
 	}
 
-	var list []string
+	if f, ok := aboutMap[path]; !ok {
+		return nil, &os.PathError{"readdir", uri.String(), os.ErrNotExist }
 
-	for name := range aboutMap {
-		if name == "" || !strings.HasPrefix(name, path) {
-			continue
+	} else if f != nil {
+		if _, err := f(); err != nil {
+			return nil, &os.PathError{"readdir", uri.String(), err }
 		}
-
-		list = append(list, name)
 	}
 
+	if path != "about" && path != "" {
+		return nil, &os.PathError{"readdir", uri.String(), syscall.ENOTDIR }
+	}
+
+	var list []string
+	for name := range aboutMap {
+		list = append(list, name)
+	}
 	sort.Strings(list)
 
 	var ret []os.FileInfo
 
 	for _, name := range list {
-		f, _ := aboutMap[name]
+		f := aboutMap[name]
+
+		uri := &url.URL{
+			Scheme: "about",
+			Opaque: name,
+		}
+
+		if f == nil {
+			continue
+		}
 
 		data, err := f()
 		if err != nil {
-			return nil, err
+			continue
 		}
 
 		ret = append(ret, wrapper.NewInfo(uri, len(data), time.Now()))
