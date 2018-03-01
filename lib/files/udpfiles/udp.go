@@ -208,9 +208,9 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	return nil, os.ErrInvalid
+	return nil, &os.PathError{ "open", uri.String(), os.ErrInvalid }
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, os.ErrInvalid
+	return nil, &os.PathError{ "readdir", uri.String(), os.ErrInvalid }
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"syscall"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -69,22 +70,26 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	clip, err := getClip(uri)
-	if err != nil {
-		return nil, &os.PathError{"readdir", uri.String(), err}
+	if uri.Host != "" || uri.User != nil {
+		return nil, &os.PathError{ "readdir", uri.String(), os.ErrInvalid }
 	}
 
-	fi, err := clip.Stat()
-	if err != nil {
-		return nil, err
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
 	}
 
-	if !fi.IsDir() {
-		return []os.FileInfo{fi}, nil
+	clip := clipboards[path]
+	if clip == nil {
+		return nil, &os.PathError{ "readdir", uri.String(), os.ErrNotExist }
+	}
+
+	if path != "" {
+		return nil, &os.PathError{ "readdir", uri.String(), syscall.ENOTDIR }
 	}
 
 	if len(clipboards) < 1 {
-		return nil, os.ErrNotExist
+		return nil, &os.PathError{ "readdir", uri.String(), os.ErrNotExist }
 	}
 
 	var ret []os.FileInfo
