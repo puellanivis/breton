@@ -62,10 +62,10 @@ func init() {
 func listOf(list []string) ([]byte, error) {
 	sort.Strings(list)
 
-	var b bytes.Buffer
+	b := new(bytes.Buffer)
 
 	for _, item := range list {
-		b.WriteString(fmt.Sprintln(item))
+		fmt.Fprintln(b, item)
 	}
 
 	return b.Bytes(), nil
@@ -90,16 +90,18 @@ func about() ([]byte, error) {
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	if uri.Opaque == "" {
-		filename := uri.String()
-		if len(uri.Scheme)+3 < len(filename) {
-			uri.Opaque = filename[len(uri.Scheme)+3:]
-		}
+	if uri.Host != "" || uri.User != nil {
+		return nil, os.ErrInvalid
 	}
 
-	f, ok := aboutMap[uri.Opaque]
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
+	}
+
+	f, ok := aboutMap[path]
 	if !ok {
-		return nil, os.ErrInvalid
+		return nil, os.ErrNotExist
 	}
 
 	data, err := f()
@@ -111,10 +113,19 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+	if uri.Host != "" || uri.User != nil {
+		return nil, os.ErrInvalid
+	}
+
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
+	}
+
 	var list []string
 
 	for name := range aboutMap {
-		if name == "" || !strings.HasPrefix(name, uri.Opaque) {
+		if name == "" || !strings.HasPrefix(name, path) {
 			continue
 		}
 
