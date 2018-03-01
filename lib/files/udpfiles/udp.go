@@ -169,6 +169,7 @@ func (w *writer) Write(b []byte) (n int, err error) {
 
 const (
 	FieldLocalAddress = "local_addr"
+	FieldBufferSize = "buf_size"
 	FieldPacketSize = "pkt_size"
 )
 
@@ -195,6 +196,17 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		Info:    wrapper.NewInfo(uri, 0, time.Now()),
 	}
 
+	if buf_size := q.Get(FieldBufferSize); buf_size != "" {
+		sz, err := strconv.ParseInt(buf_size, 0, strconv.IntSize)
+		if err != nil {
+			return w, err
+		}
+
+		if err2 := conn.SetWriteBuffer(int(sz)); err == nil {
+			err = err2
+		}
+	}
+
 	if pkt_size := q.Get(FieldPacketSize); pkt_size != "" {
 		sz, err := strconv.ParseInt(pkt_size, 0, strconv.IntSize)
 		if err != nil {
@@ -204,7 +216,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		w.SetPacketSize(int(sz))
 	}
 
-	return w, nil
+	return w, err
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
