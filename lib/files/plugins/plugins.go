@@ -9,4 +9,7 @@ import (
 	_ "github.com/puellanivis/breton/lib/files/datafiles"
 	_ "github.com/puellanivis/breton/lib/files/home"
 	_ "github.com/puellanivis/breton/lib/files/httpfiles"
+	_ "github.com/puellanivis/breton/lib/files/tcpfiles"
+	_ "github.com/puellanivis/breton/lib/files/udpfiles"
+	_ "github.com/puellanivis/breton/lib/files/unixsocket"
 )
