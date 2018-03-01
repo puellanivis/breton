@@ -35,11 +35,19 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		return nil, err
 	}
 
+	fixURL := *uri
+	fixURL.Host = raddr.String()
+
 	var laddr *net.TCPAddr
 
 	q := uri.Query()
 	if addr := q.Get(FieldLocalAddress); addr != "" {
 		laddr, err = net.ResolveTCPAddr("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		q.Set(FieldLocalAddress, laddr.String())
+		fixURL.RawQuery = q.Encode()
 	}
 
 	conn, err := net.DialTCP("tcp", laddr, raddr)
@@ -47,16 +55,16 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		return nil, err
 	}
 
+	if err := conn.CloseRead(); err != nil {
+		return nil, err
+	}
+
 	w := &writer{
 		TCPConn: conn,
-		Info:    wrapper.NewInfo(uri, 0, time.Now()),
+		Info:    wrapper.NewInfo(&fixURL, 0, time.Now()),
 	}
 
 	return w, nil
-}
-
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	return nil, os.ErrInvalid
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
