@@ -56,6 +56,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	}
 
 	if err := conn.CloseRead(); err != nil {
+		conn.Close()
 		return nil, err
 	}
 
