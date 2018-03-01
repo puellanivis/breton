@@ -47,19 +47,17 @@ func (h *FileStore) expire(filename string) {
 	delete(h.cache, filename)
 }
 
-func filename(uri *url.URL) string {
-	filename := uri.Opaque
-	if filename == "" {
-		filename = uri.String()
-		filename = filename[len(uri.Scheme)+1:]
+func trimScheme(uri *url.URL) string {
+	if uri.Scheme == "" {
+		return uri.String()
 	}
 
-	return filename
+	return uri.String()[len(uri.Scheme)+1:]
 }
 
 // Create implements the files.FileStore Create. At this time, it just returns the files.Create() from the wrapped url.
 func (h *FileStore) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return files.Create(ctx, filename(uri))
+	return files.Create(ctx, trimScheme(uri))
 }
 
 // Open implements the files.FileStore Open. It returns a buffered copy of the files.Reader returned from reading the uri escaped by the "cache:" scheme. Any access within the next ExpireTime set by the context.Context (5 minutes by default) will return a new copy of an bytes.Reader of the same buffer.
@@ -67,10 +65,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 	h.Lock()
 	defer h.Unlock()
 
-	filename := filename(uri)
-	/*if uri.RawQuery != "" {
-		filename = fmt.Sprintf("%s?%s", filename, uri.RawQuery)
-	}*/
+	filename := trimScheme(uri)
 
 	f, ok := h.cache[filename]
 
@@ -121,5 +116,5 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 
 // List implements the files.FileStore List. It does not cache anything and just returns the files.List() from the wrapped url.
 func (h *FileStore) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return files.List(ctx, filename(uri))
+	return files.List(ctx, trimScheme(uri))
 }
