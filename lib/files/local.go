@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"io/ioutil"
 	"net/url"
 	"os"
 )
@@ -36,11 +37,5 @@ func (h *localFS) Create(ctx context.Context, uri *url.URL) (Writer, error) {
 
 // List returns the whole slice of os.FileInfos for a specific local filesystem at uri.Path.
 func (h *localFS) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	f, err := os.Open(filename(uri))
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return f.Readdir(0)
+	return ioutil.ReadDir(filename(uri))
 }
