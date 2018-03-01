@@ -30,6 +30,15 @@ func init() {
 // Filename takes a given url, and returns a filename that is an absolute path
 // for the specific default user if home:filename, or a specific user if home://user@/filename.
 func Filename(uri *url.URL) (string, error) {
+	if uri.Host != "" {
+		return "", os.ErrInvalid
+	}
+
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
+	}
+
 	if uri.User != nil {
 		u, err := user.Lookup(uri.User.Username())
 		if err != nil {
@@ -37,18 +46,11 @@ func Filename(uri *url.URL) (string, error) {
 		}
 
 		if dir := u.HomeDir; dir != "" {
-			return filepath.Join(dir, uri.Path), nil
+			return filepath.Join(dir, path), nil
 		}
 	}
 
-	if uri.Opaque == "" {
-		filename := uri.String()
-		if len(uri.Scheme)+3 < len(filename) {
-			uri.Opaque = filename[len(uri.Scheme)+3:]
-		}
-	}
-
-	return filepath.Join(userDir, uri.Opaque), nil
+	return filepath.Join(userDir, path), nil
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
