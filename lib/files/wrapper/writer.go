@@ -134,6 +134,14 @@ func (w *Writer) Close() error {
 		return err
 	}
 
+	var err error
+
 	// We cannot wait here under Lock, because the sync process requires the Lock.
-	return <-w.errch
+	for err2 := range w.errch {
+		if err == nil {
+			err = err2
+		}
+	}
+
+	return nil
 }
