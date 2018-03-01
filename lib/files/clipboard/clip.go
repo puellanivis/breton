@@ -46,7 +46,7 @@ func getClip(uri *url.URL) (clipboard, error) {
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	clip, err := getClip(uri)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"open", uri.String(), err}
 	}
 
 	b, err := clip.Read()
@@ -60,7 +60,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	clip, err := getClip(uri)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
 	return wrapper.NewWriter(ctx, uri, func(b []byte) error {
@@ -71,7 +71,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	clip, err := getClip(uri)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"readdir", uri.String(), err}
 	}
 
 	fi, err := clip.Stat()
