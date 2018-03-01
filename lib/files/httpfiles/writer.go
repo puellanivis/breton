@@ -14,6 +14,10 @@ type writer struct {
 	*request
 }
 
+func (w *writer) Name() string {
+	return w.request.Name()
+}
+
 func (w *writer) Header() (http.Header, error) {
 	return w.request.req.Header, nil
 }

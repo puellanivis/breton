@@ -107,7 +107,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, err
 	}
 
-	return wrapper.NewReader(uri, data, time.Now()), nil
+	return wrapper.NewReaderFromBytes(data, uri, time.Now()), nil
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {

@@ -45,7 +45,7 @@ func (w *writer) IgnoreErrors(state bool) bool {
 }
 
 func (w *writer) err(err error) error {
-	if w.noerrs {
+	if w.noerrs && err != io.ErrShortWrite {
 		return nil
 	}
 
@@ -63,14 +63,47 @@ func (w *writer) SetPacketSize(sz int) int {
 	return prev
 }
 
-func (w *writer) Sync() error { return nil }
+func (w *writer) Sync() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	return w.err(w.sync())
+}
+
+func (w *writer) sync() error {
+	if w.off < 1 {
+		return nil
+	}
+
+	// zero out the end of the buffer.
+	copy(w.buf[w.off:], make([]byte, len(w.buf)))
+	w.off = 0
+
+	_, err := w.mustWrite(w.buf)
+	return err
+}
 
 func (w *writer) mustWrite(b []byte) (n int, err error) {
 	n, err = w.UDPConn.Write(b)
-	if err == nil && n != len(b) {
-		err = io.ErrShortWrite
+	if n != len(b) {
+		if (w.noerrs && n > 0) || err == nil {
+			err = io.ErrShortWrite
+		}
 	}
 	return n, err
+}
+
+func (w *writer) Close() error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	err := w.sync()
+
+	if err := w.UDPConn.Close(); err != nil {
+		return err
+	}
+
+	return err
 }
 
 func (w *writer) Write(b []byte) (n int, err error) {
@@ -102,10 +135,10 @@ func (w *writer) Write(b []byte) (n int, err error) {
 				w.off = copy(w.buf, w.buf[n2:])
 			}
 
-			n -= len(w.buf) - n2
+			/*n -= len(w.buf) - n2
 			if n < 0 {
 				n = 0
-			}
+			} */
 
 			return n, err
 		}
@@ -113,7 +146,7 @@ func (w *writer) Write(b []byte) (n int, err error) {
 
 	sz := len(w.buf)
 
-	for len(b) > sz {
+	for len(b) >= sz {
 		n2, err2 := w.mustWrite(b[:sz])
 		n += n2
 

@@ -2,6 +2,7 @@
 package cachefiles
 
 import (
+	"bytes"
 	"context"
 	"net/url"
 	"os"
@@ -39,22 +40,16 @@ func init() {
 	files.RegisterScheme(Default, "cache")
 }
 
-func (h *FileStore) expire(filename string) bool {
+func (h *FileStore) expire(filename string) {
 	h.Lock()
 	defer h.Unlock()
 
-	_, ok := h.cache[filename]
-	if !ok {
-		return false
-	}
-
 	delete(h.cache, filename)
-	return true
 }
 
 func filename(uri *url.URL) string {
 	filename := uri.Opaque
-	if uri.Opaque == "" {
+	if filename == "" {
 		filename = uri.String()
 		filename = filename[len(uri.Scheme)+1:]
 	}
@@ -121,7 +116,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 		}()
 	}
 
-	return wrapper.NewReaderWithInfo(f.FileInfo, f.data), nil
+	return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.FileInfo), nil
 }
 
 // List implements the files.FileStore List. It does not cache anything and just returns the files.List() from the wrapped url.

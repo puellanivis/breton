@@ -2,6 +2,7 @@ package wrapper
 
 import (
 	"bytes"
+	"io"
 	"net/url"
 	"os"
 	"sync"
@@ -10,56 +11,79 @@ import (
 
 // Reader implements files.Reader with an underlying byte slice.
 type Reader struct {
-	sync.Mutex
+	mu sync.Mutex
 
-	*Info
-	b *bytes.Reader
+	fi os.FileInfo
+	r io.Reader
+	s io.Seeker
 }
 
 // NewReaderWithInfo returns a new Reader with the given FileInfo.
-func NewReaderWithInfo(info os.FileInfo, b []byte) *Reader {
-	inf, ok := info.(*Info)
-	if !ok {
-		inf = &Info{
-			name: info.Name(),
-			sz:   info.Size(),
-			t:    info.ModTime(),
-		}
-	}
-
+func NewReaderWithInfo(r io.Reader, info os.FileInfo) *Reader {
 	return &Reader{
-		b:    bytes.NewReader(b),
-		Info: inf,
+		fi: info,
+		r:  r,
 	}
 }
 
 // NewReader returns a new Reader with a NewInfo with uri, len(b) and time.Time specified.
-func NewReader(uri *url.URL, b []byte, t time.Time) *Reader {
-	return NewReaderWithInfo(NewInfo(uri, len(b), t), b)
+func NewReaderFromBytes(b []byte, uri *url.URL, t time.Time) *Reader {
+	return NewReaderWithInfo(bytes.NewReader(b), NewInfo(uri, len(b), t))
+}
+
+// Name implements files.File
+func (r *Reader) Name() string {
+	return r.fi.Name()
+}
+
+// Stat implements files.File
+func (r *Reader) Stat() (os.FileInfo, error) {
+	return r.fi, nil
 }
 
 // Read performs a thread-safe Read from the underlying Reader.
 func (r *Reader) Read(b []byte) (int, error) {
-	r.Lock()
-	defer r.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	return r.b.Read(b)
+	return r.r.Read(b)
 }
 
 // Seek performs a thread-safe Seek to the underlying Reader.
 func (r *Reader) Seek(offset int64, whence int) (int64, error) {
-	r.Lock()
-	defer r.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	return r.b.Seek(offset, whence)
+	if r.s == nil {
+		switch s := r.r.(type) {
+		case io.Seeker:
+			r.s = s
+		default:
+			return 0, os.ErrInvalid
+		}
+	}
+
+	return r.s.Seek(offset, whence)
 }
 
 // Close recovers resources assigned in the Reader.
 func (r *Reader) Close() error {
-	r.Lock()
-	defer r.Unlock()
+	r.mu.Lock()
+	defer r.mu.Unlock()
 
-	r.b = nil
-	r.Info = nil
-	return nil
+	var err error
+
+	switch c := r.r.(type) {
+	case nil:
+		err = os.ErrClosed
+
+	case io.Closer:
+		err = c.Close()
+	}
+
+	r.s = nil
+	r.r = nil
+	r.fi = nil
+
+	return err
 }

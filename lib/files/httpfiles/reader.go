@@ -43,7 +43,7 @@ func (r *reader) Stat() (os.FileInfo, error) {
 		return nil, r.err
 	}
 
-	return r.info.Stat()
+	return r.info, nil
 }
 
 func (r *reader) Read(b []byte) (n int, err error) {

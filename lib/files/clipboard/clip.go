@@ -54,7 +54,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, err
 	}
 
-	return wrapper.NewReader(uri, b, time.Now()), nil
+	return wrapper.NewReaderFromBytes(b, uri, time.Now()), nil
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
