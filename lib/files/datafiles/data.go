@@ -23,52 +23,37 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	return nil, os.ErrInvalid
 }
 
-func splitByte(b []byte, sep byte) (fields [][]byte) {
-	for {
-		i := bytes.IndexByte(b, sep)
-		if i < 0 {
-			fields = append(fields, b)
-			return
-		}
-
-		fields = append(fields, b[:i])
-		b = b[i+1:]
-	}
-}
-
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	q := uri.Opaque
-	if q == "" {
-		q = uri.String()
-		q = q[len(uri.Scheme)+1:]
+	if uri.Host != "" || uri.User != nil {
+		return nil, os.ErrInvalid
 	}
 
-	data := []byte(q)
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
+		if p, err := url.PathUnescape(path); err == nil {
+			path = p
+		}
+	}
+
+	data := []byte(path)
 
 	var isBase64 bool
 
-	for _, field := range splitByte(data, ',') {
-		data = field
+	fields := bytes.SplitN(data, []byte(","), 2)
+	if len(fields) < 2 {	
+		return nil, os.ErrInvalid
+	}
 
-		for _, meta := range splitByte(field, ';') {
-			s := string(meta)
-
-			switch s {
-			case "base64":
-				isBase64 = true
-			}
+	data = fields[1]
+	for _, meta := range bytes.Split(fields[0], []byte(";")) {
+		switch string(meta) {
+		case "base64":
+			isBase64 = true
 		}
 	}
 
 	if isBase64 {
-		var err error
-
-		for i, b := range data {
-			if b == ' ' {
-				data[i] = '+'
-			}
-		}
-
 		b := make([]byte, len(data))
 
 		n, err := base64.StdEncoding.Decode(b, data)
