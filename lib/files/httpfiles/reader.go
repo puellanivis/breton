@@ -15,6 +15,7 @@ import (
 
 type reader struct {
 	r    io.Reader
+	s    io.Seeker
 	info *wrapper.Info
 
 	*request
@@ -66,12 +67,16 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 		return 0, r.err
 	}
 
-	seeker, ok := r.r.(io.Seeker)
-	if !ok {
-		return 0, os.ErrInvalid
+	if r.s == nil {
+		switch s := r.r.(type) {
+		case io.Seeker:
+			r.s = s
+		default:
+			return 0, os.ErrInvalid
+		}
 	}
 
-	return seeker.Seek(offset, whence)
+	return r.s.Seek(offset, whence)
 }
 
 func (r *reader) Close() error {
