@@ -1,5 +1,5 @@
 // Package datafiles implements the "tcp:" URL scheme, by reading/writing to a raw tcp socket.
-package udpfiles
+package tcpfiles
 
 import (
 	"context"
