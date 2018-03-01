@@ -1,11 +1,14 @@
 package clipboard
 
 import (
+	"net/url"
 	"os"
 	"os/exec"
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
 var (
@@ -30,12 +33,14 @@ var (
 	globalUnlock = kernel32.NewProc("GlobalUnlock")
 )
 
-type winClip struct{}
+type winClip struct{
+	name *url.URL
+}
 
-var defaultClipboard clipboard = winClip{}
+var defaultClipboard clipboard = winClip{ name: &url.URL{ Scheme:"clipboard" } }
 
 func init() {
-	clipboards["."] = defaultClipboard
+	clipboards[""] = defaultClipboard
 }
 
 func (c winClip) Read() ([]byte, error) {
@@ -85,27 +90,15 @@ func (c winClip) Write(b []byte) error {
 	return cmd.Wait()
 }
 
-func (c winClip) Name() string {
-	return "."
-}
+func (c winClip) Stat() (os.FileInfo, error) {
+	uri := &url.URL{
+		Scheme: "clipboard",
+	}
 
-func (c winClip) Size() int64 {
-	b, _ := c.Read()
-	return int64(len(b))
-}
+	b, err := c.Read()
+	if err != nil {
+		return nil, err
+	}
 
-func (c winClip) Mode() os.FileMode {
-	return os.ModePerm
-}
-
-func (c winClip) ModTime() time.Time {
-	return time.Now()
-}
-
-func (c winClip) IsDir() bool {
-	return false
-}
-
-func (c winClip) Sys() interface{} {
-	return nil
+	return wrapper.NewInfo(uri, len(b), time.Now()), nil
 }

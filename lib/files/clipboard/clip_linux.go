@@ -28,8 +28,8 @@ func init() {
 		copyCmd = append([]string{cmd}, xclipCopy...)
 		selParam = []string{"-selection"}
 
-		newExecClip(".", "clipboard")
-		defaultClipboard = clipboards["."]
+		newExecClip("", "clipboard")
+		defaultClipboard = clipboards[""]
 
 		newExecClip("clipboard")
 		newExecClip("primary")
@@ -46,8 +46,8 @@ func init() {
 	copyCmd = append([]string{cmd}, xselCopy...)
 	selParam = []string{}
 
-	newExecClip(".", "--clipboard")
-	defaultClipboard = clipboards["."]
+	newExecClip("", "--clipboard")
+	defaultClipboard = clipboards[""]
 
 	newExecClip("clipboard", "--clipboard")
 	newExecClip("primary", "--primary")

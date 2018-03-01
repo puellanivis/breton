@@ -18,35 +18,35 @@ func init() {
 }
 
 type clipboard interface {
-	os.FileInfo
+	Stat() (os.FileInfo, error)
 	Read() ([]byte, error)
 	Write([]byte) error
 }
 
 var clipboards = make(map[string]clipboard)
 
-func getClip(name string) clipboard {
-	if len(name) < 1 {
-		// due to design of Go, nil must be explicitly passed here
-		// otherwise it will be a type nil, which != nil.
-		if defaultClipboard == nil {
-			return nil
-		}
-
-		return defaultClipboard
+func getClip(uri *url.URL) (clipboard, error) {
+	if uri.Host != "" || uri.User != nil {
+		return nil, os.ErrInvalid
 	}
 
-	clip, ok := clipboards[name]
-	if !ok || clip == nil {
-		return nil
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
 	}
-	return clip
+
+	clip := clipboards[path]
+	if clip == nil {
+		return nil, os.ErrNotExist
+	}
+
+	return clip, nil
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	clip := getClip(uri.Opaque)
-	if clip == nil {
-		return nil, os.ErrNotExist
+	clip, err := getClip(uri)
+	if err != nil {
+		return nil, err
 	}
 
 	b, err := clip.Read()
@@ -58,9 +58,9 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	clip := getClip(uri.Opaque)
-	if clip == nil {
-		return nil, os.ErrNotExist
+	clip, err := getClip(uri)
+	if err != nil {
+		return nil, err
 	}
 
 	return wrapper.NewWriter(ctx, uri, func(b []byte) error {
@@ -69,13 +69,18 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	clip := getClip(uri.Opaque)
-	if clip == nil {
-		return nil, os.ErrNotExist
+	clip, err := getClip(uri)
+	if err != nil {
+		return nil, err
 	}
 
-	if !clip.IsDir() {
-		return []os.FileInfo{clip}, nil
+	fi, err := clip.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if !fi.IsDir() {
+		return []os.FileInfo{fi}, nil
 	}
 
 	if len(clipboards) < 1 {
@@ -85,7 +90,9 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 	var ret []os.FileInfo
 
 	for _, clip := range clipboards {
-		ret = append(ret, clip)
+		if fi, err := clip.Stat(); err == nil {
+			ret = append(ret, fi)
+		}
 	}
 
 	return ret, nil

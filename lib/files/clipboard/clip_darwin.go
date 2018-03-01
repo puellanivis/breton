@@ -1,6 +1,8 @@
 package clipboard
 
-import ()
+import (
+	"net/url"
+)
 
 var (
 	pasteCmd = []string{"/usr/bin/pbpaste"}
@@ -10,13 +12,13 @@ var (
 
 // special case, easy every time.
 var defaultClipboard clipboard = &execClip{
-	name:  ".",
+	name:  &url.URL{ Scheme: "clipboard" },
 	paste: pasteCmd,
 	copy:  copyCmd,
 }
 
 func init() {
-	clipboards["."] = defaultClipboard
+	clipboards[""] = defaultClipboard
 
 	newExecClip("general")
 	newExecClip("ruler")
