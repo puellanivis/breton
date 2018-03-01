@@ -3,6 +3,7 @@ package home
 
 import (
 	"context"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -39,18 +40,20 @@ func Filename(uri *url.URL) (string, error) {
 		path = uri.Opaque
 	}
 
+	dir := userDir
+
 	if uri.User != nil {
 		u, err := user.Lookup(uri.User.Username())
 		if err != nil {
 			return "", err
 		}
 
-		if dir := u.HomeDir; dir != "" {
-			return filepath.Join(dir, path), nil
+		if u.HomeDir != "" {
+			dir = u.HomeDir
 		}
 	}
 
-	return filepath.Join(userDir, path), nil
+	return filepath.Join(dir, path), nil
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
@@ -77,11 +80,5 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		return nil, err
 	}
 
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return f.Readdir(0)
+	return ioutil.ReadDir(filename)
 }
