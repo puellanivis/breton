@@ -14,15 +14,23 @@ func splitterFunc() bufio.SplitFunc {
 
 	return func(data []byte, atEOF bool) (advance int, token []byte, err error) {
 		if firstFrame {
-			if len(data) < 2 {
+			if len(data) < 4 {
 				return 0, nil, nil
 			}
 
-			if data[0] != 0xFF && data[1]&0xF0 != 0xF0 {
+			switch {
+			// MPEG ADTS.
+			case data[0] == 0xFF && data[1]&0xF0 == 0xF0:
+				frameDetect = append([]byte{}, data[:2]...)
+
+			// H264 byte stream.
+			case data[0] == 0x00 && data[1] == 0x00 && data[2] == 0x00 && data[3] == 0x01:
+				frameDetect = append([]byte{}, data[:4]...)
+
+			default:
 				return 0, nil, errors.New("MPEG sync word missing")
 			}
 
-			frameDetect = append([]byte{}, data[:2]...)
 		}
 		firstFrame = false
 
@@ -44,7 +52,7 @@ func splitterFunc() bufio.SplitFunc {
 			}
 
 			advance += j
-			if data[advance+1]&0xF0 == 0xF0 {
+			if frameDetect[0] != 0xFF || data[advance+1]&0xF0 == 0xF0 {
 				return advance, data[:advance], nil
 			}
 		}
