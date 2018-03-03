@@ -217,18 +217,19 @@ func (p *Pipe) Flush() error {
 }
 
 func (p *Pipe) sync() error {
+	// If we only make a new empty channel when we will be watching it,
+	// we can avoid channel creation churn on non-syncing pipes.
+	if p.b.Len() > 0 {
+		select {
+		case <-p.empty:
+			p.empty = make(chan struct{})
+		default:
+		}
+	}
+
 	// We will be watching this channel outside of lock,
 	// so we have to have a local copy.
 	empty := p.empty
-
-	select {
-	case <-empty:
-		// We only update the empty channel here,
-		// because this is the only codepath that depends upon it.
-		empty = make(chan struct{})
-		p.empty = empty
-	default:
-	}
 
 	p.flush() // flush, just to make sure.
 	p.mu.Unlock()
