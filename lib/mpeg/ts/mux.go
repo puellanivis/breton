@@ -48,6 +48,8 @@ func NewMux(wr io.Writer, opts ...Option) *Mux {
 		chain:  chain,
 	}
 
+	m.TransportStream.m = m
+
 	for _, opt := range opts {
 		_ = opt(&m.TransportStream)
 	}
@@ -55,7 +57,8 @@ func NewMux(wr io.Writer, opts ...Option) *Mux {
 	return m
 }
 
-func (m *Mux) Writer(ctx context.Context, streamID uint16, typ ProgramType) (io.WriteCloser, error) {
+
+func (m *Mux) NewProgram(ctx context.Context, streamID uint16) (*Program, error) {
 	if streamID == 0 {
 		return nil, errors.Errorf("stream_id 0x%04X is invalid", streamID)
 	}
@@ -66,19 +69,27 @@ func (m *Mux) Writer(ctx context.Context, streamID uint16, typ ProgramType) (io.
 	default:
 	}
 
-	pd, err := m.NewProgram(streamID, typ)
+	p, err := m.TransportStream.NewProgram(streamID)
 	if err != nil {
 		return nil, err
 	}
 
-	wr, err := m.WriterByPID(ctx, pd.PMTPID(), false)
+	wr, err := m.WriterByPID(ctx, p.PID(), false)
+	if err != nil {
+		return nil, err
+	}
+	p.wr = wr
+
+	return p, nil
+}
+
+func (m *Mux) Writer(ctx context.Context, streamID uint16, typ ProgramType) (io.WriteCloser, error) {
+	p, err := m.NewProgram(ctx, streamID)
 	if err != nil {
 		return nil, err
 	}
 
-	pd.wr = wr
-
-	return m.WriterByPID(ctx, pd.StreamPID(), true)
+	return p.NewWriter(ctx, typ)
 }
 
 const (
@@ -159,11 +170,20 @@ func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool, next chan str
 			l := packet.MaxPayload - af.Len()
 
 			if l > len(data) {
-				if isPES {
-					glog.Errorf("calculated bad payload space: %d > %d", l, len(data))
-				}
+				switch {
+				case isPES:
+					if af != nil {
+						af.Stuffing -= len(data) - l
+						l = packet.MaxPayload - af.Len()
+					}
 
-				l = len(data)
+					if l > len(data) {
+						glog.Errorf("calculated bad payload space: %d > %d", l, len(data))
+					}
+
+				default:
+					l = len(data)
+				}
 			}
 
 			pkt := &packet.Packet{
@@ -293,7 +313,7 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 	ready := make(chan struct{})
 	close(ready)
 
-	return &program{
+	return &stream{
 		ready: ready,
 
 		pid: pid,
@@ -373,18 +393,13 @@ func (m *Mux) preamble(continuity byte) error {
 		Payload:    payload,
 	})
 
-	for _, pd := range m.GetPMTs() {
-		payload, err := pd.pmt.Marshal()
+	for _, p := range m.GetPMTs() {
+		pkt, err := p.packet(continuity)
 		if err != nil {
 			return err
 		}
 
-		pkts = append(pkts, &packet.Packet{
-			PID:        pd.PMTPID(),
-			PUSI:       true,
-			Continuity: continuity,
-			Payload:    payload,
-		})
+		pkts = append(pkts, pkt)
 	}
 
 	if _, err := m.writePackets(pkts...); err != nil {

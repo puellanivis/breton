@@ -71,15 +71,19 @@ type TransportStream struct {
 
 	patReady chan struct{}
 	pat      map[uint16]uint16
-	pmts     map[uint16]*ProgramDetails
+	pmts     map[uint16]*Program
 
-	nextStreamPID uint16
-	lastStreamID  uint16
+	nextStreamPID  uint16
+	nextProgramPID uint16
+	lastStreamID   uint16
+
+	m *Mux
 }
 
 func (ts *TransportStream) init() {
 	ts.patReady = make(chan struct{})
 	ts.nextStreamPID = 0x100
+	ts.nextProgramPID = 0x1000
 	ts.updateRate = 5 * time.Millisecond
 }
 
@@ -138,10 +142,23 @@ func (ts *TransportStream) writePackets(pkts ...*packet.Packet) (n int, err erro
 	return n, err
 }
 
-func (ts *TransportStream) NewProgram(streamID uint16, typ ProgramType) (*ProgramDetails, error) {
+func (ts *TransportStream) newStreamPID() uint16 {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	pid := ts.nextStreamPID
+	ts.nextStreamPID++
+	return pid
+}
+
+func (ts *TransportStream) NewProgram(streamID uint16) (*Program, error) {
 	ts.once.Do(ts.init)
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
+
+	if ts.m == nil {
+		return nil, errors.New("cannot make a new program on a non-outbound transport stream")
+	}
 
 	if streamID == 0 {
 		streamID = ts.lastStreamID + 1
@@ -156,25 +173,18 @@ func (ts *TransportStream) NewProgram(streamID uint16, typ ProgramType) (*Progra
 		return nil, errors.Errorf("stream_id 0x%04X is already assigned", streamID)
 	}
 
-	pid := ts.nextStreamPID
-	ts.nextStreamPID++
+	pid := ts.nextProgramPID
+	ts.nextProgramPID++
 
-	pmtPID := pid << 4
-
-	pd := &ProgramDetails{
-		pid: pmtPID,
+	p := &Program{
+		pid: pid,
+		ts: ts,
 		pmt: &psi.PMT{
 			Syntax: &psi.SectionSyntax{
 				TableIDExtension: streamID,
 				Current:          true,
 			},
-			PCRPID: pid,
-			Streams: []*psi.StreamData{
-				&psi.StreamData{
-					Type: byte(typ),
-					PID:  pid,
-				},
-			},
+			PCRPID: 0x1FFF,
 		},
 	}
 
@@ -188,15 +198,15 @@ func (ts *TransportStream) NewProgram(streamID uint16, typ ProgramType) (*Progra
 		}
 	}
 
-	ts.pat[streamID] = pmtPID
+	ts.pat[streamID] = pid
 
 	if ts.pmts == nil {
-		ts.pmts = make(map[uint16]*ProgramDetails)
+		ts.pmts = make(map[uint16]*Program)
 	}
 
-	ts.pmts[pid] = pd
+	ts.pmts[pid] = p
 
-	return pd, nil
+	return p, nil
 }
 
 func (ts *TransportStream) GetPAT() map[uint16]uint16 {
@@ -226,7 +236,7 @@ func (ts *TransportStream) setPAT(pat map[uint16]uint16) {
 	}
 }
 
-func (ts *TransportStream) GetPMTs() map[uint16]*ProgramDetails {
+func (ts *TransportStream) GetPMTs() map[uint16]*Program {
 	ts.once.Do(ts.init)
 	ts.mu.Lock()
 	defer ts.mu.Unlock()

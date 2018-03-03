@@ -1,9 +1,8 @@
 package ts
 
 import (
-	"fmt"
+	"context"
 	"io"
-	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -11,153 +10,98 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
 
-type ProgramType byte
+type Program struct {
+	mu sync.Mutex
 
-const (
-	ProgramTypeVideo ProgramType = 0x01
-	ProgramTypeAudio ProgramType = 0x03
-	ProgramTypeAAC   ProgramType = 0x0F
+	ts *TransportStream
 
-	ProgramTypeUnknown ProgramType = 0x09 // TODO: this is a guess?
-)
-
-type ProgramDetails struct {
 	pid uint16
 	pmt *psi.PMT
 	wr  io.WriteCloser
 }
 
-func (pd *ProgramDetails) PMTPID() uint16 {
-	return pd.pid
+func (p *Program) PID() uint16 {
+	return p.pid
 }
 
-func (pd *ProgramDetails) StreamID() uint16 {
-	if pd.pmt == nil {
+func (p *Program) StreamID() uint16 {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.pmt == nil {
 		return 0
 	}
 
-	if pd.pmt.Syntax == nil {
+	if p.pmt.Syntax == nil {
 		return 0
 	}
 
-	return pd.pmt.Syntax.TableIDExtension
+	return p.pmt.Syntax.TableIDExtension
 }
 
-func (pd *ProgramDetails) StreamPID() uint16 {
-	if pd.pmt == nil {
-		return 0
+func (p *Program) NewWriter(ctx context.Context, typ ProgramType) (io.WriteCloser, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.pmt == nil {
+		return nil, errors.New("program is not initialized")
 	}
 
-	if len(pd.pmt.Streams) < 1 {
-		return 0
+	spid := p.ts.newStreamPID()
+
+	if p.pmt.PCRPID == 0x1FFF {
+		p.pmt.PCRPID = spid
 	}
 
-	return pd.pmt.Streams[0].PID
-}
+	sdata := &psi.StreamData{
+		Type: byte(typ),
+		PID: spid,
+	}
 
-func (pd *ProgramDetails) marshalPacket(continuity byte) ([]byte, error) {
-	b, err := pd.pmt.Marshal()
+	p.pmt.Streams = append(p.pmt.Streams, sdata)
+
+	w, err := p.ts.m.WriterByPID(ctx, spid, true)
 	if err != nil {
 		return nil, err
 	}
 
-	pkt := &packet.Packet{
-		PID:        pd.pid,
-		PUSI:       true,
-		Continuity: continuity & 0x0F,
-		Payload:    b,
+	if s,ok  := w.(*stream); ok {
+		s.data = sdata
 	}
 
-	return pkt.Marshal()
+	return w, nil
 }
 
-type program struct {
-	mu    sync.Mutex
-	ready chan struct{}
-
-	err error
-
-	pid uint16
-
-	rd io.Reader
-	wr io.Writer
-
-	closer func() error
-}
-
-func (p *program) makeReady() {
+func (p *Program) StreamPIDs() []uint16 {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	select {
-	case <-p.ready:
-	default:
-		close(p.ready)
+	if p.pmt == nil {
+		return nil
 	}
+
+	var streamPIDs []uint16
+
+	for _, s := range p.pmt.Streams {
+		streamPIDs = append(streamPIDs, s.PID)
+	}
+
+	return streamPIDs
 }
 
-func (p *program) String() string {
-	<-p.ready
+func (p *Program) packet(continuity byte) (*packet.Packet, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
-	out := []string{
-		fmt.Sprintf("PID:x%04X", p.pid),
+	b, err := p.pmt.Marshal()
+	if err != nil {
+		return nil, err
 	}
 
-	if p.rd != nil {
-		switch p.rd.(type) {
-		case fmt.Stringer:
-			out = append(out, fmt.Sprintf("R:%v", p.rd))
-		default:
-			out = append(out, "R")
-		}
-	}
-
-	if p.wr != nil {
-		switch p.wr.(type) {
-		case fmt.Stringer:
-			out = append(out, fmt.Sprintf("W:%v", p.wr))
-		default:
-			out = append(out, "W")
-		}
-	}
-
-	return fmt.Sprintf("{%s}", strings.Join(out, " "))
-}
-
-func (p *program) Read(b []byte) (n int, err error) {
-	<-p.ready
-
-	if p.rd == nil {
-		if p.err != nil {
-			return 0, p.err
-		}
-
-		return 0, errors.Errorf("program pid 0x%04X is not open for reading", p.pid)
-	}
-
-	return p.rd.Read(b)
-}
-
-func (p *program) Write(b []byte) (n int, err error) {
-	<-p.ready
-
-	if p.wr == nil {
-		if p.err != nil {
-			return 0, p.err
-		}
-
-		return 0, errors.Errorf("program pid 0x%04X is not open for writing", p.pid)
-	}
-
-	return p.wr.Write(b)
-}
-
-func (p *program) Close() error {
-	p.makeReady()
-
-	if p.closer != nil {
-		return p.closer()
-	}
-
-	return nil
+	return &packet.Packet{
+		PID:        p.pid,
+		PUSI:       true,
+		Continuity: continuity & 0x0F,
+		Payload:    b,
+	}, nil
 }

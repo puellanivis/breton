@@ -89,45 +89,52 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 	default:
 	}
 
-	p := &program{
+	s := &stream{
 		ready: make(chan struct{}),
 	}
 
 	d.pendingWG.Add(1)
 	go func() {
 		defer d.pendingWG.Done()
-		defer p.makeReady()
+		defer s.makeReady()
 
 		pat := d.GetPAT()
 
 		pmtPID, ok := pat[streamID]
 		if !ok {
-			p.err = errors.Errorf("no PMT found for stream_id 0x%04X", streamID)
+			s.err = errors.Errorf("no PMT found for stream_id 0x%04X", streamID)
 			return
 		}
 
 		pmtRD, err := d.ReaderByPID(ctx, pmtPID, false)
 		if err != nil {
-			p.err = err
+			s.err = err
 			return
 		}
 		defer pmtRD.Close()
 
 		b := make([]byte, 1024)
-		if _, err := pmtRD.Read(b); err != nil {
-			p.err = err
+		n, err := pmtRD.Read(b)
+		if err != nil {
+			s.err = err
+			return
+		}
+		b = b[:n]
+
+		if n < 1 {
+			s.err = errors.Errorf("zero-length read for pmt on pid 0x%04X", pmtPID)	
 			return
 		}
 
 		tbl, err := psi.Unmarshal(b)
 		if err != nil {
-			p.err = err
+			s.err = err
 			return
 		}
 
 		pmt, ok := tbl.(*psi.PMT)
 		if !ok {
-			p.err = errors.Errorf("unexpected table on pid 0x0000: %v", tbl.TableID())
+			s.err = errors.Errorf("unexpected table on pid 0x%04X: %v", pmtPID, tbl.TableID())
 		}
 
 		var pid uint16
@@ -138,13 +145,13 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 
 		pipe, err := d.getPipe(ctx, pid)
 		if err != nil {
-			p.err = err
+			s.err = err
 			return
 		}
 
-		p.pid = pid
-		p.rd = pes.NewReader(pipe)
-		p.closer = func() error {
+		s.pid = pid
+		s.rd = pes.NewReader(pipe)
+		s.closer = func() error {
 			d.mu.Lock()
 			defer d.mu.Unlock()
 
@@ -152,7 +159,7 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 		}
 	}()
 
-	return p, nil
+	return s, nil
 }
 
 func (d *Demux) ReaderByPID(ctx context.Context, pid uint16, isPES bool) (io.ReadCloser, error) {
@@ -179,7 +186,7 @@ func (d *Demux) ReaderByPID(ctx context.Context, pid uint16, isPES bool) (io.Rea
 	ready := make(chan struct{})
 	close(ready)
 
-	return &program{
+	return &stream{
 		ready: ready,
 
 		pid: pid,
@@ -297,7 +304,7 @@ func (d *Demux) readOne(b []byte) (error, bool) {
 	}
 
 	if pkt.PUSI {
-		if err := wr.Flush(); err != nil {
+		if err := wr.Sync(); err != nil {
 			d.mu.Lock()
 			defer d.mu.Unlock()
 
