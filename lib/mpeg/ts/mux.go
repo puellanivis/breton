@@ -58,7 +58,6 @@ func NewMux(wr io.Writer, opts ...Option) *Mux {
 	return m
 }
 
-
 func (m *Mux) NewProgram(ctx context.Context, streamID uint16) (*Program, error) {
 	if streamID == 0 {
 		return nil, errors.Errorf("stream_id 0x%04X is invalid", streamID)
@@ -386,10 +385,10 @@ func (m *Mux) preamble(continuity byte) error {
 		if payload, err := sdt.Marshal(); err == nil {
 			// In this specific case, if we get an error, just ignore the packet entirely.
 			pkts = append(pkts, &packet.Packet{
-				PID: dvb.ServiceDescriptionPID,
-				PUSI: true,
+				PID:        dvb.ServiceDescriptionPID,
+				PUSI:       true,
 				Continuity: continuity,
-				Payload: payload,
+				Payload:    payload,
 			})
 		} else {
 			glog.Warningf("dvb.ServiceDescriptorTable.Marshal: %+v", err)

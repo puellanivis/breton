@@ -5,7 +5,7 @@ import (
 )
 
 func WithIgnoreErrors(state bool) files.Option {
-	type errorIgnorer interface{
+	type errorIgnorer interface {
 		IgnoreErrors(bool) bool
 	}
 
@@ -21,7 +21,7 @@ func WithIgnoreErrors(state bool) files.Option {
 }
 
 func WithPacketSize(sz int) files.Option {
-	type packetSizeSetter interface{
+	type packetSizeSetter interface {
 		SetPacketSize(int) int
 	}
 

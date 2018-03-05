@@ -180,7 +180,7 @@ func (ts *TransportStream) NewProgram(streamID uint16) (*Program, error) {
 
 	p := &Program{
 		pid: pid,
-		ts: ts,
+		ts:  ts,
 		pmt: &psi.PMT{
 			Syntax: &psi.SectionSyntax{
 				TableIDExtension: streamID,

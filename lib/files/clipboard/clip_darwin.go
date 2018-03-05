@@ -12,7 +12,7 @@ var (
 
 // special case, easy every time.
 var defaultClipboard clipboard = &execClip{
-	name:  &url.URL{ Scheme: "clipboard" },
+	name:  &url.URL{Scheme: "clipboard"},
 	paste: pasteCmd,
 	copy:  copyCmd,
 }

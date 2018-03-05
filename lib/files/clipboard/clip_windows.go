@@ -33,11 +33,11 @@ var (
 	globalUnlock = kernel32.NewProc("GlobalUnlock")
 )
 
-type winClip struct{
+type winClip struct {
 	name *url.URL
 }
 
-var defaultClipboard clipboard = winClip{ name: &url.URL{ Scheme:"clipboard" } }
+var defaultClipboard clipboard = winClip{name: &url.URL{Scheme: "clipboard"}}
 
 func init() {
 	clipboards[""] = defaultClipboard

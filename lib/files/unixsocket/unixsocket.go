@@ -30,13 +30,20 @@ const (
 )
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	raddr, err := net.ResolveUnixAddr("unix", uri.Path)
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
+	}
+
+	raddr, err := net.ResolveUnixAddr("unix", path)
 	if err != nil {
 		return nil, err
 	}
 
-	fixURL := *uri
-	fixURL.Path = raddr.String()
+	fixURL := &url.URL{
+		Scheme: "unix",
+		Opaque: raddr.String(),
+	}
 
 	var laddr *net.UnixAddr
 
@@ -55,19 +62,14 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		return nil, err
 	}
 
-	if err := conn.CloseRead(); err != nil {
-		conn.Close()
-		return nil, err
-	}
-
 	w := &writer{
 		UnixConn: conn,
-		Info:    wrapper.NewInfo(&fixURL, 0, time.Now()),
+		Info:     wrapper.NewInfo(fixURL, 0, time.Now()),
 	}
 
 	return w, nil
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, &os.PathError{ "readdir", uri.String(), os.ErrInvalid }
+	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
 }

@@ -14,8 +14,8 @@ type Reader struct {
 	mu sync.Mutex
 
 	fi os.FileInfo
-	r io.Reader
-	s io.Seeker
+	r  io.Reader
+	s  io.Seeker
 }
 
 // NewReaderWithInfo returns a new Reader with the given FileInfo.

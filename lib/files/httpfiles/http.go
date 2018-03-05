@@ -55,5 +55,5 @@ func getErr(resp *http.Response) error {
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, &os.PathError{ "readdir", uri.String(), os.ErrInvalid }
+	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
 }

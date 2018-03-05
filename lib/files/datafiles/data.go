@@ -20,12 +20,12 @@ func init() {
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return nil, &os.PathError{ "create", uri.String(), os.ErrInvalid }
+	return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, &os.PathError{ "open", uri.String(), os.ErrInvalid }
+		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
 	}
 
 	path := uri.Path
@@ -41,8 +41,8 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	var isBase64 bool
 
 	fields := bytes.SplitN(data, []byte(","), 2)
-	if len(fields) < 2 {	
-		return nil, &os.PathError{ "open", uri.String(), os.ErrInvalid }
+	if len(fields) < 2 {
+		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
 	}
 
 	data = fields[1]
@@ -58,7 +58,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 		n, err := base64.StdEncoding.Decode(b, data)
 		if err != nil {
-			return nil, &os.PathError{ "open", uri.String(), err }
+			return nil, &os.PathError{"open", uri.String(), err}
 		}
 
 		data = b[:n]
@@ -68,5 +68,5 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, &os.PathError{ "readdir", uri.String(), os.ErrInvalid }
+	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
 }

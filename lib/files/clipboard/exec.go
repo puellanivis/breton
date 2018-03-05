@@ -22,7 +22,7 @@ func newExecClip(name string, target ...string) {
 	}
 
 	clipboards[name] = &execClip{
-		name:  &url.URL{
+		name: &url.URL{
 			Scheme: "clipboard",
 			Opaque: name,
 		},

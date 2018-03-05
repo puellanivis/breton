@@ -15,7 +15,7 @@ type reader struct {
 	conn *net.TCPConn
 	*wrapper.Info
 
-	err error
+	err     error
 	loading <-chan struct{}
 }
 
@@ -66,7 +66,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		loading: loading,
 		Info:    wrapper.NewInfo(&listenURL, 0, time.Now()),
 	}
-	
+
 	go func() {
 		defer close(loading)
 		defer l.Close()

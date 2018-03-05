@@ -55,7 +55,7 @@ func (p *Program) NewWriter(ctx context.Context, typ ProgramType) (io.WriteClose
 
 	sdata := &psi.StreamData{
 		Type: byte(typ),
-		PID: spid,
+		PID:  spid,
 	}
 
 	p.pmt.Streams = append(p.pmt.Streams, sdata)
@@ -65,7 +65,7 @@ func (p *Program) NewWriter(ctx context.Context, typ ProgramType) (io.WriteClose
 		return nil, err
 	}
 
-	if s,ok  := w.(*stream); ok {
+	if s, ok := w.(*stream); ok {
 		s.data = sdata
 	}
 

@@ -122,7 +122,7 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 		b = b[:n]
 
 		if n < 1 {
-			s.err = errors.Errorf("zero-length read for pmt on pid 0x%04X", pmtPID)	
+			s.err = errors.Errorf("zero-length read for pmt on pid 0x%04X", pmtPID)
 			return
 		}
 

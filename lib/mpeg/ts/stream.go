@@ -27,7 +27,7 @@ type stream struct {
 
 	err error
 
-	pid uint16
+	pid  uint16
 	data *psi.StreamData
 
 	rd io.Reader

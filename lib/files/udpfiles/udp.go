@@ -13,6 +13,7 @@ import (
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
+	"golang.org/x/net/ipv4"
 )
 
 type handler struct{}
@@ -24,7 +25,7 @@ func init() {
 type writer struct {
 	mu sync.Mutex
 
-	*net.UDPConn
+	w *net.UDPConn
 	*wrapper.Info
 
 	noerrs bool
@@ -84,7 +85,7 @@ func (w *writer) sync() error {
 }
 
 func (w *writer) mustWrite(b []byte) (n int, err error) {
-	n, err = w.UDPConn.Write(b)
+	n, err = w.w.Write(b)
 	if n != len(b) {
 		if (w.noerrs && n > 0) || err == nil {
 			err = io.ErrShortWrite
@@ -99,7 +100,7 @@ func (w *writer) Close() error {
 
 	err := w.sync()
 
-	if err := w.UDPConn.Close(); err != nil {
+	if err := w.w.Close(); err != nil {
 		return err
 	}
 
@@ -111,7 +112,7 @@ func (w *writer) Write(b []byte) (n int, err error) {
 	defer w.mu.Unlock()
 
 	if len(w.buf) < 1 {
-		n, err = w.UDPConn.Write(b)
+		n, err = w.w.Write(b)
 		return n, w.err(err)
 	}
 
@@ -169,8 +170,10 @@ func (w *writer) Write(b []byte) (n int, err error) {
 
 const (
 	FieldLocalAddress = "local_addr"
-	FieldBufferSize = "buf_size"
-	FieldPacketSize = "pkt_size"
+	FieldBufferSize   = "buf_size"
+	FieldPacketSize   = "pkt_size"
+	FieldTOS          = "tos"
+	FieldTTL          = "ttl"
 )
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
@@ -192,8 +195,40 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	}
 
 	w := &writer{
-		UDPConn: conn,
-		Info:    wrapper.NewInfo(uri, 0, time.Now()),
+		w:    conn,
+		Info: wrapper.NewInfo(uri, 0, time.Now()),
+	}
+
+	var p *ipv4.Conn
+
+	if tos := q.Get(FieldTOS); tos != "" {
+		if p == nil {
+			p = ipv4.NewConn(conn)
+		}
+
+		i, err := strconv.ParseInt(tos, 0, strconv.IntSize)
+		if err != nil {
+			return w, err
+		}
+
+		if err := p.SetTOS(int(i)); err != nil {
+			return w, err
+		}
+	}
+
+	if ttl := q.Get(FieldTTL); ttl != "" {
+		if p == nil {
+			p = ipv4.NewConn(conn)
+		}
+
+		i, err := strconv.ParseInt(ttl, 0, strconv.IntSize)
+		if err != nil {
+			return w, err
+		}
+
+		if err := p.SetTTL(int(i)); err != nil {
+			return w, err
+		}
 	}
 
 	if buf_size := q.Get(FieldBufferSize); buf_size != "" {
@@ -220,9 +255,9 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	return nil, &os.PathError{ "open", uri.String(), os.ErrInvalid }
+	return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, &os.PathError{ "readdir", uri.String(), os.ErrInvalid }
+	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
 }

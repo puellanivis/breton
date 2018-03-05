@@ -24,7 +24,7 @@ func init() {
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return nil, &os.PathError{ "create", uri.String(), os.ErrInvalid}
+	return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
 }
 
 type fn func() ([]byte, error)
@@ -132,16 +132,16 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 	}
 
 	if f, ok := aboutMap[path]; !ok {
-		return nil, &os.PathError{"readdir", uri.String(), os.ErrNotExist }
+		return nil, &os.PathError{"readdir", uri.String(), os.ErrNotExist}
 
 	} else if f != nil {
 		if _, err := f(); err != nil {
-			return nil, &os.PathError{"readdir", uri.String(), err }
+			return nil, &os.PathError{"readdir", uri.String(), err}
 		}
 	}
 
 	if path != "about" && path != "" {
-		return nil, &os.PathError{"readdir", uri.String(), syscall.ENOTDIR }
+		return nil, &os.PathError{"readdir", uri.String(), syscall.ENOTDIR}
 	}
 
 	var list []string

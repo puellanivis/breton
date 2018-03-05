@@ -71,7 +71,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, &os.PathError{ "readdir", uri.String(), os.ErrInvalid }
+		return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
 	}
 
 	path := uri.Path
@@ -81,15 +81,15 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 
 	clip := clipboards[path]
 	if clip == nil {
-		return nil, &os.PathError{ "readdir", uri.String(), os.ErrNotExist }
+		return nil, &os.PathError{"readdir", uri.String(), os.ErrNotExist}
 	}
 
 	if path != "" {
-		return nil, &os.PathError{ "readdir", uri.String(), syscall.ENOTDIR }
+		return nil, &os.PathError{"readdir", uri.String(), syscall.ENOTDIR}
 	}
 
 	if len(clipboards) < 1 {
-		return nil, &os.PathError{ "readdir", uri.String(), os.ErrNotExist }
+		return nil, &os.PathError{"readdir", uri.String(), os.ErrNotExist}
 	}
 
 	var ret []os.FileInfo
