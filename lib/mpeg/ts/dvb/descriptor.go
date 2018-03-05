@@ -45,7 +45,7 @@ type ServiceDescriptor struct {
 }
 
 func (d *ServiceDescriptor) String() string {
-	return fmt.Sprintf("{DVB:SD %v P:%q N:%q}", d.Type, d.Provider, d.Name)
+	return fmt.Sprintf("{DVB:ServiceDesc %v P:%q N:%q}", d.Type, d.Provider, d.Name)
 }
 
 const (
