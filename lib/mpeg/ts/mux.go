@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/puellanivis/breton/lib/glog"
 	"github.com/puellanivis/breton/lib/io/bufpipe"
+	"github.com/puellanivis/breton/lib/mpeg/ts/dvb"
 	"github.com/puellanivis/breton/lib/mpeg/ts/packet"
 	"github.com/puellanivis/breton/lib/mpeg/ts/pcr"
 	"github.com/puellanivis/breton/lib/mpeg/ts/pes"
@@ -380,6 +381,20 @@ func (m *Mux) preamble(continuity byte) error {
 	var pkts []*packet.Packet
 
 	continuity = continuity & 0x0F
+
+	if sdt := m.TransportStream.getDVBSDT(); sdt != nil {
+		if payload, err := sdt.Marshal(); err == nil {
+			// In this specific case, if we get an error, just ignore the packet entirely.
+			pkts = append(pkts, &packet.Packet{
+				PID: dvb.ServiceDescriptionPID,
+				PUSI: true,
+				Continuity: continuity,
+				Payload: payload,
+			})
+		} else {
+			glog.Warningf("dvb.ServiceDescriptorTable.Marshal: %+v", err)
+		}
+	}
 
 	payload, err := m.marshalPAT()
 	if err != nil {

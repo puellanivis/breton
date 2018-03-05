@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/puellanivis/breton/lib/mpeg/ts/dvb"
 	"github.com/puellanivis/breton/lib/mpeg/ts/packet"
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
@@ -72,6 +73,7 @@ type TransportStream struct {
 	patReady chan struct{}
 	pat      map[uint16]uint16
 	pmts     map[uint16]*Program
+	dvbSDT   *dvb.ServiceDescriptorTable
 
 	nextStreamPID  uint16
 	nextProgramPID uint16
@@ -207,6 +209,59 @@ func (ts *TransportStream) NewProgram(streamID uint16) (*Program, error) {
 	ts.pmts[pid] = p
 
 	return p, nil
+}
+
+func cloneSDT(src *dvb.ServiceDescriptorTable) *dvb.ServiceDescriptorTable {
+	if src == nil {
+		return nil
+	}
+
+	sdt := *src
+
+	if src.Syntax != nil {
+		s := *src.Syntax
+		sdt.Syntax = &s
+	}
+
+	sdt.Services = nil
+	for _, s := range src.Services {
+		n := *s
+		n.Descriptors = nil
+
+		for _, d := range s.Descriptors {
+			if d, ok := d.(*dvb.ServiceDescriptor); ok {
+				nd := *d
+				n.Descriptors = append(n.Descriptors, &nd)
+			}
+		}
+
+		sdt.Services = append(sdt.Services, &n)
+	}
+
+	return &sdt
+}
+
+func (ts *TransportStream) SetDVBSDT(sdt *dvb.ServiceDescriptorTable) {
+	clone := cloneSDT(sdt)
+
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	ts.dvbSDT = clone
+}
+
+func (ts *TransportStream) getDVBSDT() *dvb.ServiceDescriptorTable {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	return ts.dvbSDT
+}
+
+func (ts *TransportStream) GetDVBSDT() *dvb.ServiceDescriptorTable {
+	ts.mu.Lock()
+	defer ts.mu.Unlock()
+
+	return cloneSDT(ts.dvbSDT)
 }
 
 func (ts *TransportStream) GetPAT() map[uint16]uint16 {
