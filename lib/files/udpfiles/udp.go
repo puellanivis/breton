@@ -25,12 +25,17 @@ func init() {
 type Writer struct {
 	mu sync.Mutex
 
-	w *net.UDPConn
+	conn *net.UDPConn
 	*wrapper.Info
 
 	noerrs bool
 
-	br int
+	raddr, laddr *net.UDPAddr
+	tos int
+	ttl int
+	bufferSize int
+	bitrate int
+
 	delay time.Duration
 
 	off int
@@ -57,19 +62,33 @@ func (w *Writer) err(err error) error {
 }
 
 func (w *Writer) updateDelay() {
-	if w.br <= 0 {
+	if w.bitrate <= 0 {
 		w.delay = 0
 		return
 	}
 
 	// delay = nanoseconds per byte
-	w.delay = (8 * time.Second) / time.Duration(w.br)
+	w.delay = (8 * time.Second) / time.Duration(w.bitrate)
 
 	if len(w.buf) > 0 {
 		// If we have a fixed packet size, then we can pre-calculate our delay.
 		// delay = (nanoseconds per byte) * x bytes = just nanoseconds
 		w.delay *= time.Duration(len(w.buf))
 	}
+}
+
+func (w *Writer) SetWriteBuffer(size int) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	prev := w.bufferSize
+
+	err := w.conn.SetWriteBuffer(size)
+	if err == nil {
+		w.bufferSize = size
+	}
+
+	return prev, err
 }
 
 func (w *Writer) SetPacketSize(size int) int {
@@ -92,9 +111,9 @@ func (w *Writer) SetMaxBitrate(bitrate int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	prev := w.br
+	prev := w.bitrate
 
-	w.br = bitrate
+	w.bitrate = bitrate
 	w.updateDelay()
 
 	return prev
@@ -123,7 +142,7 @@ func (w *Writer) sync() error {
 }
 
 func (w *Writer) mustWrite(b []byte) (n int, err error) {
-	n, err = w.w.Write(b)
+	n, err = w.conn.Write(b)
 	if n != len(b) {
 		if (w.noerrs && n > 0) || err == nil {
 			err = io.ErrShortWrite
@@ -142,7 +161,7 @@ func (w *Writer) Close() error {
 
 	err := w.sync()
 
-	if err := w.w.Close(); err != nil {
+	if err := w.conn.Close(); err != nil {
 		return err
 	}
 
@@ -154,7 +173,7 @@ func (w *Writer) Write(b []byte) (n int, err error) {
 	defer w.mu.Unlock()
 
 	if len(w.buf) < 1 {
-		n, err = w.w.Write(b)
+		n, err = w.conn.Write(b)
 
 		if w.delay > 0 {
 			// Avoid a multiplication if we don’t have to do it.
@@ -217,13 +236,54 @@ func (w *Writer) Write(b []byte) (n int, err error) {
 }
 
 const (
-	FieldMaxBitrate   = "max_bitrate"
+	FieldBufferSize   = "buffer_size"
 	FieldLocalAddress = "localaddr"
-	FieldBufferSize   = "buf_size"
+	FieldLocalPort    = "localport"
+	FieldMaxBitrate   = "max_bitrate"
 	FieldPacketSize   = "pkt_size"
 	FieldTOS          = "tos"
 	FieldTTL          = "ttl"
 )
+
+func (w *Writer) uri() *url.URL {
+	q := make(url.Values)
+
+	if w.laddr != nil {
+		q.Set(FieldLocalAddress, w.laddr.IP.String())
+		setInt(q, FieldLocalPort, w.laddr.Port)
+	}
+
+	if w.bitrate > 0 {
+		setInt(q, FieldMaxBitrate, w.bitrate)
+	}
+
+	if w.bufferSize > 0 {
+		setInt(q, FieldBufferSize, w.bufferSize)
+	}
+
+	if len(w.buf) > 0 {
+		setInt(q, FieldPacketSize, len(w.buf))
+	}
+
+	if w.tos > 0 {
+		q.Set(FieldTOS, "0x" + strconv.FormatInt(int64(w.tos), 16))
+	}
+
+	if w.ttl > 0 {
+		setInt(q, FieldTTL, w.ttl)
+	}
+
+	return &url.URL{
+		Scheme: "udp",
+		Host: w.raddr.String(),
+		RawQuery: q.Encode(),
+	}
+}
+
+
+func setInt(q url.Values, field string, val int) {
+	q.Set(field, strconv.Itoa(val))
+}
 
 func getInt(q url.Values, field string) (int, bool) {
 	s := q.Get(field)
@@ -240,70 +300,84 @@ func getInt(q url.Values, field string) (int, bool) {
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	raddr, err := net.ResolveUDPAddr("udp", uri.Host)
+	var err error
+	w := new(Writer)
+
+	w.raddr, err = net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
 		return nil, err
 	}
-
-	var laddr *net.UDPAddr
 
 	q := uri.Query()
-	if addr := q.Get(FieldLocalAddress); addr != "" {
-		if _, _, err := net.SplitHostPort(addr); err != nil {
-			addr = net.JoinHostPort(addr, "0")
+
+	port := q.Get(FieldLocalPort)
+	addr := q.Get(FieldLocalAddress)
+
+	if port != "" || addr != "" {
+		w.laddr = new(net.UDPAddr)
+
+		if addr != "" {
+			w.laddr.IP = net.ParseIP(addr)
 		}
 
-		laddr, err = net.ResolveUDPAddr("udp", addr)
-		if err != nil {
-			return nil, err
+		if port != "" {
+			p, err := strconv.ParseInt(port, 0, strconv.IntSize)
+			if err != nil {
+				return nil, err
+			}
+
+			w.laddr.Port = int(p)
 		}
 	}
 
-	conn, err := net.DialUDP("udp", laddr, raddr)
+	w.conn, err = net.DialUDP("udp", w.laddr, w.raddr)
 	if err != nil {
 		return nil, err
 	}
 
-	w := &Writer{
-		w:    conn,
-		Info: wrapper.NewInfo(uri, 0, time.Now()),
-	}
+	w.laddr = w.conn.LocalAddr().(*net.UDPAddr)
 
 	var p *ipv4.Conn
 
+	if max_bitrate, ok := getInt(q, FieldMaxBitrate); ok {
+		w.SetMaxBitrate(max_bitrate)
+	}
+
 	if tos, ok := getInt(q, FieldTOS); ok {
 		if p == nil {
-			p = ipv4.NewConn(conn)
+			p = ipv4.NewConn(w.conn)
 		}
 
 		if err2 := p.SetTOS(tos); err == nil {
 			err = err2
 		}
+
+		w.tos, _ = p.TOS()
 	}
 
 	if ttl, ok := getInt(q, FieldTTL); ok {
 		if p == nil {
-			p = ipv4.NewConn(conn)
+			p = ipv4.NewConn(w.conn)
 		}
 
 		if err2 := p.SetTTL(ttl); err == nil {
 			err = err2
 		}
-	}
 
-	if buf_size, ok := getInt(q, FieldBufferSize); ok {
-		if err2 := conn.SetWriteBuffer(buf_size); err == nil {
-			err = err2
-		}
+		w.ttl, _ = p.TTL()
 	}
 
 	if pkt_size, ok := getInt(q, FieldPacketSize); ok {
 		w.SetPacketSize(pkt_size)
 	}
 
-	if max_bitrate, ok := getInt(q, FieldMaxBitrate); ok {
-		w.SetMaxBitrate(max_bitrate)
+	if buf_size, ok := getInt(q, FieldBufferSize); ok {
+		if _, err2 := w.SetWriteBuffer(buf_size); err == nil {
+			err = err2
+		}
 	}
+
+	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
 
 	return w, err
 }
