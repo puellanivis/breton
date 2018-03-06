@@ -250,6 +250,9 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	q := uri.Query()
 	if addr := q.Get(FieldLocalAddress); addr != "" {
 		laddr, err = net.ResolveUDPAddr("udp", addr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	conn, err := net.DialUDP("udp", laddr, raddr)
