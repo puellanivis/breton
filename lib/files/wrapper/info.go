@@ -11,7 +11,7 @@ import (
 
 // Info provides an implementation of os.FileInfo with arbitrary information suitable for a url.
 type Info struct {
-	mu sync.Mutex
+	mu sync.RWMutex
 
 	name string
 	uri  *url.URL
@@ -37,8 +37,8 @@ func (fi *Info) Name() string {
 		return ""
 	}
 
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
 
 	if fi.name == "" && fi.uri != nil {
 		fi.name = fi.uri.String()
@@ -53,8 +53,8 @@ func (fi *Info) Size() int64 {
 		return 0
 	}
 
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
 
 	return fi.sz
 }
@@ -65,8 +65,8 @@ func (fi *Info) SetSize(size int) {
 		return
 	}
 
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
 
 	fi.sz = int64(size)
 }
@@ -77,8 +77,8 @@ func (fi *Info) Mode() (mode os.FileMode) {
 		return mode
 	}
 
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
 
 	return fi.mode
 }
@@ -102,8 +102,8 @@ func (fi *Info) ModTime() (t time.Time) {
 		return t
 	}
 
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
 
 	return fi.t
 }
@@ -122,8 +122,8 @@ func (fi *Info) IsDir() bool {
 		return false
 	}
 
-	fi.mu.Lock()
-	defer fi.mu.Unlock()
+	fi.mu.RLock()
+	defer fi.mu.RUnlock()
 
 	return fi.mode&os.ModeDir != 0
 }
@@ -140,5 +140,6 @@ func (fi *Info) Sys() interface{} {
 
 // Stat returns the Info object itself, this allows for a simple embedding of the Info into a struct.
 func (fi *Info) Stat() (os.FileInfo, error) {
+	// if fi is nil, we intentionally return a typed nil here.
 	return fi, nil
 }
