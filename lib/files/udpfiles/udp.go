@@ -249,6 +249,10 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 
 	q := uri.Query()
 	if addr := q.Get(FieldLocalAddress); addr != "" {
+		if _, _, err := net.SplitHostPort(addr); err != nil {
+			addr = net.JoinHostPort(addr, "0")
+		}
+
 		laddr, err = net.ResolveUDPAddr("udp", addr)
 		if err != nil {
 			return nil, err
