@@ -22,7 +22,7 @@ func init() {
 	files.RegisterScheme(&handler{}, "udp")
 }
 
-type writer struct {
+type Writer struct {
 	mu sync.Mutex
 
 	w *net.UDPConn
@@ -30,11 +30,14 @@ type writer struct {
 
 	noerrs bool
 
+	br int
+	delay time.Duration
+
 	off int
 	buf []byte
 }
 
-func (w *writer) IgnoreErrors(state bool) bool {
+func (w *Writer) IgnoreErrors(state bool) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -45,7 +48,7 @@ func (w *writer) IgnoreErrors(state bool) bool {
 	return prev
 }
 
-func (w *writer) err(err error) error {
+func (w *Writer) err(err error) error {
 	if w.noerrs && err != io.ErrShortWrite {
 		return nil
 	}
@@ -53,48 +56,87 @@ func (w *writer) err(err error) error {
 	return err
 }
 
-func (w *writer) SetPacketSize(sz int) int {
+func (w *Writer) updateDelay() {
+	if w.br <= 0 {
+		w.delay = 0
+		return
+	}
+
+	// delay = nanoseconds per byte
+	w.delay = (8 * time.Second) / time.Duration(w.br)
+
+	if len(w.buf) > 0 {
+		// If we have a fixed packet size, then we can pre-calculate our delay.
+		// delay = (nanoseconds per byte) * x bytes = just nanoseconds
+		w.delay *= time.Duration(len(w.buf))
+	}
+}
+
+func (w *Writer) SetPacketSize(size int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	prev := len(w.buf)
 
-	w.buf = make([]byte, sz)
+	w.buf = nil
+	if size > 0 {
+		w.buf = make([]byte, size)
+	}
+
+	w.updateDelay()
 
 	return prev
 }
 
-func (w *writer) Sync() error {
+func (w *Writer) SetMaxBitrate(bitrate int) int {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	prev := w.br
+
+	w.br = bitrate
+	w.updateDelay()
+
+	return prev
+}
+
+func (w *Writer) Sync() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	return w.err(w.sync())
 }
 
-func (w *writer) sync() error {
+func (w *Writer) sync() error {
 	if w.off < 1 {
 		return nil
 	}
 
 	// zero out the end of the buffer.
-	copy(w.buf[w.off:], make([]byte, len(w.buf)))
-	w.off = 0
+	for i := w.off; i < len(w.buf); i++ {
+		w.buf[i] = 0
+	}
 
+	w.off = 0
 	_, err := w.mustWrite(w.buf)
 	return err
 }
 
-func (w *writer) mustWrite(b []byte) (n int, err error) {
+func (w *Writer) mustWrite(b []byte) (n int, err error) {
 	n, err = w.w.Write(b)
 	if n != len(b) {
 		if (w.noerrs && n > 0) || err == nil {
 			err = io.ErrShortWrite
 		}
 	}
+
+	// The time package defines that Sleep will immediately return if w.delay is less than or equal to zero.
+	time.Sleep(w.delay)
+
 	return n, err
 }
 
-func (w *writer) Close() error {
+func (w *Writer) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -107,12 +149,18 @@ func (w *writer) Close() error {
 	return err
 }
 
-func (w *writer) Write(b []byte) (n int, err error) {
+func (w *Writer) Write(b []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	if len(w.buf) < 1 {
 		n, err = w.w.Write(b)
+
+		if w.delay > 0 {
+			// Avoid a multiplication if we don’t have to do it.
+			time.Sleep(time.Duration(len(b)) * w.delay)
+		}
+
 		return n, w.err(err)
 	}
 
@@ -169,12 +217,27 @@ func (w *writer) Write(b []byte) (n int, err error) {
 }
 
 const (
+	FieldMaxBitrate   = "max_bitrate"
 	FieldLocalAddress = "local_addr"
 	FieldBufferSize   = "buf_size"
 	FieldPacketSize   = "pkt_size"
 	FieldTOS          = "tos"
 	FieldTTL          = "ttl"
 )
+
+func getInt(q url.Values, field string) (int, bool) {
+	s := q.Get(field)
+	if s == "" {
+		return 0, false
+	}
+
+	i, err := strconv.ParseInt(s, 0, strconv.IntSize)
+	if err != nil {
+		return 0, false
+	}
+
+	return int(i), true
+}
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	raddr, err := net.ResolveUDPAddr("udp", uri.Host)
@@ -194,61 +257,45 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		return nil, err
 	}
 
-	w := &writer{
+	w := &Writer{
 		w:    conn,
 		Info: wrapper.NewInfo(uri, 0, time.Now()),
 	}
 
 	var p *ipv4.Conn
 
-	if tos := q.Get(FieldTOS); tos != "" {
+	if tos, ok := getInt(q, FieldTOS); ok {
 		if p == nil {
 			p = ipv4.NewConn(conn)
 		}
 
-		i, err := strconv.ParseInt(tos, 0, strconv.IntSize)
-		if err != nil {
-			return w, err
-		}
-
-		if err := p.SetTOS(int(i)); err != nil {
-			return w, err
-		}
-	}
-
-	if ttl := q.Get(FieldTTL); ttl != "" {
-		if p == nil {
-			p = ipv4.NewConn(conn)
-		}
-
-		i, err := strconv.ParseInt(ttl, 0, strconv.IntSize)
-		if err != nil {
-			return w, err
-		}
-
-		if err := p.SetTTL(int(i)); err != nil {
-			return w, err
-		}
-	}
-
-	if buf_size := q.Get(FieldBufferSize); buf_size != "" {
-		sz, err := strconv.ParseInt(buf_size, 0, strconv.IntSize)
-		if err != nil {
-			return w, err
-		}
-
-		if err2 := conn.SetWriteBuffer(int(sz)); err == nil {
+		if err2 := p.SetTOS(tos); err == nil {
 			err = err2
 		}
 	}
 
-	if pkt_size := q.Get(FieldPacketSize); pkt_size != "" {
-		sz, err := strconv.ParseInt(pkt_size, 0, strconv.IntSize)
-		if err != nil {
-			return w, err
+	if ttl, ok := getInt(q, FieldTTL); ok {
+		if p == nil {
+			p = ipv4.NewConn(conn)
 		}
 
-		w.SetPacketSize(int(sz))
+		if err2 := p.SetTTL(ttl); err == nil {
+			err = err2
+		}
+	}
+
+	if buf_size, ok := getInt(q, FieldBufferSize); ok {
+		if err2 := conn.SetWriteBuffer(buf_size); err == nil {
+			err = err2
+		}
+	}
+
+	if pkt_size, ok := getInt(q, FieldPacketSize); ok {
+		w.SetPacketSize(pkt_size)
+	}
+
+	if max_bitrate, ok := getInt(q, FieldMaxBitrate); ok {
+		w.SetMaxBitrate(max_bitrate)
 	}
 
 	return w, err
