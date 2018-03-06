@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -32,6 +33,10 @@ func NewInfo(uri *url.URL, size int, t time.Time) *Info {
 // Name returns the filename of the Info, if name == "" and there is a url,
 // then it renders the url, and returns that as the name.
 func (fi *Info) Name() string {
+	if fi == nil {
+		return ""
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
@@ -44,6 +49,10 @@ func (fi *Info) Name() string {
 
 // Size returns the size declared in the Info.
 func (fi *Info) Size() int64 {
+	if fi == nil {
+		return 0
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
@@ -52,6 +61,10 @@ func (fi *Info) Size() int64 {
 
 // SetSize sets a new size in the Info, and also updates the ModTime to time.Now()
 func (fi *Info) SetSize(size int) {
+	if fi == nil {
+		return
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
@@ -59,7 +72,11 @@ func (fi *Info) SetSize(size int) {
 }
 
 // Mode returns the last value set via Chmod(), this defaults to os.FileMode(0644)
-func (fi *Info) Mode() os.FileMode {
+func (fi *Info) Mode() (mode os.FileMode) {
+	if fi == nil {
+		return mode
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
@@ -68,6 +85,10 @@ func (fi *Info) Mode() os.FileMode {
 
 // Chmod sets the os.FileMode to be returned from Mode().
 func (fi *Info) Chmod(mode os.FileMode) error {
+	if fi == nil {
+		return syscall.EINVAL
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
@@ -76,7 +97,11 @@ func (fi *Info) Chmod(mode os.FileMode) error {
 }
 
 // ModTime returns the modification time declared in the Info.
-func (fi *Info) ModTime() time.Time {
+func (fi *Info) ModTime() (t time.Time) {
+	if fi == nil {
+		return t
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
@@ -91,8 +116,12 @@ func (fi *Info) SetModTime(t time.Time) {
 	fi.t = t
 }
 
-// IsDir returns false. No Info object should be a directory.
+// IsDir returns true if a prior Chmod set os.ModeDir.
 func (fi *Info) IsDir() bool {
+	if fi == nil {
+		return false
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
@@ -101,6 +130,11 @@ func (fi *Info) IsDir() bool {
 
 // Sys returns the Info object itself, as it is already the underlying data source.
 func (fi *Info) Sys() interface{} {
+	if fi == nil {
+		// return an untyped nil here.
+		return nil
+	}
+
 	return fi
 }
 
