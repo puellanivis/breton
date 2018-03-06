@@ -218,7 +218,7 @@ func (w *Writer) Write(b []byte) (n int, err error) {
 
 const (
 	FieldMaxBitrate   = "max_bitrate"
-	FieldLocalAddress = "local_addr"
+	FieldLocalAddress = "localaddr"
 	FieldBufferSize   = "buf_size"
 	FieldPacketSize   = "pkt_size"
 	FieldTOS          = "tos"
