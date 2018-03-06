@@ -30,6 +30,27 @@ func NewInfo(uri *url.URL, size int, t time.Time) *Info {
 	}
 }
 
+func (fi *Info) fixName() string {
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
+
+	if fi.name != "" || fi.uri == nil {
+		// Nothing to fix.
+		// Likely, someone else already fixed the name while we were waiting on the mutex.
+		return fi.name
+	}
+
+	fi.name = fi.uri.String()
+
+	if fi.name == "" {
+		// If we got an empty string from the url, then we need to remove the url,
+		// otherwise we will forever keep trying to fix the name.
+		fi.uri = nil
+	}
+
+	return fi.name
+}
+
 // Name returns the filename of the Info, if name == "" and there is a url,
 // then it renders the url, and returns that as the name.
 func (fi *Info) Name() string {
@@ -38,11 +59,14 @@ func (fi *Info) Name() string {
 	}
 
 	fi.mu.RLock()
-	defer fi.mu.RUnlock()
 
 	if fi.name == "" && fi.uri != nil {
-		fi.name = fi.uri.String()
+		fi.mu.RUnlock()
+
+		return fi.fixName()
 	}
+
+	defer fi.mu.RUnlock()
 
 	return fi.name
 }
