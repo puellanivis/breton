@@ -102,7 +102,8 @@ func (w *UDPWriter) sync() error {
 }
 
 func (w *UDPWriter) mustWrite(b []byte) (n int, err error) {
-	w.throttle(0)
+	// We should have already prescaled the delay, so scale=1 here.
+	w.throttle(1)
 
 	n, err = w.conn.Write(b)
 	if n != len(b) {
