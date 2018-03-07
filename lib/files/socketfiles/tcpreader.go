@@ -1,4 +1,4 @@
-package tcpfiles
+package socketfiles
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
-type reader struct {
+type TCPReader struct {
 	conn *net.TCPConn
 	*wrapper.Info
 
@@ -19,7 +19,7 @@ type reader struct {
 	loading <-chan struct{}
 }
 
-func (r *reader) Read(b []byte) (n int, err error) {
+func (r *TCPReader) Read(b []byte) (n int, err error) {
 	for range r.loading {
 	}
 
@@ -30,11 +30,11 @@ func (r *reader) Read(b []byte) (n int, err error) {
 	return r.conn.Read(b)
 }
 
-func (r *reader) Seek(offset int64, whence int) (int64, error) {
+func (r *TCPReader) Seek(offset int64, whence int) (int64, error) {
 	return 0, os.ErrInvalid
 }
 
-func (r *reader) Close() error {
+func (r *TCPReader) Close() error {
 	for range r.loading {
 	}
 
@@ -45,7 +45,7 @@ func (r *reader) Close() error {
 	return r.conn.Close()
 }
 
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	laddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
 		return nil, err
@@ -57,14 +57,15 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	}
 
 	// Maybe we asked for an arbitrary port,
-	// so we need to update the uri’s Host value with the actual address from the listener.
-	listenURL := *uri
-	listenURL.Host = l.Addr().String()
+	// so, we build our own copy of the URL, and use that.
+	lurl := &url.URL{
+		Host: l.Addr().String(),
+	}
 
 	loading := make(chan struct{})
-	r := &reader{
+	r := &TCPReader{
 		loading: loading,
-		Info:    wrapper.NewInfo(&listenURL, 0, time.Now()),
+		Info:    wrapper.NewInfo(lurl, 0, time.Now()),
 	}
 
 	go func() {
@@ -84,11 +85,11 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 			return
 		}
 
-		if err := conn.CloseWrite(); err != nil {
+		/* if err := conn.CloseWrite(); err != nil {
 			conn.Close()
 			r.err = err
 			return
-		}
+		} */
 
 		r.conn = conn
 	}()

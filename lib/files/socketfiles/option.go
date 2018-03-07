@@ -1,4 +1,4 @@
-package udpfiles
+package socketfiles
 
 import (
 	"github.com/puellanivis/breton/lib/files"
