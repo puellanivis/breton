@@ -8,20 +8,23 @@ import (
 
 const defaultBufferSize = 32 * 1024
 
-type noopObserver struct{}
-
-func (o *noopObserver) Observe(v float64) {}
-
 // Copy is a context aware version of io.Copy.
 // Do not use to Discard a reader, as a canceled context would stop the read, and it would not be fully discarded.
 func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption) (written int64, err error) {
-	c := &copyConfig{
-		bwObserver: &noopObserver{},
-	}
+	c := new(copyConfig)
 
 	for _, opt := range opts {
 		// intentionally throwing away the reverting functions.
 		_ = opt(c)
+	}
+
+	var observe func(float64)
+	if c.bwObserver != nil {
+		if c.bwScale < 1 {
+			c.bwScale = 1
+		}
+			
+		observe = c.bwObserver.Observe
 	}
 
 	if c.buffer == nil {
@@ -73,8 +76,10 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 
 		cancel()
 
-		// n and err are valid here because <-done HAPPENS AFTER close(done)
-		c.bwObserver.Observe(float64(n) / dur.Seconds())
+		if observe != nil {
+			// n and err are valid here because <-done HAPPENS AFTER close(done)
+			observe(float64(n * c.bwScale) / dur.Seconds())
+		}
 
 		written += n
 		if err != nil {

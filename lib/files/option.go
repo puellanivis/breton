@@ -67,6 +67,7 @@ type copyConfig struct {
 	buffer         []byte
 
 	bwObserver observer
+	bwScale    int64
 }
 
 type CopyOption func(c *copyConfig) CopyOption
@@ -99,12 +100,22 @@ func WithBufferSize(size int) CopyOption {
 	return WithBuffer(make([]byte, size))
 }
 
-func WithBandwidthMetrics(observer interface{ Observe(float64) }) CopyOption {
+func WithScaledBandwidthMetrics(observer interface{ Observe(float64) }, scale int64) CopyOption {
 	return func(c *copyConfig) CopyOption {
-		save := c.bwObserver
+		saveOb := c.bwObserver
+		saveScale := c.bwScale
 
 		c.bwObserver = observer
+		c.bwScale = scale
 
-		return WithBandwidthMetrics(save)
+		return WithScaledBandwidthMetrics(saveOb, saveScale)
 	}
+}
+
+func WithBandwidthMetrics(observer interface{ Observe(float64) }, inBits bool) CopyOption {
+	if inBits {
+		return WithScaledBandwidthMetrics(observer, 8)
+	}
+
+	return WithScaledBandwidthMetrics(observer, 1)
 }
