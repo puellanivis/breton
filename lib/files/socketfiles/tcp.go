@@ -23,33 +23,17 @@ type TCPWriter struct {
 
 	conn *net.TCPConn
 	*wrapper.Info
-
-	common
-
-	delay time.Duration
-	next  *time.Timer
+	ipSocket
 }
 
-func (w *TCPWriter) updateDelay() {
-	if w.bitrate <= 0 {
-		w.delay = 0
-		w.next = nil
-		return
-	}
-
-	// delay = nanoseconds per byte
-	w.delay = (8 * time.Second) / time.Duration(w.bitrate)
-	w.next = time.NewTimer(0)
-}
-
-func (w *TCPWriter) SetMaxBitrate(bitrate int) int {
+func (w *TCPWriter) SetBitrate(bitrate int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	prev := w.bitrate
 
 	w.bitrate = bitrate
-	w.updateDelay()
+	w.updateDelay(1)
 
 	return prev
 }
@@ -69,16 +53,13 @@ func (w *TCPWriter) Write(b []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	if w.next != nil {
-		<-w.next.C
-		w.next.Reset(time.Duration(len(b)) * w.delay)
-	}
+	w.throttle(len(b))
 
 	return w.conn.Write(b)
 }
 
 func (w *TCPWriter) uri() *url.URL {
-	q := w.common.uriQuery()
+	q := w.ipSocket.uriQuery()
 
 	if w.laddr != nil {
 		laddr := w.laddr.(*net.TCPAddr)
@@ -123,8 +104,9 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		return nil, err
 	}
 
-	w.common.setForWriter(w.conn, q)
+	w.ipSocket.setForWriter(w.conn, q)
 
+	w.updateDelay(1)
 	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
 
 	return w, err

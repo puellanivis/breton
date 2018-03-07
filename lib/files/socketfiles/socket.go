@@ -14,50 +14,49 @@ const (
 	FieldBufferSize   = "buffer_size"
 	FieldLocalAddress = "localaddr"
 	FieldLocalPort    = "localport"
-	FieldBitrate      = "bitrate"
+	FieldBitrate      = "max_bitrate"
 	FieldPacketSize   = "pkt_size"
 	FieldTOS          = "tos"
 	FieldTTL          = "ttl"
 )
 
-type common struct {
+type ipSocket struct {
 	laddr, raddr net.Addr
 
 	bufferSize int
-	bitrate    int
 
 	tos, ttl int
+
+	throttler
 }
 
-func (c *common) uriQuery() url.Values {
+func (s *ipSocket) uriQuery() url.Values {
 	q := make(url.Values)
 
-	if c.bitrate > 0 {
-		setInt(q, FieldBitrate, c.bitrate)
+	if s.bitrate > 0 {
+		setInt(q, FieldBitrate, s.bitrate)
 	}
 
-	if c.bufferSize > 0 {
-		setInt(q, FieldBufferSize, c.bufferSize)
+	if s.bufferSize > 0 {
+		setInt(q, FieldBufferSize, s.bufferSize)
 	}
 
-	if c.tos > 0 {
-		q.Set(FieldTOS, "0x"+strconv.FormatInt(int64(c.tos), 16))
+	if s.tos > 0 {
+		q.Set(FieldTOS, "0x"+strconv.FormatInt(int64(s.tos), 16))
 	}
 
-	if c.ttl > 0 {
-		setInt(q, FieldTTL, c.ttl)
+	if s.ttl > 0 {
+		setInt(q, FieldTTL, s.ttl)
 	}
 
 	return q
 }
 
-func (c *common) setForWriter(conn net.Conn, q url.Values) error {
-	c.laddr = conn.LocalAddr()
-	c.raddr = conn.RemoteAddr()
+func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
+	s.laddr = conn.LocalAddr()
+	s.raddr = conn.RemoteAddr()
 
-	if bitrate, ok := getInt(q, FieldBitrate); ok {
-		c.bitrate = bitrate
-	}
+	s.throttler.set(q)
 
 	type bufferSizeSetter interface {
 		SetWriteBuffer(int) error
@@ -72,7 +71,7 @@ func (c *common) setForWriter(conn net.Conn, q url.Values) error {
 			return err
 		}
 
-		c.bufferSize = buffer_size
+		s.bufferSize = buffer_size
 	}
 
 	var p *ipv4.Conn
@@ -86,7 +85,7 @@ func (c *common) setForWriter(conn net.Conn, q url.Values) error {
 			return err
 		}
 
-		c.tos, _ = p.TOS()
+		s.tos, _ = p.TOS()
 	}
 
 	if ttl, ok := getInt(q, FieldTTL); ok {
@@ -98,7 +97,7 @@ func (c *common) setForWriter(conn net.Conn, q url.Values) error {
 			return err
 		}
 
-		c.ttl, _ = p.TTL()
+		s.ttl, _ = p.TTL()
 	}
 
 	return nil

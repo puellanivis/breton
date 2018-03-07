@@ -24,13 +24,9 @@ type UDPWriter struct {
 
 	conn *net.UDPConn
 	*wrapper.Info
+	ipSocket
 
 	noerrs bool
-
-	common
-
-	delay time.Duration
-	next  *time.Timer
 
 	off int
 	buf []byte
@@ -55,24 +51,6 @@ func (w *UDPWriter) err(err error) error {
 	return err
 }
 
-func (w *UDPWriter) updateDelay() {
-	if w.bitrate <= 0 {
-		w.delay = 0
-		w.next = nil
-		return
-	}
-
-	// delay = nanoseconds per byte
-	w.delay = (8 * time.Second) / time.Duration(w.bitrate)
-	w.next = time.NewTimer(0)
-
-	if len(w.buf) > 0 {
-		// If we have a fixed packet size, then we can pre-calculate our delay.
-		// delay = (nanoseconds per byte) * x bytes = just nanoseconds
-		w.delay *= time.Duration(len(w.buf))
-	}
-}
-
 func (w *UDPWriter) SetPacketSize(size int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -84,7 +62,7 @@ func (w *UDPWriter) SetPacketSize(size int) int {
 		w.buf = make([]byte, size)
 	}
 
-	w.updateDelay()
+	w.updateDelay(len(w.buf))
 
 	return prev
 }
@@ -96,7 +74,7 @@ func (w *UDPWriter) SetBitrate(bitrate int) int {
 	prev := w.bitrate
 
 	w.bitrate = bitrate
-	w.updateDelay()
+	w.updateDelay(len(w.buf))
 
 	return prev
 }
@@ -124,10 +102,7 @@ func (w *UDPWriter) sync() error {
 }
 
 func (w *UDPWriter) mustWrite(b []byte) (n int, err error) {
-	if w.next != nil {
-		<-w.next.C
-		w.next.Reset(w.delay)
-	}
+	w.throttle(0)
 
 	n, err = w.conn.Write(b)
 	if n != len(b) {
@@ -157,10 +132,7 @@ func (w *UDPWriter) Write(b []byte) (n int, err error) {
 	defer w.mu.Unlock()
 
 	if len(w.buf) < 1 {
-		if w.next != nil {
-			<-w.next.C
-			w.next.Reset(time.Duration(len(b)) * w.delay)
-		}
+		w.throttle(len(b))
 
 		n, err = w.conn.Write(b)
 		return n, w.err(err)
@@ -219,7 +191,7 @@ func (w *UDPWriter) Write(b []byte) (n int, err error) {
 }
 
 func (w *UDPWriter) uri() *url.URL {
-	q := w.common.uriQuery()
+	q := w.ipSocket.uriQuery()
 
 	if w.laddr != nil {
 		laddr := w.laddr.(*net.UDPAddr)
@@ -268,12 +240,13 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		return nil, err
 	}
 
-	w.common.setForWriter(w.conn, q)
+	w.ipSocket.setForWriter(w.conn, q)
 
 	if pkt_size, ok := getInt(q, FieldPacketSize); ok {
-		w.SetPacketSize(pkt_size)
+		w.buf = make([]byte, pkt_size)
 	}
 
+	w.updateDelay(len(w.buf))
 	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
 
 	return w, err
