@@ -14,7 +14,7 @@ const (
 	FieldBufferSize   = "buffer_size"
 	FieldLocalAddress = "localaddr"
 	FieldLocalPort    = "localport"
-	FieldBitrate      = "max_bitrate"
+	FieldMaxBitrate      = "max_bitrate"
 	FieldPacketSize   = "pkt_size"
 	FieldTOS          = "tos"
 	FieldTTL          = "ttl"
@@ -34,7 +34,7 @@ func (s *ipSocket) uriQuery() url.Values {
 	q := make(url.Values)
 
 	if s.bitrate > 0 {
-		setInt(q, FieldBitrate, s.bitrate)
+		setInt(q, FieldMaxBitrate, s.bitrate)
 	}
 
 	if s.bufferSize > 0 {
@@ -61,7 +61,11 @@ func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
 	type bufferSizeSetter interface {
 		SetWriteBuffer(int) error
 	}
-	if buffer_size, ok := getInt(q, FieldBufferSize); ok {
+	if buffer_size, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
+		if err != nil {
+			return err
+		}
+
 		conn, ok := conn.(bufferSizeSetter)
 		if !ok {
 			return syscall.EINVAL
@@ -76,7 +80,11 @@ func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
 
 	var p *ipv4.Conn
 
-	if tos, ok := getInt(q, FieldTOS); ok {
+	if tos, ok, err := getInt(q, FieldTOS); ok || err != nil {
+		if err != nil {
+			return err
+		}
+
 		if p == nil {
 			p = ipv4.NewConn(conn)
 		}
@@ -88,7 +96,11 @@ func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
 		s.tos, _ = p.TOS()
 	}
 
-	if ttl, ok := getInt(q, FieldTTL); ok {
+	if ttl, ok, err := getInt(q, FieldTTL); ok || err != nil {
+		if err != nil {
+			return err
+		}
+
 		if p == nil {
 			p = ipv4.NewConn(conn)
 		}
@@ -107,18 +119,49 @@ func setInt(q url.Values, field string, val int) {
 	q.Set(field, strconv.Itoa(val))
 }
 
-func getInt(q url.Values, field string) (int, bool) {
+var scales = map[byte]int{
+	'G': 1000000000,
+	'g': 1000000000,
+	'M': 1000000,
+	'm': 1000000,
+	'K': 1000,
+	'k': 1000,
+}
+
+func getSize(q url.Values, field string) (val int, specified bool, err error) {
 	s := q.Get(field)
 	if s == "" {
-		return 0, false
+		return 0, false, nil
+	}
+
+	suffix := s[len(s)-1]
+
+	scale := 1
+	if val, ok := scales[suffix]; ok {
+		scale = val
+		s = s[:len(s)-1]
 	}
 
 	i, err := strconv.ParseInt(s, 0, strconv.IntSize)
 	if err != nil {
-		return 0, false
+		return 0, true, err
 	}
 
-	return int(i), true
+	return int(i) * scale, true, nil
+}
+
+func getInt(q url.Values, field string) (val int, specified bool, err error) {
+	s := q.Get(field)
+	if s == "" {
+		return 0, false, nil
+	}
+
+	i, err := strconv.ParseInt(s, 0, strconv.IntSize)
+	if err != nil {
+		return 0, true, err
+	}
+
+	return int(i), true, nil
 }
 
 func buildAddr(addr, portString string) (ip net.IP, port int, err error) {

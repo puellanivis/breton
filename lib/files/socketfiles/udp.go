@@ -241,9 +241,17 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		return nil, err
 	}
 
-	w.ipSocket.setForWriter(w.conn, q)
+	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
+		w.conn.Close()
+		return nil, err
+	}
 
-	if pkt_size, ok := getInt(q, FieldPacketSize); ok {
+	if pkt_size, ok, err := getSize(q, FieldPacketSize); ok || err != nil {
+		if err != nil {
+			w.conn.Close()
+			return nil, err
+		}
+
 		w.buf = make([]byte, pkt_size)
 	}
 

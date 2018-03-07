@@ -47,7 +47,11 @@ func (t *throttler) throttle(scale int) {
 }
 
 func (t *throttler) set(q url.Values) error {
-	if bitrate, ok := getInt(q, FieldBitrate); ok {
+	if bitrate, ok, err := getSize(q, FieldMaxBitrate); ok || err != nil {
+		if err != nil {
+			return err
+		}
+
 		t.bitrate = bitrate
 	}
 

@@ -104,7 +104,10 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		return nil, err
 	}
 
-	w.ipSocket.setForWriter(w.conn, q)
+	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
+		w.conn.Close()
+		return nil, err
+	}
 
 	w.updateDelay(1)
 	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
