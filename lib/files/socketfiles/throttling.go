@@ -32,6 +32,10 @@ func (t *throttler) updateDelay(prescale int) {
 }
 
 func (t *throttler) throttle(scale int) {
+	if t.next == nil {
+		return
+	}
+
 	<-t.next.C
 
 	if scale > 1 {
