@@ -6,7 +6,7 @@ import (
 )
 
 type throttler struct {
-	bitrate    int
+	bitrate int
 
 	delay time.Duration
 	next  *time.Timer
@@ -53,4 +53,3 @@ func (t *throttler) set(q url.Values) error {
 
 	return nil
 }
-

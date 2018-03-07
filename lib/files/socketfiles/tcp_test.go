@@ -21,7 +21,7 @@ func TestTCPName(t *testing.T) {
 			tos:        0x80,
 
 			throttler: throttler{
-				bitrate:    2048,
+				bitrate: 2048,
 			},
 		},
 	}
