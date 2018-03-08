@@ -117,6 +117,11 @@ func (g *GaugeValue) Sub(v float64) {
 	g.g.Sub(v)
 }
 
+// Observe is an alias for Set in order to implement the Observer interface.
+func (g *GaugeValue) Observe(v float64) {
+	g.Set(v)
+}
+
 // Set sets the Gauge to the given value.
 func (g *GaugeValue) Set(v float64) {
 	if g.g == nil {
