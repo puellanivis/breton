@@ -26,7 +26,8 @@
 //
 //	w, err := files.Create(ctx, "clipboard:")
 //	if err != nil {
-//		return err	// will return `os.IsNotExist(err) == true` if not available.
+//		// will return `os.IsNotExist(err) == true` if not available.
+//		return err
 //	}
 //	fmt.Fprint(w, "write this string to the OS clipboard if available")
 //	w.Close()
@@ -46,12 +47,14 @@
 //	if err != nil {
 //		return err
 //	}
+//	// no need to close here.
 //
 //	err := files.Write(ctx, "destination", b)
 //	if err != nil {
 //		// will return io.ErrShortWrite if it does not write all of the buffer.
 //		return err
 //	}
+//	// no need to close here.
 //
 // Or use io.ReaderCloser/io.WriteCloser as a source/destination
 //
@@ -59,6 +62,7 @@
 //	if err := files.Discard(io.ReadCloser); err != nil {
 //		return err
 //	}
+//	// no need to close here.
 //
 //	// read all the data on the io.ReadCloser into a byte-slice, then close the source.
 //	b, err := files.ReadFrom(io.ReadCloser)
@@ -80,20 +84,20 @@ import (
 	"os"
 )
 
-// File defines an interface that abstracts away the concept of files to allow for multiple types of Scheme implementations, and not just local filesystem files.
+// File defines an interface that abstracts the concept of files to allow for multiple types implementation, beyond the local filesystem.
 type File interface {
 	io.Closer
 	Name() string
 	Stat() (os.FileInfo, error)
 }
 
-// Reader defines a files.File that is available as an io.ReadSeeker
+// Reader defines a files.File that is also an io.ReadSeeker
 type Reader interface {
 	File
 	io.ReadSeeker
 }
 
-// Writer defines a files.File that is available as an io.Writer as well as supporting a Sync() function.
+// Writer defines a files.File that is also an io.Writer with a Sync() function.
 type Writer interface {
 	File
 	io.Writer
