@@ -242,7 +242,7 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 		laddr.IP, laddr.Port, err = buildAddr(addr, port)
 		if err != nil {
-			return nil, err
+			return nil, &os.PathError{"create", uri.String(), err}
 		}
 	}
 
@@ -255,7 +255,7 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	}
 
 	if err := withContext(ctx, dail); err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
 	go func() {
@@ -269,13 +269,13 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
 		w.Close()
-		return nil, err
+		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
 	if pkt_size, ok, err := getSize(q, FieldPacketSize); ok || err != nil {
 		if err != nil {
 			w.Close()
-			return nil, err
+			return nil, &os.PathError{"create", uri.String(), err}
 		}
 
 		w.buf = make([]byte, pkt_size)

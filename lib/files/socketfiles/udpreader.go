@@ -48,22 +48,22 @@ func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 
 	laddr, err := net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"open", uri.String(), err}
 	}
 
 	q := uri.Query()
 
 	r.conn, err = net.ListenUDP("udp", laddr)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"open", uri.String(), err}
 	}
 
 	if err := r.ipSocket.setForReader(r.conn, q); err != nil {
 		r.conn.Close()
-		return nil, err
+		return nil, &os.PathError{"open", uri.String(), err}
 	}
 
 	r.Info = wrapper.NewInfo(r.uri(), 0, time.Now())
 
-	return r, err
+	return r, nil
 }

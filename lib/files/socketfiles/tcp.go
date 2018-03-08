@@ -90,7 +90,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 	raddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
 	q := uri.Query()
@@ -105,7 +105,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 		laddr.IP, laddr.Port, err = buildAddr(addr, port)
 		if err != nil {
-			return nil, err
+			return nil, &os.PathError{"create", uri.String(), err}
 		}
 	}
 
@@ -118,7 +118,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	}
 
 	if err := withContext(ctx, dail); err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
 	go func() {
@@ -131,7 +131,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
 		w.Close()
-		return nil, err
+		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
 	w.updateDelay(1)
