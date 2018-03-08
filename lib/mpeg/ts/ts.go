@@ -86,7 +86,7 @@ func (ts *TransportStream) init() {
 	ts.patReady = make(chan struct{})
 	ts.nextStreamPID = 0x100
 	ts.nextProgramPID = 0x1000
-	ts.updateRate = 5 * time.Millisecond
+	ts.updateRate = 1 * time.Second / 25 // 25 Hz
 }
 
 func (ts *TransportStream) writePackets(pkts ...*packet.Packet) (n int, err error) {
