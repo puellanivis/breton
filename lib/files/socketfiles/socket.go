@@ -52,6 +52,32 @@ func (s *ipSocket) uriQuery() url.Values {
 	return q
 }
 
+func (s *ipSocket) setForReader(conn net.Conn, q url.Values) error {
+	s.laddr = conn.LocalAddr()
+
+	type bufferSizeSetter interface {
+		SetReadBuffer(int) error
+	}
+	if buffer_size, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
+		if err != nil {
+			return err
+		}
+
+		conn, ok := conn.(bufferSizeSetter)
+		if !ok {
+			return syscall.EINVAL
+		}
+
+		if err := conn.SetReadBuffer(buffer_size); err != nil {
+			return err
+		}
+
+		s.bufferSize = buffer_size
+	}
+
+	return nil
+}
+
 func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
 	s.laddr = conn.LocalAddr()
 	s.raddr = conn.RemoteAddr()

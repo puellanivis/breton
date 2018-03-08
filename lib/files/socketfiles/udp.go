@@ -261,10 +261,6 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	return w, err
 }
 
-func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
-}
-
 func (h *udpHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
 }
