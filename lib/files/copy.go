@@ -34,6 +34,10 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 
 	l := int64(len(c.buffer))
 
+	var bwAccum int64
+	last := time.Now()
+	next := last.Add(time.Second)
+
 	for {
 		done := make(chan struct{})
 
@@ -51,16 +55,11 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 		r := io.LimitReader(src, l)
 
 		var n int64
-		var dur time.Duration
 
 		go func() {
 			defer close(done)
 
-			start := time.Now()
-
 			n, err = io.CopyBuffer(w, r, c.buffer)
-
-			dur = time.Since(start)
 
 			if n < l && err == nil {
 				err = io.EOF
@@ -69,19 +68,28 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 
 		select {
 		case <-done:
+			cancel()
+			written += n
+			bwAccum += n
+
 		case <-ctx.Done():
 			cancel()
 			return written, ctx.Err()
 		}
 
-		cancel()
-
 		if observe != nil {
-			// n and err are valid here because <-done HAPPENS AFTER close(done)
-			observe(float64(n * c.bwScale) / dur.Seconds())
+			if now := time.Now(); now.After(next) {
+				dur := now.Sub(last)
+
+				// n and err are valid here because <-done HAPPENS AFTER close(done)
+				observe(float64(bwAccum * c.bwScale) / dur.Seconds())
+
+				bwAccum = 0
+				last = now
+				next = last.Add(time.Second)
+			}
 		}
 
-		written += n
 		if err != nil {
 			break
 		}
