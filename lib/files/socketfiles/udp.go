@@ -22,6 +22,8 @@ func init() {
 type UDPWriter struct {
 	mu sync.Mutex
 
+	closed chan struct{}
+
 	conn *net.UDPConn
 	*wrapper.Info
 	ipSocket
@@ -121,6 +123,12 @@ func (w *UDPWriter) Close() error {
 
 	err := w.sync()
 
+	select {
+	case <-w.closed:
+	default:
+		close(w.closed)
+	}
+
 	if err := w.conn.Close(); err != nil {
 		return err
 	}
@@ -213,11 +221,13 @@ func (w *UDPWriter) uri() *url.URL {
 }
 
 func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	w := new(UDPWriter)
+	w := &UDPWriter{
+		closed: make(chan struct{}),
+	}
 
 	raddr, err := net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
 	q := uri.Query()
@@ -236,19 +246,35 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		}
 	}
 
-	w.conn, err = net.DialUDP("udp", laddr, raddr)
-	if err != nil {
-		return nil, err
+	dail := func() error {
+		var err error
+
+		w.conn, err = net.DialUDP("udp", laddr, raddr)
+
+		return err
 	}
 
+	if err := withContext(ctx, dail); err != nil {
+		return nil, &os.PathError{"open", uri.String(), err}
+	}
+
+	go func() {
+		select {
+		case <-w.closed:
+		case <-ctx.Done():
+			w.Close()
+		}
+	}()
+
+
 	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
-		w.conn.Close()
+		w.Close()
 		return nil, err
 	}
 
 	if pkt_size, ok, err := getSize(q, FieldPacketSize); ok || err != nil {
 		if err != nil {
-			w.conn.Close()
+			w.Close()
 			return nil, err
 		}
 
@@ -258,7 +284,7 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	w.updateDelay(len(w.buf))
 	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
 
-	return w, err
+	return w, nil
 }
 
 func (h *udpHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {

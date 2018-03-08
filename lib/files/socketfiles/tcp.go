@@ -21,6 +21,8 @@ func init() {
 type TCPWriter struct {
 	mu sync.Mutex
 
+	closed chan struct{}
+
 	conn *net.TCPConn
 	*wrapper.Info
 	ipSocket
@@ -46,6 +48,12 @@ func (w *TCPWriter) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	select {
+	case <-w.closed:
+	default:
+		close(w.closed)
+	}
+	
 	return w.conn.Close()
 }
 
@@ -76,7 +84,9 @@ func (w *TCPWriter) uri() *url.URL {
 }
 
 func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	w := new(TCPWriter)
+	w := &TCPWriter{
+		closed: make(chan struct{}),
+	}
 
 	raddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
@@ -99,20 +109,35 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		}
 	}
 
-	w.conn, err = net.DialTCP("tcp", laddr, raddr)
-	if err != nil {
-		return nil, err
+	dail := func() error {
+		var err error
+
+		w.conn, err = net.DialTCP("tcp", laddr, raddr)
+
+		return err
 	}
 
+	if err := withContext(ctx, dail); err != nil {
+		return nil, &os.PathError{"open", uri.String(), err}
+	}
+
+	go func() {
+		select {
+		case <-w.closed:
+		case <-ctx.Done():
+			w.Close()
+		}
+	}()
+
 	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
-		w.conn.Close()
+		w.Close()
 		return nil, err
 	}
 
 	w.updateDelay(1)
 	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
 
-	return w, err
+	return w, nil
 }
 
 func (h *tcpHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {

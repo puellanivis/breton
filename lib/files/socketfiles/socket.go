@@ -2,6 +2,7 @@
 package socketfiles
 
 import (
+	"context"
 	"net"
 	"net/url"
 	"strconv"
@@ -205,4 +206,22 @@ func buildAddr(addr, portString string) (ip net.IP, port int, err error) {
 	}
 
 	return ip, port, nil
+}
+
+func withContext(ctx context.Context, fn func() error) (err error) {
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		err = fn()
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return err
 }
