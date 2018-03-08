@@ -66,8 +66,11 @@ type copyConfig struct {
 	bufferSize     int
 	buffer         []byte
 
-	bwObserver observer
-	bwScale    int64
+	bwScale    float64
+	bwCount    int
+	bwInterval time.Duration
+	bwRunning  observer
+	bwLifetime observer
 }
 
 type CopyOption func(c *copyConfig) CopyOption
@@ -100,22 +103,38 @@ func WithBufferSize(size int) CopyOption {
 	return WithBuffer(make([]byte, size))
 }
 
-func WithScaledBandwidthMetrics(observer interface{ Observe(float64) }, scale int64) CopyOption {
+// WithMetricsScale sets the scale of reported Metrics, otherwise it is reported in bytes/second.
+func WithMetricsScale(scale float64) CopyOption {
 	return func(c *copyConfig) CopyOption {
-		saveOb := c.bwObserver
-		saveScale := c.bwScale
+		save := c.bwScale
 
-		c.bwObserver = observer
 		c.bwScale = scale
 
-		return WithScaledBandwidthMetrics(saveOb, saveScale)
+		return WithMetricsScale(save)
 	}
 }
 
-func WithBandwidthMetrics(observer interface{ Observe(float64) }, inBits bool) CopyOption {
-	if inBits {
-		return WithScaledBandwidthMetrics(observer, 8)
-	}
+func WithBandwidthMetrics(total interface{ Observe(float64) }) CopyOption {
+	return func(c *copyConfig) CopyOption {
+		save := c.bwLifetime
 
-	return WithScaledBandwidthMetrics(observer, 1)
+		c.bwLifetime = total
+
+		return WithBandwidthMetrics(save)
+	}
+}
+
+// WithIntervalBandwidthMetrics keeps a running list of n intervals and reports the bandwidth over this window.
+func WithIntervalBandwidthMetrics(running interface{ Observe(float64) }, n int, interval time.Duration) CopyOption {
+	return func(c *copyConfig) CopyOption {
+		saveOb := c.bwRunning
+		saveCount := c.bwCount
+		saveDur := c.bwInterval
+
+		c.bwRunning = running
+		c.bwCount = n
+		c.bwInterval = interval
+
+		return WithIntervalBandwidthMetrics(saveOb, saveCount, saveDur)
+	}
 }

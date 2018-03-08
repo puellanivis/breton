@@ -18,25 +18,50 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 		_ = opt(c)
 	}
 
-	var observe func(float64)
-	if c.bwObserver != nil {
-		if c.bwScale < 1 {
-			c.bwScale = 1
-		}
-			
-		observe = c.bwObserver.Observe
-	}
-
 	if c.buffer == nil {
 		// we allocate a buffer to use as a temporary buffer, rather than alloc new every time.
 		c.buffer = make([]byte, defaultBufferSize)
 	}
-
 	l := int64(len(c.buffer))
 
+	var keepingMetrics bool
+
+	var total func(float64)
+	if c.bwLifetime != nil {
+		total = c.bwLifetime.Observe
+		keepingMetrics = true
+	}
+
+	if c.bwScale <= 0 {
+		c.bwScale = 1
+	}
+
+	if c.bwInterval <= 0 {
+		c.bwInterval = 1 * time.Second
+	}
+
+	type bwSnippet struct{
+		n int64
+		d time.Duration
+	}
+	var bwWindow []bwSnippet
+
+	var running func(float64)
+	if c.bwRunning != nil {
+		if c.bwCount < 1 {
+			c.bwCount = 1
+		}
+
+		running = c.bwRunning.Observe
+		keepingMetrics = true
+		bwWindow = make([]bwSnippet, c.bwCount)
+	}
+
+	start := time.Now()
+
 	var bwAccum int64
-	last := time.Now()
-	next := last.Add(time.Second)
+	last := start
+	next := last.Add(c.bwInterval)
 
 	for {
 		done := make(chan struct{})
@@ -69,29 +94,47 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 		select {
 		case <-done:
 			cancel()
-			written += n
-			bwAccum += n
 
 		case <-ctx.Done():
 			cancel()
 			return written, ctx.Err()
 		}
 
-		if observe != nil {
-			if now := time.Now(); now.After(next) {
-				dur := now.Sub(last)
+		// n and err are valid here because <-done HAPPENS AFTER close(done)
+		written += n
+		bwAccum += n
+		if err != nil {
+			break
+		}
 
-				// n and err are valid here because <-done HAPPENS AFTER close(done)
-				observe(float64(bwAccum * c.bwScale) / dur.Seconds())
+		if keepingMetrics {
+			if now := time.Now(); now.After(next) {
+				if total != nil {
+					dur := now.Sub(start)
+					total(float64(written) * c.bwScale / dur.Seconds())
+				}
+
+				if running != nil {
+					dur := now.Sub(last)
+
+					copy(bwWindow, bwWindow[1:])
+					bwWindow[len(bwWindow)-1].n = bwAccum
+					bwWindow[len(bwWindow)-1].d = dur
+
+					var n int64
+					var d time.Duration
+					for i := range bwWindow {
+						n += bwWindow[i].n
+						d += bwWindow[i].d
+					}
+
+					running(float64(n) * c.bwScale / d.Seconds())
+				}
 
 				bwAccum = 0
 				last = now
 				next = last.Add(time.Second)
 			}
-		}
-
-		if err != nil {
-			break
 		}
 	}
 
