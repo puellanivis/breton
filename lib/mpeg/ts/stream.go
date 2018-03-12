@@ -23,7 +23,9 @@ const (
 
 type stream struct {
 	mu    sync.Mutex
-	ready chan struct{}
+
+	ready         chan struct{}
+	discontinuity chan struct{}
 
 	err error
 
@@ -45,6 +47,44 @@ func (s *stream) makeReady() {
 	default:
 		close(s.ready)
 	}
+}
+
+func (s *stream) Discontinuity() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	select {
+	case <-s.discontinuity:
+	default:
+		// already marked, avoid making more channels.
+		return
+	}
+
+	s.discontinuity = make(chan struct{})
+}
+
+func (s *stream) getDiscontinuity() bool {
+	select {
+	case <-s.discontinuity:
+		return false
+	default:
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.discontinuity == nil {
+		s.discontinuity = make(chan struct{})
+	}
+
+	select {
+	case <-s.discontinuity:
+		return false
+	default:
+	}
+
+	close(s.discontinuity)
+	return true
 }
 
 func (s *stream) String() string {

@@ -96,15 +96,14 @@ const (
 	maxLengthAllowingStuffing = packet.MaxPayload - packet.AdaptationFieldMinLength
 )
 
-func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool, next chan struct{}) {
+func (m *Mux) packetizer(rd io.ReadCloser, s *stream, isPES bool, next chan struct{}) {
 	defer func() {
 		if err := rd.Close(); err != nil {
-			glog.Error("packetizer: 0x%04X: rd.Close: %+v", pid, err)
+			glog.Error("packetizer: 0x%04X: rd.Close: %+v", s.pid, err)
 		}
 	}()
 
 	var continuity byte
-	discontinuity := false // TODO: make this configurable.
 
 	// PSI table length is limited to 1021 bytes. This is significantly less than 0x10000 bytes.
 	// PES packet limited to payload length 0xFFFF, but a header of at least 6, so must be > 0x10000 bytes.
@@ -118,7 +117,7 @@ func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool, next chan str
 		n, err := rd.Read(buf)
 		if err != nil {
 			if err != io.EOF {
-				glog.Errorf("packetizer: 0x%04X: %+v", pid, err)
+				glog.Errorf("packetizer: 0x%04X: %+v", s.pid, err)
 			}
 
 			return
@@ -142,14 +141,12 @@ func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool, next chan str
 
 			case pusi:
 				af = &packet.AdaptationField{
-					Discontinuity: discontinuity,
+					Discontinuity: s.getDiscontinuity(),
 					RandomAccess:  true, // TODO: make this configurable.
 					PCR:           new(pcr.PCR),
 				}
 
 				m.pcrSrc.Read(af.PCR)
-
-				discontinuity = false
 
 			case len(data) < maxLengthAllowingStuffing:
 				// If the remaining payload is small enough to add stuffing and finish this sequence.
@@ -187,7 +184,7 @@ func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool, next chan str
 			}
 
 			pkt := &packet.Packet{
-				PID:             pid,
+				PID:             s.pid,
 				PUSI:            pusi,
 				Continuity:      continuity,
 				AdaptationField: af,
@@ -198,7 +195,7 @@ func (m *Mux) packetizer(rd io.ReadCloser, pid uint16, isPES bool, next chan str
 			continuity = (continuity + 1) & 0x0F
 
 			if _, err := m.writePackets(pkt); err != nil {
-				glog.Errorf("m.writePackets: 0x%04X: %+v", pid, err)
+				glog.Errorf("m.writePackets: 0x%04X: %+v", s.pid, err)
 				return
 			}
 
@@ -295,6 +292,20 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 		m.outstanding.Add(1)
 	}
 
+	ready := make(chan struct{})
+	close(ready)
+
+	s := &stream{
+		ready: ready,
+
+		pid: pid,
+
+		wr: pipe,
+		closer: func() error {
+			return pipe.Close()
+		},
+	}
+
 	go func() {
 		if isPES {
 			defer m.outstanding.Done()
@@ -307,22 +318,10 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 			<-wait
 		}
 
-		m.packetizer(rd, pid, isPES, next)
+		m.packetizer(rd, s, isPES, next)
 	}()
 
-	ready := make(chan struct{})
-	close(ready)
-
-	return &stream{
-		ready: ready,
-
-		pid: pid,
-
-		wr: pipe,
-		closer: func() error {
-			return pipe.Close()
-		},
-	}, nil
+	return s, nil
 }
 
 func (m *Mux) Close() <-chan error {
