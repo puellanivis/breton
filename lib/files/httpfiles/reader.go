@@ -138,7 +138,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = &os.PathError{ "open", r.name, ctx.Err()}
+			r.err = &os.PathError{"open", r.name, ctx.Err()}
 			return
 		}
 
@@ -152,7 +152,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 		resp, err := cl.Do(req)
 		if err != nil {
-			r.err = &os.PathError{ "open", r.name, err}
+			r.err = &os.PathError{"open", r.name, err}
 			return
 		}
 

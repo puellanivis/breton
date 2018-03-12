@@ -12,7 +12,6 @@ import (
 	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
-
 type UDPReader struct {
 	mu sync.Mutex
 

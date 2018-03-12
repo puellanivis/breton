@@ -266,7 +266,6 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		}
 	}()
 
-
 	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
 		w.Close()
 		return nil, &os.PathError{"create", uri.String(), err}

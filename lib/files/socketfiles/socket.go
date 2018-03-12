@@ -15,7 +15,7 @@ const (
 	FieldBufferSize   = "buffer_size"
 	FieldLocalAddress = "localaddr"
 	FieldLocalPort    = "localport"
-	FieldMaxBitrate      = "max_bitrate"
+	FieldMaxBitrate   = "max_bitrate"
 	FieldPacketSize   = "pkt_size"
 	FieldTOS          = "tos"
 	FieldTTL          = "ttl"

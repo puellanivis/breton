@@ -53,7 +53,7 @@ func (w *TCPWriter) Close() error {
 	default:
 		close(w.closed)
 	}
-	
+
 	return w.conn.Close()
 }
 

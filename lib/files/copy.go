@@ -40,7 +40,7 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 		c.bwInterval = 1 * time.Second
 	}
 
-	type bwSnippet struct{
+	type bwSnippet struct {
 		n int64
 		d time.Duration
 	}
