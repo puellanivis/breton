@@ -33,7 +33,7 @@ type Packet struct {
 func (p *Packet) String() string {
 	var out []string
 
-	out = append(out, fmt.Sprintf("PID:x%06X", p.PID), fmt.Sprintf("[%X]", p.Continuity))
+	out = append(out, fmt.Sprintf("PID:x%04X", p.PID), fmt.Sprintf("[%X]", p.Continuity))
 	if p.TEI {
 		out = append(out, "TEI")
 	}
