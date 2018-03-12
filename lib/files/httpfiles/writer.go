@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
@@ -56,14 +57,18 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 
 		resp, err := cl.Do(r.req)
 		if err != nil {
-			return err
+			return &os.PathError{"write", r.name, err}
 		}
 
 		if err := files.Discard(resp.Body); err != nil {
 			return err
 		}
 
-		return getErr(resp)
+		if err := getErr(resp); err != nil {
+			return &os.PathError{"write", r.name, err}
+		}
+
+		return nil
 	})
 
 	return &writer{
