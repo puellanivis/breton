@@ -75,7 +75,8 @@ RUN go get -v -u \
 RUN go get -v -u \
 	gopkg.in/natefinch/lumberjack.v2 \
 	github.com/stackimpact/stackimpact-go \
-	gopkg.in/tylerb/graceful.v1
+	gopkg.in/tylerb/graceful.v1 \
+	github.com/grafov/m3u8
 
 # This script is violitile, and rebuilding/retrieving every/any libraries anytime it changes is not a good idea.
 COPY mash.sh /bin/mash.sh
