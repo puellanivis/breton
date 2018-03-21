@@ -4,7 +4,7 @@ ifneq "$(DOCKER_REGISTRY)" ""
 #REGISTRY=$(DOCKER_REGISTRY)/
 endif
 PROJECT=$(shell basename "${PWD}")
-USER=$(shell whoami)
+USER=$(shell whoami | tr '[:upper:]' '[:lower:]')
 REPO=${REGISTRY}${USER}/${PROJECT}
 BUILDNO=$(shell docker images ${REPO} | grep -c ${TIMESTAMP})
 
