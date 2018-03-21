@@ -36,7 +36,7 @@ if [[ -n "${MASHALL}" ]]; then
 	LINUX="--linux"
 	WINDOWS="--windows"
 else
-	case ${OSTYPE} in 
+	case ${OSTYPE} in
 	linux*)
 		LINUX="--linux"
 	;;
@@ -156,7 +156,7 @@ if [[ -n $REGISTRY ]]; then
 fi
 
 if [[ -z $IMAGE ]]; then
-	IMAGE="${USER}/masher"
+	IMAGE="${USER,,}/masher"
 
 	if ! which git > /dev/null 2>&1 ; then
 		echo Please install git >&2
@@ -284,6 +284,12 @@ for p in $MASHER_LIBS; do
 	t="/go/src/$t"
 
 	if [[ -d $l ]]; then
+		case ${OSTYPE} in
+		cygwin*)
+			l="$(cygpath -w $l)"
+		;;
+		esac
+
 		echo "$l => $t"
 		LIBS="$LIBS --volume $l:$t"
 	else
@@ -300,6 +306,13 @@ if [[ ( -r debian/control ) ]]; then
 
 	printf "$(git config user.name) <$(git config user.email)>" > debian/whoami
 fi
+
+case ${OSTYPE} in
+cygwin*)
+	[[ -n ${ESCAPE} ]] && EXEC="${EXEC} winpty"
+	BASE="$(cygpath -w $BASE)"
+;;
+esac
 
 ${EXEC} docker run ${FLAGS} --rm \
 	--name "${NAME}" \
