@@ -156,7 +156,7 @@ if [[ -n $REGISTRY ]]; then
 fi
 
 if [[ -z $IMAGE ]]; then
-	IMAGE="${USER,,}/masher"
+	IMAGE="${USER}/masher"
 
 	if ! which git > /dev/null 2>&1 ; then
 		echo Please install git >&2
