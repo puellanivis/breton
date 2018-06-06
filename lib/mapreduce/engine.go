@@ -4,19 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"sync"
 )
 
-type mapper interface {
-	Map(ctx context.Context, in interface{}) (out interface{}, err error)
+type engine struct{
+	m Mapper
+	r Reducer
+	conf config
 }
 
-type reducer interface {
-	Reduce(ctx context.Context, in interface{}) error
-}
-
-func engine(ctx context.Context, m mapper, r reducer, rng Range) <-chan error {
+func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	width := rng.Width()
 
 	if width <= 0 {
@@ -32,14 +29,39 @@ func engine(ctx context.Context, m mapper, r reducer, rng Range) <-chan error {
 
 	errch := make(chan error)
 
-	mappers := DefaultThreadCount
+	threads := e.conf.threadCount
+	if threads <= 0 {
+		threads = DefaultThreadCount
+	}
+	pool := make(chan struct{}, threads)
+
+	mappers := e.conf.mapperCount
+	if mappers < threads {
+		mappers = threads
+	}
 
 	stripe := width / mappers
 	if width%mappers > 0 {
 		stripe++
 	}
 
+	if e.conf.stripeSize != 0 && stripe > e.conf.stripeSize {
+		stripe = e.conf.stripeSize
+		mappers = width / stripe
+		if width%stripe > 0 {
+			mappers++
+		}
+	}
+
 	var mu sync.Mutex
+	chain := make(chan struct{})
+	close(chain)
+
+	unordered := make(chan struct{})
+	if !e.conf.ordered {
+		close(unordered)
+	}
+
 	var wg sync.WaitGroup
 	wg.Add(mappers)
 
@@ -51,41 +73,56 @@ func engine(ctx context.Context, m mapper, r reducer, rng Range) <-chan error {
 			continue
 		}
 
-		s := last
-		e := s + stripe
+		start := last
+		end := start + stripe
 
-		if e > rng.End {
-			e = rng.End
+		if end > rng.End {
+			end = rng.End
 		}
+		last = end
+
+		ready := chain
+		chain = make(chan struct{})
+		next := chain
 
 		go func() {
 			defer func() {
 				wg.Done()
+				close(next)
 			}()
 
 			rng := Range{
-				Start: s,
-				End: e,
+				Start: start,
+				End: end,
 			}
 
-			out, err := m.Map(ctx, rng)
+			<-pool
+
+			out, err := e.m.Map(ctx, rng)
 			if err != nil {
 				errch <- err
 			}
 
-			if out == nil || r == nil {
+			pool <- struct{}{}
+
+			if out == nil || e.r == nil {
+				return
+			}
+
+			select {
+			case <-unordered:
+			case <-ready:
+			case <-ctx.Done():
 				return
 			}
 
 			mu.Lock()
 			defer mu.Unlock()
 
-			if err := r.Reduce(ctx, out); err != nil {
+			if err := e.r.Reduce(ctx, out); err != nil {
 				errch <- err
 			}
 		}()
-
-		last = e
 	}
 
 	if last != rng.End {
@@ -95,54 +132,14 @@ func engine(ctx context.Context, m mapper, r reducer, rng Range) <-chan error {
 	go func() {
 		defer close(errch)
 
+		for i := 0; i < threads; i++ {
+			pool <- struct{}{}
+		}
+
 		wg.Wait()
 	}()
 
 	return errch
 }
 
-func Run(ctx context.Context, mr MapReducer, data interface{}) <-chan error {
-	if r, ok := data.(Range); ok {
-		return engine(ctx, mr, mr, r)
-	}
 
-	v := reflect.ValueOf(data)
-
-	switch v.Kind() {
-	case reflect.Chan:
-		m := func(ctx context.Context, in interface{}) (out interface{}, err error) {
-			return mr.Map(ctx, v.Interface())
-		}
-
-		return engine(ctx, MapFunc(m), mr, Range{ End: DefaultThreadCount })
-
-	case reflect.Slice:
-		m := func(ctx context.Context, in interface{}) (out interface{}, err error) {
-			r := in.(Range)
-
-			return mr.Map(ctx, v.Slice(r.Start, r.End).Interface())
-		}
-
-		return engine(ctx, MapFunc(m), mr, Range{ End: v.Len() })
-
-	case reflect.Map:
-		typ := v.Type().Key()
-		keys := v.MapKeys()
-
-		m := func(ctx context.Context, in interface{}) (out interface{}, err error) {
-			r := in.(Range)
-
-			sl := reflect.MakeSlice(reflect.SliceOf(typ), 0, r.Width())
-
-			for _, key := range keys[r.Start:r.End] {
-				sl = reflect.Append(sl, key)
-			}
-
-			return mr.Map(ctx, sl.Interface())
-		}
-
-		return engine(ctx, MapFunc(m), mr, Range{ End: len(keys) })
-	}
-
-	panic("bad type passed to mapreduce.Run")
-}
