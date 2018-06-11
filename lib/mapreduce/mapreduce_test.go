@@ -2,6 +2,7 @@ package mapreduce
 
 import (
 	"context"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -33,6 +34,7 @@ func (cc *ChanCollector) Map(ctx context.Context, in interface{}) (out interface
 
 	for s := range in.(<-chan string) {
 		a = append(a, s)
+		runtime.Gosched()
 	}
 
 	return a, nil
