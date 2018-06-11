@@ -32,11 +32,16 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	threads := e.conf.threadCount
 	if threads <= 0 {
 		threads = DefaultThreadCount
+
+		if threads < 1 {
+			// If the default was set to less than one, we want to ensure it is at least one.
+			threads = 1
+		}
 	}
 	pool := make(chan struct{}, threads)
 
 	mappers := e.conf.mapperCount
-	if mappers < threads {
+	if mappers <= 0 {
 		mappers = threads
 	}
 
@@ -45,7 +50,9 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		stripe++
 	}
 
-	if e.conf.stripeSize != 0 && stripe > e.conf.stripeSize {
+	if e.conf.stripeSize > 0 && stripe > e.conf.stripeSize {
+		// If the number of mappers we have already makes a stripe size of less than the configured value,
+		// then we do not need to recalculate the mapper count.
 		stripe = e.conf.stripeSize
 		mappers = width / stripe
 		if width%stripe > 0 {
