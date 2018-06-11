@@ -33,7 +33,7 @@ func WithMapperCount(num int) Option {
 	}
 }
 
-func WithStripeSize(size int) Option {
+func WithMaxStripeSize(size int) Option {
 	return func(c *config) Option {
 		save := c.stripeSize
 
