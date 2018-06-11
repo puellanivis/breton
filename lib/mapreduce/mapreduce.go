@@ -98,11 +98,34 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 
 	switch kind {
 	case reflect.Chan:
+		typ := v.Type()
+
+		switch typ.ChanDir() {
+		case reflect.RecvDir:
+			// do not need to do anything here.
+		case reflect.BothDir:
+			v = v.Convert(reflect.ChanOf(reflect.RecvDir, typ.Elem()))
+
+		default:
+			panic("channel as input to mapper must allow receive")
+		}
+
 		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
 			return mr.Map(ctx, v.Interface())
 		})
 
-		return e.run(ctx, Range{ End: e.conf.threadCount })
+		n := e.conf.threadCount
+		if n < 1 {
+			// if no thread count option was set, then go with the default.
+			n = DefaultThreadCount
+
+			if n < 1 {
+				// if even the default even empty, then make it at least one.
+				n = 1
+			}
+		}
+
+		return e.run(ctx, Range{ End: n })
 
 	case reflect.Slice, reflect.Array:
 		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
@@ -122,11 +145,11 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 			r := in.(Range)
 
 			// Here, we build the slice that we will pass in,
-			// so that rather than a []reflect.Value, each mapper gets a []<Map Key Type>.
+			// so that rather than mappers receiving a []reflect.Value, they get a []<MapKeyType>.
 
 			// Since there is non-trivial work necessary to convert the slice types,
 			// we do this as a part of the mapping process,
-			// so that the costs are spread across each thread the same as any other mapreduce.
+			// so that the costs are spread across each map the same as the rest of the mapper work.
 			sl := reflect.MakeSlice(typ, 0, r.Width())
 			for _, key := range keys[r.Start:r.End] {
 				sl = reflect.Append(sl, key)
