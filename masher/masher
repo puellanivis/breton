@@ -272,6 +272,12 @@ LIBS=""
 [[ -d ${BASE}/.cache ]] || mkdir ${BASE}/.cache
 CACHE="--cache=${SRCROOT}/.cache"
 
+DEP_CACHE=""
+if [[ -r Gopkg.toml ]]; then
+	[[ -d ${BASE}/.dep ]] || mkdir ${BASE}/.dep
+	DEP_CACHE="--volume ${BASE}/.dep:/go/pkg/dep:rw"
+fi
+
 SAVE_IFS=$IFS
 IFS=':'
 for p in $MASHER_LIBS; do
@@ -322,6 +328,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	--user "${RUNAS}" \
 	--volume "${BASE}:${SRCROOT}:rw" \
 	--volume "${BASE}/.cache:${SRCROOT}/.cache:rw" \
+	$DEP_CACHE \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
 	${IMAGE} \

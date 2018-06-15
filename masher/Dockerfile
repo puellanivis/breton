@@ -54,7 +54,8 @@ RUN go get -v -u \
 	golang.org/x/net/ipv4 \
 	golang.org/x/oauth2/jwt \
 	golang.org/x/oauth2/google \
-	golang.org/x/net/context # intentionally last
+	golang.org/x/net/context \
+	github.com/golang/dep/cmd/dep # new intentionally last
 
 # These are useful libraries that are not as centrally/clearly useful as the various Google-supported libraries.
 # * fsnotify		to allow for filesystem notifications
