@@ -1,12 +1,11 @@
 package mapreduce
 
-import (
-)
+import ()
 
-type config struct{
+type config struct {
 	threadCount int
 	mapperCount int
-	stripeSize int
+	stripeSize  int
 
 	ordered bool
 }
@@ -39,7 +38,7 @@ func WithMaxStripeSize(size int) Option {
 
 		c.stripeSize = size
 
-		return WithStripeSize(save)
+		return WithMaxStripeSize(save)
 	}
 }
 

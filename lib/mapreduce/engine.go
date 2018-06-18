@@ -7,9 +7,9 @@ import (
 	"sync"
 )
 
-type engine struct{
-	m Mapper
-	r Reducer
+type engine struct {
+	m    Mapper
+	r    Reducer
 	conf config
 }
 
@@ -100,7 +100,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 
 			rng := Range{
 				Start: start,
-				End: end,
+				End:   end,
 			}
 
 			<-pool
@@ -148,5 +148,3 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 
 	return errch
 }
-
-

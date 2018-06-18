@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-type StringCollector struct{
+type StringCollector struct {
 	a [][]string
 }
 
@@ -25,7 +25,7 @@ func (sc *StringCollector) Reduce(ctx context.Context, in interface{}) error {
 	return nil
 }
 
-type ChanCollector struct{
+type ChanCollector struct {
 	a [][]string
 }
 

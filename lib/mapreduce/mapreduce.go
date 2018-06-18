@@ -32,7 +32,7 @@ func (r ReduceFunc) Reduce(ctx context.Context, in interface{}) error {
 	return r(ctx, in)
 }
 
-type MapReduce struct{
+type MapReduce struct {
 	m Mapper
 	r Reducer
 
@@ -125,7 +125,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 			}
 		}
 
-		return e.run(ctx, Range{ End: n })
+		return e.run(ctx, Range{End: n})
 
 	case reflect.Slice, reflect.Array:
 		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
@@ -134,7 +134,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 			return mr.Map(ctx, v.Slice3(r.Start, r.End, r.End).Interface())
 		})
 
-		return e.run(ctx, Range{ End: v.Len() })
+		return e.run(ctx, Range{End: v.Len()})
 
 	case reflect.Map:
 		// We extract and freeze a slice of mapkeys, so that there is a canonical list for all mappers.
@@ -158,7 +158,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 			return mr.Map(ctx, sl.Interface())
 		})
 
-		return e.run(ctx, Range{ End: len(keys) })
+		return e.run(ctx, Range{End: len(keys)})
 	}
 
 	panic("bad type passed to mapreduce.Run")

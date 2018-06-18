@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-type Range struct{
+type Range struct {
 	Start, End int
 }
 
@@ -19,6 +19,6 @@ func (r Range) Width() int {
 func (r Range) Add(off int) Range {
 	return Range{
 		Start: r.Start + off,
-		End: r.End + off,
+		End:   r.End + off,
 	}
 }

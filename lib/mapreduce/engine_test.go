@@ -7,7 +7,7 @@ import (
 	//"time"
 )
 
-type TestMR struct{
+type TestMR struct {
 	ranges []Range
 }
 
@@ -30,7 +30,7 @@ func (mr *TestMR) Reduce(ctx context.Context, in interface{}) error {
 func TestEngine(t *testing.T) {
 	rng := Range{
 		Start: 42,
-		End: 69,
+		End:   69,
 	}
 
 	DefaultThreadCount = 16
