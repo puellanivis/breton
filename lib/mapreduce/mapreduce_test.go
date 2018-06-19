@@ -2,10 +2,18 @@ package mapreduce
 
 import (
 	"context"
+	"reflect"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
+
+type RuneSlice []rune
+
+func (a RuneSlice) Len() int           { return len(a) }
+func (a RuneSlice) Less(i, j int) bool { return a[i] < a[j] }
+func (a RuneSlice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 
 type StringCollector struct {
 	a [][]string
@@ -13,8 +21,14 @@ type StringCollector struct {
 
 func (sc *StringCollector) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
 	a := in.([]string)
+	var r []string
 
-	return a, nil
+	for _, s := range a {
+		r = append(r, s)
+		runtime.Gosched()
+	}
+
+	return r, nil
 }
 
 func (sc *StringCollector) Reduce(ctx context.Context, in interface{}) error {
@@ -30,14 +44,14 @@ type ChanCollector struct {
 }
 
 func (cc *ChanCollector) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
-	a := make([]string, 0)
+	var r []string
 
 	for s := range in.(<-chan string) {
-		a = append(a, s)
+		r = append(r, s)
 		runtime.Gosched()
 	}
 
-	return a, nil
+	return r, nil
 }
 
 func (cc *ChanCollector) Reduce(ctx context.Context, in interface{}) error {
@@ -49,7 +63,8 @@ func (cc *ChanCollector) Reduce(ctx context.Context, in interface{}) error {
 }
 
 func TestMapReduce(t *testing.T) {
-	a := strings.Split("abcdefghijklmnopqrstuvwxyz", "")
+	s := "abcdefghijklmnopqrstuvwxyz"
+	a := strings.Split(s, "")
 
 	sc := &StringCollector{}
 	mr := New(sc, sc, WithThreadCount(1))
@@ -64,6 +79,20 @@ func TestMapReduce(t *testing.T) {
 		}
 
 		t.Log(n, sc.a)
+
+		var r RuneSlice
+		for _, v := range sc.a {
+			for _, s := range v {
+				r = append(r, []rune(s)...)
+			}
+		}
+
+		sort.Sort(r)
+		t.Logf("mapreduce([]string, %d): %q", n, string(r))
+
+		if !reflect.DeepEqual(s, string(r)) {
+			t.Errorf("mapreduce over map with %d mappers did not process all elemnets, expected %q got %q ", n, s, string(r))
+		}
 	}
 
 	for i := 0; i <= len(a); i++ {
@@ -83,6 +112,20 @@ func TestMapReduce(t *testing.T) {
 		}
 
 		t.Log(n, sc.a)
+
+		var r RuneSlice
+		for _, v := range sc.a {
+			for _, s := range v {
+				r = append(r, []rune(s)...)
+			}
+		}
+
+		sort.Sort(r)
+		t.Logf("mapreduce(map[string]int, %d): %q", n, string(r))
+
+		if !reflect.DeepEqual(s, string(r)) {
+			t.Errorf("mapreduce over map with %d mappers did not process all elemnets, expected %q got %q ", n, s, string(r))
+		}
 	}
 
 	for i := 0; i <= len(a); i++ {
@@ -110,6 +153,20 @@ func TestMapReduce(t *testing.T) {
 		}
 
 		t.Log(n, cc.a)
+
+		var r RuneSlice
+		for _, v := range cc.a {
+			for _, s := range v {
+				r = append(r, []rune(s)...)
+			}
+		}
+
+		sort.Sort(r)
+		t.Logf("mapreduce(chan string, %d): %q", n, string(r))
+
+		if !reflect.DeepEqual(s, string(r)) {
+			t.Errorf("mapreduce over map with %d mappers did not process all elemnets, expected %q got %q ", n, s, string(r))
+		}
 	}
 
 	for i := 0; i <= len(a); i++ {
