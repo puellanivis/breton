@@ -36,6 +36,7 @@ type MapReduce struct {
 	m Mapper
 	r Reducer
 
+	// shallow copies of this config are made often, do not make this a pointer.
 	conf config
 }
 
@@ -72,8 +73,18 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 	v := reflect.ValueOf(data)
 	kind := v.Kind()
 
-	if kind == reflect.Ptr {
-		return mr.Run(ctx, v.Elem().Interface(), opts...)
+	for data != nil && (kind == reflect.Ptr || kind == reflect.Interface) {
+		v = v.Elem()
+		kind = v.Kind()
+
+		data = v.Interface()
+	}
+
+	if data == nil {
+		ch := make(chan error)
+		close(ch)
+
+		return ch
 	}
 
 	e := &engine{
@@ -87,11 +98,6 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		_ = opt(&e.conf)
 	}
 
-	for kind == reflect.Interface {
-		v = v.Elem()
-		kind = v.Kind()
-	}
-
 	if r, ok := data.(Range); ok {
 		return e.run(ctx, r)
 	}
@@ -102,7 +108,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 
 		switch typ.ChanDir() {
 		case reflect.RecvDir:
-			// do not need to do anything here.
+			// channel is already read-only, we do not need to do anything further here.
 		case reflect.BothDir:
 			v = v.Convert(reflect.ChanOf(reflect.RecvDir, typ.Elem()))
 
@@ -115,14 +121,16 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		})
 
 		n := e.conf.threadCount
-		if n < 1 {
-			// if no thread count option was set, then go with the default.
+		if n <= 0 {
 			n = DefaultThreadCount
 
 			if n < 1 {
-				// if even the default even empty, then make it at least one.
+				// Even if the default was set to less than one, we want to ensure it is at least one.
 				n = 1
 			}
+
+			// Now, make sure that the thread count used in this engine is the same as used here.
+			e.conf.threadCount = n
 		}
 
 		return e.run(ctx, Range{End: n})
@@ -137,20 +145,23 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		return e.run(ctx, Range{End: v.Len()})
 
 	case reflect.Map:
-		// We extract and freeze a slice of mapkeys, so that there is a canonical list for all mappers.
-		typ := reflect.SliceOf(v.Type().Key())
+		// We extract and freeze a slice of mapkeys, so that there is a canonical list for all map calls.
 		keys := v.MapKeys()
+
+		// get the slice type for []<MapKeyType>
+		typ := reflect.SliceOf(v.Type().Key())
 
 		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
 			r := in.(Range)
 
 			// Here, we build the slice that we will pass in,
-			// so that rather than mappers receiving a []reflect.Value, they get a []<MapKeyType>.
+			// so that rather than each map call receiving a []reflect.Value, they get a []<MapKeyType>.
+			sl := reflect.MakeSlice(typ, 0, r.Width())
 
 			// Since there is non-trivial work necessary to convert the slice types,
-			// we do this as a part of the mapping process,
+			// and we are already splitting the work load through our MapReduce engine,
+			// we can do this []reflect.Value -> []<MapKeyType> as a part of the map call process,
 			// so that the costs are spread across each map the same as the rest of the mapper work.
-			sl := reflect.MakeSlice(typ, 0, r.Width())
 			for _, key := range keys[r.Start:r.End] {
 				sl = reflect.Append(sl, key)
 			}
@@ -161,5 +172,5 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		return e.run(ctx, Range{End: len(keys)})
 	}
 
-	panic("bad type passed to mapreduce.Run")
+	panic("bad type passed to MapReduce.Run")
 }
