@@ -3,8 +3,7 @@ package mapreduce
 import (
 	"context"
 	"testing"
-	//"math/rand"
-	//"time"
+	"runtime"
 )
 
 type TestMR struct {
@@ -14,7 +13,7 @@ type TestMR struct {
 func (mr *TestMR) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
 	rng := in.(Range)
 
-	//<-time.After(time.Duration(rand.Intn(int(1 * time.Second))))
+	runtime.Gosched()
 
 	return rng, nil
 }
@@ -28,12 +27,12 @@ func (mr *TestMR) Reduce(ctx context.Context, in interface{}) error {
 }
 
 func TestEngine(t *testing.T) {
+	DefaultThreadCount = -1
+
 	rng := Range{
 		Start: 42,
 		End:   69,
 	}
-
-	DefaultThreadCount = 16
 
 	mr := &TestMR{}
 

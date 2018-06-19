@@ -2,10 +2,10 @@ package mapreduce
 
 import (
 	"context"
-	"reflect"
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -19,18 +19,6 @@ type StringCollector struct {
 	a [][]string
 }
 
-func (sc *StringCollector) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
-	a := in.([]string)
-	var r []string
-
-	for _, s := range a {
-		r = append(r, s)
-		runtime.Gosched()
-	}
-
-	return r, nil
-}
-
 func (sc *StringCollector) Reduce(ctx context.Context, in interface{}) error {
 	a := in.([]string)
 
@@ -39,42 +27,46 @@ func (sc *StringCollector) Reduce(ctx context.Context, in interface{}) error {
 	return nil
 }
 
-type ChanCollector struct {
-	a [][]string
-}
+var (
+	stringReceiver = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
+		var r []string
 
-func (cc *ChanCollector) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
-	var r []string
+		for _, s := range in.([]string) {
+			r = append(r, s)
+			runtime.Gosched()
+		}
 
-	for s := range in.(<-chan string) {
-		r = append(r, s)
-		runtime.Gosched()
-	}
+		return r, nil
+	})
 
-	return r, nil
-}
+	chanReceiver = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
+		var r []string
 
-func (cc *ChanCollector) Reduce(ctx context.Context, in interface{}) error {
-	a := in.([]string)
+		for s := range in.(<-chan string) {
+			r = append(r, s)
+			runtime.Gosched()
+		}
 
-	cc.a = append(cc.a, a)
+		return r, nil
+	})
+)
 
-	return nil
-}
+var (
+	testString = "abcdefghijklmnopqrstuvwxyz"
+	testInput = strings.Split(testString, "")
+)
 
-func TestMapReduce(t *testing.T) {
-	s := "abcdefghijklmnopqrstuvwxyz"
-	a := strings.Split(s, "")
+func TestMapReduceOverSlice(t *testing.T) {
+	DefaultThreadCount = -1
 
 	sc := &StringCollector{}
-	mr := New(sc, sc, WithThreadCount(1))
-
+	mr := New(stringReceiver, sc, WithThreadCount(1))
 	ctx := context.Background()
 
 	f := func(n int) {
 		sc.a = nil
 
-		for err := range mr.Run(ctx, a, WithThreadCount(n), WithMapperCount(n)) {
+		for err := range mr.Run(ctx, testInput, WithThreadCount(n), WithMapperCount(n), WithOrdering(false)) {
 			t.Error(err)
 		}
 
@@ -88,23 +80,104 @@ func TestMapReduce(t *testing.T) {
 		}
 
 		sort.Sort(r)
-		t.Logf("mapreduce([]string, %d): %q", n, string(r))
+		got := string(r)
+		t.Logf("mapreduce([]string, %d): %q", n, got)
 
-		if !reflect.DeepEqual(s, string(r)) {
-			t.Errorf("mapreduce over map with %d mappers did not process all elemnets, expected %q got %q ", n, s, string(r))
+		if got != testString {
+			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
 		}
 	}
 
-	for i := 0; i <= len(a); i++ {
+	for i := 0; i <= len(testInput); i++ {
 		f(i)
 	}
+}
+
+func TestOrderedMapReduceOverSlice(t *testing.T) {
+	DefaultThreadCount = -1
+	maxN := len(testInput)
+
+	var wg sync.WaitGroup
+
+	unorderedStringReceiver := MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
+		var r []string
+
+		flag := true
+
+		for _, s := range in.([]string) {
+			r = append(r, s)
+
+			if s == testInput[0] {
+				wg.Wait()
+				flag = false
+			}
+		}
+
+		if flag {
+			wg.Done()
+		}
+
+		return r, nil
+	})
+
+	sc := &StringCollector{}
+	mr := New(unorderedStringReceiver, sc, WithThreadCount(1), WithOrdering(true))
+	ctx := context.Background()
+
+	// the WithOrdering(false) here should override the default WithOrder(true) set on the mapreduce.New()
+	wg.Add(maxN-1)
+	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN), WithOrdering(false)) {
+		t.Error(err)
+	}
+
+	t.Log(maxN, sc.a)
+
+	var r RuneSlice
+	for _, v := range sc.a {
+		for _, s := range v {
+			r = append(r, []rune(s)...)
+		}
+	}
+
+	if string(r) == testString {
+		t.Fatalf("testing relies upon runtime.Gosched() producing a non-ordered slice collection.")
+	}
+
+	sc.a = nil
+
+	wg.Add(maxN-1)
+	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN)) {
+		t.Error(err)
+	}
+
+	t.Log(maxN, sc.a)
+
+	r = nil
+	for _, v := range sc.a {
+		for _, s := range v {
+			r = append(r, []rune(s)...)
+		}
+	}
+
+	got := string(r)
+	if got != testString {
+		t.Fatalf("an ordered MapReduce should have returned an ordered slice collection, expected %q, got %q", testString, got)
+	}
+}
+
+func TestMapReduceOverMap(t *testing.T) {
+	DefaultThreadCount = -1
+
+	sc := &StringCollector{}
+	mr := New(stringReceiver, sc, WithThreadCount(1))
+	ctx := context.Background()
 
 	m := make(map[string]int)
-	for i, v := range a {
+	for i, v := range testInput {
 		m[v] = i
 	}
 
-	f = func(n int) {
+	f := func(n int) {
 		sc.a = nil
 
 		for err := range mr.Run(ctx, m, WithThreadCount(n), WithMapperCount(n)) {
@@ -121,29 +194,35 @@ func TestMapReduce(t *testing.T) {
 		}
 
 		sort.Sort(r)
-		t.Logf("mapreduce(map[string]int, %d): %q", n, string(r))
+		got := string(r)
+		t.Logf("mapreduce(map[string]int, %d): %q", n, got)
 
-		if !reflect.DeepEqual(s, string(r)) {
-			t.Errorf("mapreduce over map with %d mappers did not process all elemnets, expected %q got %q ", n, s, string(r))
+		if got != testString {
+			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
 		}
 	}
 
-	for i := 0; i <= len(a); i++ {
+	for i := 0; i <= len(testInput); i++ {
 		f(i)
 	}
+}
 
-	cc := &ChanCollector{}
-	mr = New(cc, cc)
+func TestMapReduceOverChannel(t *testing.T) {
+	DefaultThreadCount = -1
 
-	f = func(n int) {
-		cc.a = nil
+	sc := &StringCollector{}
+	mr := New(chanReceiver, sc, WithThreadCount(1))
+	ctx := context.Background()
 
-		ch := make(chan string)
+	f := func(n int) {
+		sc.a = nil
+
+		ch := make(chan string, n)
 
 		go func() {
 			defer close(ch)
 
-			for _, s := range a {
+			for _, s := range testInput {
 				ch <- s
 			}
 		}()
@@ -152,24 +231,25 @@ func TestMapReduce(t *testing.T) {
 			t.Error(err)
 		}
 
-		t.Log(n, cc.a)
+		t.Log(n, sc.a)
 
 		var r RuneSlice
-		for _, v := range cc.a {
+		for _, v := range sc.a {
 			for _, s := range v {
 				r = append(r, []rune(s)...)
 			}
 		}
 
 		sort.Sort(r)
-		t.Logf("mapreduce(chan string, %d): %q", n, string(r))
+		got := string(r)
+		t.Logf("mapreduce(chan string, %d): %q", n, got)
 
-		if !reflect.DeepEqual(s, string(r)) {
-			t.Errorf("mapreduce over map with %d mappers did not process all elemnets, expected %q got %q ", n, s, string(r))
+		if got != testString {
+			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
 		}
 	}
 
-	for i := 0; i <= len(a); i++ {
+	for i := 0; i <= len(testInput); i++ {
 		f(i)
 	}
 }
