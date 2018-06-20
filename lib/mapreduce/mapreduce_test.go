@@ -53,7 +53,7 @@ var (
 
 var (
 	testString = "abcdefghijklmnopqrstuvwxyz"
-	testInput = strings.Split(testString, "")
+	testInput  = strings.Split(testString, "")
 )
 
 func TestMapReduceOverSlice(t *testing.T) {
@@ -125,7 +125,7 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 	ctx := context.Background()
 
 	// the WithOrdering(false) here should override the default WithOrder(true) set on the mapreduce.New()
-	wg.Add(maxN-1)
+	wg.Add(maxN - 1)
 	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN), WithOrdering(false)) {
 		t.Error(err)
 	}
@@ -145,7 +145,7 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 
 	sc.a = nil
 
-	wg.Add(maxN-1)
+	wg.Add(maxN - 1)
 	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN)) {
 		t.Error(err)
 	}

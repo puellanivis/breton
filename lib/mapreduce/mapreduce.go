@@ -8,30 +8,77 @@ import (
 
 var DefaultThreadCount = runtime.NumCPU()
 
+// A Mapper processes across a set of data.
+//
+// The mapreduce package will call a Mapper with one of:
+//	* a subslice from a slice;
+//	* a slice of MapKey values in the type the MapKeys are (i.e. not reflect.Value);
+//	* a receive-only channel;
+//	* a disjoin sub-range of a Range struct from this package.
+//
+// Examples:
+//	mr.Run(ctx, []string{ ... })          -> mapper.Map(ctx, slice[i:j:j])
+//	mr.Run(ctx, map[string]int{})         -> mapper.Map(ctx, []string{ /* subset of key values here */ })
+//	mr.Run(ctx, (chan string)(ch))        -> mapper.Map(ctx, (<-chan string)(ch))
+//	mr.Run(ctx, Range{Start: 0, End: n})) -> mapper.Map(ctx, Range{Start: i, End: j})
+//
+// While technically, a Mapper could potentially receive any of these data-types,
+// a Mapper SHOULD NOT have to account for all data-types being passed.
+// Thereforce, code SHOULD be designed to ensure only one data-type is passed in and out of a Mapper.
+//
+// As each Map call could be made in parallel,
+// a Mapper MUST be thread-safe,
+// but SHOULD NOT use any synchronization to ensure thread-safety.
+// So, a Mapper SHOULD work on either disjoint data, or read-only access of common data.
+//
+// A Mapper MUST NOT perform concurrent writes of common data,
+// this being the domain of a Reducer.
 type Mapper interface {
 	Map(ctx context.Context, in interface{}) (out interface{}, err error)
 }
 
-// Map defines a function to be called on each Stripe of data in a given MapReduce.
-// This is not critical section code and each Map will be run in a separate goroutine in parallel to the thread count.
+// A MapFunc is an adapter to use ordinary functions as a Mapper.
+//
+// As a repeated note from Mapper documentation,
+// this code could run in parallel,
+// a MapFunc MUST be thread-safe,
+// and SHOULD NOT contain any critical section code.
 type MapFunc func(ctx context.Context, in interface{}) (out interface{}, err error)
 
-func (m MapFunc) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
-	return m(ctx, in)
+// Map returns f(ctx, in)
+func (f MapFunc) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
+	return f(ctx, in)
 }
 
+// A Reducer processes the results of a Mapper within a critical-section.
+//
+// The mapreduce package will make a call to Reduce with each of the outputs from a Mapper,
+// and ensures that each call to Reduce is in a mutex-locked critical section.
+//
+// As a Reducer will always be in a critical-section when called from the mapreduce package,
+// a Reducer SHOULD NOT be required to perform any synchronization of its own,
+// and MAY read and write any common data without concern of another call to a Reducer running in parallel.
 type Reducer interface {
 	Reduce(ctx context.Context, in interface{}) error
 }
 
-// Reduce defines a function that recieves the output of a single Map.
-// This is critical section code, and only one Reduce goroutine will ever be running at a time.
+// ReduceFunc is an adaptor to use ordinary functions as a Reducer.
+//
+// As each call to a ReduceFunc from the mapreduce package is called from within a critical section,
+// a Reduce MAY read and write any common data without concern of another call to ReduceFunc running in parallel.
 type ReduceFunc func(ctx context.Context, in interface{}) error
 
+// Reduce returns r(ctx, in).
 func (r ReduceFunc) Reduce(ctx context.Context, in interface{}) error {
 	return r(ctx, in)
 }
 
+// A MapReduce is a composed pair of a Mapper and a Reducer,
+// along with any default Option values that one might wish to setup.
+//
+// A MapReduce MAY contain only a Mapper, and not a Reducer.
+// Such a MapReduce still implements Reducer,
+// but will not actually do anything within the Reduce call.
 type MapReduce struct {
 	m Mapper
 	r Reducer
@@ -40,10 +87,16 @@ type MapReduce struct {
 	conf config
 }
 
-func New(m Mapper, r Reducer, opts ...Option) *MapReduce {
+// New returns a new MapReduce object which defines a whole Mapper/Reducer pair that defines a MapReduce.
+// It also can set any Option values that will be the default for any calls to Run.
+func New(mapper Mapper, reducer Reducer, opts ...Option) *MapReduce {
+	if mapper == nil {
+		panic("a MapReduce must have at least a Mapper")
+	}
+
 	mr := &MapReduce{
-		m: m,
-		r: r,
+		m: mapper,
+		r: reducer,
 	}
 
 	for _, opt := range opts {
@@ -53,14 +106,13 @@ func New(m Mapper, r Reducer, opts ...Option) *MapReduce {
 	return mr
 }
 
+// Map invokes the Mapper defined for the MapReduce.
 func (mr *MapReduce) Map(ctx context.Context, in interface{}) (interface{}, error) {
-	if mr.m == nil {
-		panic("a MapReduce must implement at least a Mapper")
-	}
-
 	return mr.m.Map(ctx, in)
 }
 
+// Reduce invokes the Reducer defined for the MapReduce,
+// or simply returns nil if no Reducer was defined.
 func (mr *MapReduce) Reduce(ctx context.Context, in interface{}) error {
 	if mr.r == nil {
 		return nil
@@ -69,22 +121,57 @@ func (mr *MapReduce) Reduce(ctx context.Context, in interface{}) error {
 	return mr.r.Reduce(ctx, in)
 }
 
+// Run performs the MapReduce over the data given, overriding any defaults with the given Options.
+// Run returns a receive-only channel of errors that will report all errors returned from a Mapper or Reducer,
+// and which is closed upon completion of all Mappers and Reducers.
+//
+// Run can be called with any of:
+//	* a slice or array of any type, where each Mapper will be called with a subslice of the data,
+//	* a map of any type, where each Mapper will be called with a slice of a subset of the keys of that map,
+//	* a channel of any type, where each Mapper will be called with a receive-only copy of that channel
+//	* a Range struct from this package, where each Mapper will receive a disjoint sub-range of that Range.
+//
+// Any pointer or interface will be dereferenced until Run reaches a concrete type.
+// A call to Run that is done on a slice, or map of length 0 (zero), completes immediately with no error.
+//
+// In order to ensure efficient Mappers, Run SHOULD only ever be called with one type of data.
+// In order to process more than one data type, one SHOULD implement two different Mappers.
 func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) <-chan error {
 	v := reflect.ValueOf(data)
 	kind := v.Kind()
 
-	for data != nil && (kind == reflect.Ptr || kind == reflect.Interface) {
+	for v.IsValid() && (kind == reflect.Ptr || kind == reflect.Interface) {
+		if !v.Elem().IsValid() {
+			break
+		}
+
 		v = v.Elem()
 		kind = v.Kind()
-
 		data = v.Interface()
 	}
 
-	if data == nil {
-		ch := make(chan error)
-		close(ch)
+	switch kind {
+	case reflect.Chan:
+		// No short-circuit check possible.
 
-		return ch
+	case reflect.Slice, reflect.Array, reflect.Map:
+		// If it has no elements, short-circuit succeed.
+		if v.Len() < 1 {
+			ch := make(chan error)
+			close(ch)
+
+			return ch
+		}
+
+	case reflect.Struct:
+		// If we are _not_ a Range, then we‘re a bad type.
+		if _, ok := data.(Range); !ok {
+			panic("bad type passed to MapReduce.Run")
+		}
+
+	default:
+		// Anything else is a bad type.
+		panic("bad type passed to MapReduce.Run")
 	}
 
 	e := &engine{
@@ -99,6 +186,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 	}
 
 	if r, ok := data.(Range); ok {
+		// As a Range, we are already setup for the engine.run() call.
 		return e.run(ctx, r)
 	}
 
@@ -172,5 +260,16 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		return e.run(ctx, Range{End: len(keys)})
 	}
 
+	// As a final sanity check, we panic with bad type here.
 	panic("bad type passed to MapReduce.Run")
+}
+
+func Run(ctx context.Context, mapper Mapper, data interface{}, opts ...Option) <-chan error {
+	var reducer Reducer
+
+	if r, ok := mapper.(Reducer); ok {
+		reducer = r
+	}
+
+	return New(mapper, reducer, opts...).Run(ctx, data)
 }

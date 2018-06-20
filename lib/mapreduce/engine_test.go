@@ -2,8 +2,8 @@ package mapreduce
 
 import (
 	"context"
-	"testing"
 	"runtime"
+	"testing"
 )
 
 type TestMR struct {
