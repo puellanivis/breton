@@ -46,9 +46,9 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	}
 
 	stripe := width / mappers
-	if width%mappers > 0 {
-		stripe++
-	}
+
+	// extraWork is how many mappers need one more element in order to cover the whole width.
+	extraWork := width % mappers
 
 	if e.conf.stripeSize > 0 && stripe > e.conf.stripeSize {
 		// If the number of mappers we have already makes a stripe size of less than the configured value,
@@ -58,6 +58,8 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		if width%stripe > 0 {
 			mappers++
 		}
+
+		extraWork = 0 // do not add any extra work for any mappers.
 	}
 
 	var mu sync.Mutex
@@ -75,13 +77,12 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	last := rng.Start
 
 	for i := 0; i < mappers; i++ {
-		if last >= rng.End {
-			wg.Done()
-			continue
-		}
-
 		start := last
 		end := start + stripe
+
+		if i < extraWork {
+			end++
+		}
 
 		if end > rng.End {
 			end = rng.End
