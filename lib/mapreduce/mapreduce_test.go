@@ -67,10 +67,13 @@ func TestMapReduceOverSlice(t *testing.T) {
 		sc.a = nil
 
 		for err := range mr.Run(ctx, testInput, WithThreadCount(n), WithMapperCount(n), WithOrdering(false)) {
-			t.Error(err)
+			t.Errorf("%d mappers: %+v", n, err)
 		}
 
-		t.Log(n, sc.a)
+		if n > 0 && len(sc.a) != n {
+			t.Log(n, sc.a)
+			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
+		}
 
 		var r RuneSlice
 		for _, v := range sc.a {
@@ -81,14 +84,14 @@ func TestMapReduceOverSlice(t *testing.T) {
 
 		sort.Sort(r)
 		got := string(r)
-		t.Logf("mapreduce([]string, %d): %q", n, got)
 
 		if got != testString {
+			t.Logf("mapreduce([]string, %d): %q", n, got)
 			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
 		}
 	}
 
-	for i := 0; i <= len(testInput); i++ {
+	for i := -1; i <= len(testInput) + 1; i++ {
 		f(i)
 	}
 }
@@ -127,7 +130,7 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 	// the WithOrdering(false) here should override the default WithOrder(true) set on the mapreduce.New()
 	wg.Add(maxN - 1)
 	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN), WithOrdering(false)) {
-		t.Error(err)
+		t.Errorf("%d mappers: %+v", maxN, err)
 	}
 
 	t.Log(maxN, sc.a)
@@ -147,7 +150,7 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 
 	wg.Add(maxN - 1)
 	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN)) {
-		t.Error(err)
+		t.Errorf("%d mappers: %+v", maxN, err)
 	}
 
 	t.Log(maxN, sc.a)
@@ -181,10 +184,13 @@ func TestMapReduceOverMap(t *testing.T) {
 		sc.a = nil
 
 		for err := range mr.Run(ctx, m, WithThreadCount(n), WithMapperCount(n)) {
-			t.Error(err)
+			t.Errorf("%d mappers: %+v", n, err)
 		}
 
-		t.Log(n, sc.a)
+		if n > 0 && len(sc.a) != n {
+			t.Log(n, sc.a)
+			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
+		}
 
 		var r RuneSlice
 		for _, v := range sc.a {
@@ -195,14 +201,14 @@ func TestMapReduceOverMap(t *testing.T) {
 
 		sort.Sort(r)
 		got := string(r)
-		t.Logf("mapreduce(map[string]int, %d): %q", n, got)
 
 		if got != testString {
+			t.Logf("mapreduce(map[string]int, %d): %q", n, got)
 			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
 		}
 	}
 
-	for i := 0; i <= len(testInput); i++ {
+	for i := -1; i <= len(testInput) + 1; i++ {
 		f(i)
 	}
 }
@@ -217,7 +223,9 @@ func TestMapReduceOverChannel(t *testing.T) {
 	f := func(n int) {
 		sc.a = nil
 
-		ch := make(chan string, n)
+		ch := make(chan string)
+
+		errch := mr.Run(ctx, ch, WithThreadCount(n), WithMapperCount(n))
 
 		go func() {
 			defer close(ch)
@@ -227,11 +235,14 @@ func TestMapReduceOverChannel(t *testing.T) {
 			}
 		}()
 
-		for err := range mr.Run(ctx, ch, WithThreadCount(n), WithMapperCount(n)) {
-			t.Error(err)
+		for err := range errch {
+			t.Errorf("%d mappers: %+v", n, err)
 		}
 
-		t.Log(n, sc.a)
+		if n > 0 && len(sc.a) != n {
+			t.Log(n, sc.a)
+			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
+		}
 
 		var r RuneSlice
 		for _, v := range sc.a {
@@ -242,14 +253,14 @@ func TestMapReduceOverChannel(t *testing.T) {
 
 		sort.Sort(r)
 		got := string(r)
-		t.Logf("mapreduce(chan string, %d): %q", n, got)
 
 		if got != testString {
+			t.Logf("mapreduce(chan string, %d): %q", n, got)
 			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
 		}
 	}
 
-	for i := 0; i <= len(testInput); i++ {
+	for i := -1; i <= len(testInput) + 1; i++ {
 		f(i)
 	}
 }

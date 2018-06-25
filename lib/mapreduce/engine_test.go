@@ -13,7 +13,9 @@ type TestMR struct {
 func (mr *TestMR) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
 	rng := in.(Range)
 
-	runtime.Gosched()
+	for i := rng.Start; i < rng.End; i++ {
+		runtime.Gosched()
+	}
 
 	return rng, nil
 }
@@ -39,21 +41,32 @@ func TestEngine(t *testing.T) {
 	e := &engine{
 		m: mr,
 		r: mr,
+
+		conf: config{
+			ordered: true,
+			threadCount: 1,
+		},
 	}
 
-	WithOrdering(true)(&e.conf)
-	WithThreadCount(1)(&e.conf)
-
 	f := func(n int) {
-		WithMapperCount(n)(&e.conf)
+		e.conf.mapperCount = n
 
 		mr.ranges = nil
 
+		errs := false
+
 		for err := range e.run(context.Background(), rng) {
-			t.Error(err)
+			t.Errorf("%d mappers: %+v", n, err)
+			errs = true
 		}
 
-		t.Log(n, mr.ranges)
+		if n > 0 && len(mr.ranges) != n {
+			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(mr.ranges))
+		}
+
+		if errs {
+			t.Log(n, mr.ranges)
+		}
 	}
 
 	for i := 0; i <= rng.Width(); i++ {
