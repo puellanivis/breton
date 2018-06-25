@@ -43,7 +43,7 @@ func TestEngine(t *testing.T) {
 		r: mr,
 
 		conf: config{
-			ordered: true,
+			ordered:     true,
 			threadCount: 1,
 		},
 	}

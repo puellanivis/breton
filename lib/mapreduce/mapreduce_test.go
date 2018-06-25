@@ -91,7 +91,7 @@ func TestMapReduceOverSlice(t *testing.T) {
 		}
 	}
 
-	for i := -1; i <= len(testInput) + 1; i++ {
+	for i := -1; i <= len(testInput)+1; i++ {
 		f(i)
 	}
 }
@@ -208,7 +208,7 @@ func TestMapReduceOverMap(t *testing.T) {
 		}
 	}
 
-	for i := -1; i <= len(testInput) + 1; i++ {
+	for i := -1; i <= len(testInput)+1; i++ {
 		f(i)
 	}
 }
@@ -260,7 +260,7 @@ func TestMapReduceOverChannel(t *testing.T) {
 		}
 	}
 
-	for i := -1; i <= len(testInput) + 1; i++ {
+	for i := -1; i <= len(testInput)+1; i++ {
 		f(i)
 	}
 }
