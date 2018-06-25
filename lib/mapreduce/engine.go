@@ -134,7 +134,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	}
 
 	if last != rng.End {
-		panic(fmt.Sprintf("dropped entries! %d != %d", last, rng.End))
+		panic(fmt.Errorf("dropped entries! %d != %d", last, rng.End))
 	}
 
 	go func() {
