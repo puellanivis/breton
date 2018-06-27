@@ -2,14 +2,13 @@ package util
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"runtime/debug"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/puellanivis/breton/lib/glog"
 )
 
 var (
@@ -50,7 +49,7 @@ func sendHup() bool {
 	case hupchan <- struct{}{}:
 		return true
 	default:
-		glog.Error("too many hangups: terminating")
+		fmt.Fprintln(os.Stderr, "too many hangungs: terminating")
 	}
 
 	return false
@@ -66,7 +65,7 @@ func init() {
 		killchan := make(chan struct{}, 3)
 
 		for sig := range sigchan {
-			glog.Errorf("received signal: %s", sig)
+			fmt.Fprintf(os.Stderr, "received signal: %s", sig)
 
 			switch sig {
 			case syscall.SIGHUP:
