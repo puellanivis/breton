@@ -6,7 +6,6 @@ import (
 	"runtime/pprof"
 	"sync"
 
-	"github.com/puellanivis/breton/lib/glog"
 	flag "github.com/puellanivis/breton/lib/gnuflag"
 )
 
@@ -48,25 +47,23 @@ func Exit(status int) {
 }
 
 // Init is initialization code that provides basic functionality for command-line programs.
-// It parses flags, sets up AtExit, and queues flushing the log AtExit time.
+// It parses flags, sets up AtExit, and will start profiling if the appropriate flag is set.
 // It takes as parameters version information,
 // the first argument being the command's identifying string,
 // and then a series of numbers which indicate the various version points.
-// It returns a function that should be defer'ed in your main() function,
+// It returns the context.Context from util.Context(),
+// a function that should be defer'ed in your main() function,
 // which will take care of executing the queued AtExitFuncs even in a panic() situation,
-// and the context.Context from util.Context().
-func Init(cmdname string, versions ...uint) (func(), context.Context) {
+// and finally it may return an error if it fails to setup profiling.
+func Init(cmdname string, versions ...uint) (context.Context, func(), error) {
 	initVersion(cmdname, versions...)
 
 	flag.Parse()
-	AtExit(func() {
-		glog.Flush()
-	})
 
 	if *profile != "" {
 		f, err := os.Create(*profile + ".prof")
 		if err != nil {
-			glog.Fatal(err)
+			return nil, nil, err
 		}
 
 		pprof.StartCPUProfile(f)
@@ -77,18 +74,19 @@ func Init(cmdname string, versions ...uint) (func(), context.Context) {
 
 			f, err := os.Create(*profile + ".mprof")
 			if err != nil {
-				glog.Fatal(err)
+				return
 			}
+
 			pprof.WriteHeapProfile(f)
 			f.Close()
 		})
 	}
 
-	return func() {
+	return utilCtx, func() {
 		runExitFuncs()
 
 		if r := recover(); r != nil {
 			panic(r)
 		}
-	}, utilCtx
+	}, nil
 }
