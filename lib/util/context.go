@@ -65,7 +65,7 @@ func init() {
 		killchan := make(chan struct{}, 3)
 
 		for sig := range sigchan {
-			fmt.Fprintf(os.Stderr, "received signal: %s", sig)
+			fmt.Fprintln(os.Stderr, "received signal:", sig)
 
 			switch sig {
 			case syscall.SIGHUP:
