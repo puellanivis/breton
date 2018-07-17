@@ -1,7 +1,5 @@
 package m3u8
 
-import ()
-
 type StreamInf struct {
 	Bandwidth        int        `m3u8:"BANDWIDTH"`
 	AverageBandwidth int        `m3u8:"AVERAGE-BANDWIDTH,optional"`

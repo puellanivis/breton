@@ -1,7 +1,5 @@
 package m3u8
 
-import ()
-
 type Media struct {
 	Type    string `m3u8:"TYPE" enum:"AUDIO,VIDEO,SUBTITLES,CLOSED-CAPTIONS"`
 	GroupID string `m3u8:"GROUP-ID"`

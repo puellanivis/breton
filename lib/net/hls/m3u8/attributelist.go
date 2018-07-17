@@ -291,7 +291,7 @@ func unmarshalAttributeList(val interface{}, value []byte) error {
 				wasSet = true
 				continue
 			}
-	
+
 			err := unmarshalAttributeField(field, f, value)
 			if err != nil {
 				return fmt.Errorf("%s: %v", name, err)

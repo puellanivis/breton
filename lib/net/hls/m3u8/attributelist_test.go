@@ -94,7 +94,7 @@ func TestMarshalDateRange(t *testing.T) {
 		ClientAttribute: map[string]interface{}{
 			"STR": `"XYZ123"`,
 			"INT": 42,
-			"HEX": []byte{ 2, 3, 5, 7 },
+			"HEX": []byte{2, 3, 5, 7},
 		},
 	}
 
