@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// Enum defines an String flag type that maps to a uint value.
+// EnumValue defines an string-like flag type that maps strings to uint values.
 // It is exported, so that it may be defined in a gnuflags.Struct parameter.
 type EnumValue int
 
