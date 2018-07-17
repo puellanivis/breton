@@ -1,7 +1,6 @@
 package bufpipe
 
-import ()
-
+// Option defines a function that will apply a specific value or feature to a given Pipe.
 type Option func(*Pipe) Option
 
 // WithAutoFlush sets the internal buffer size which shall trigger an Automatic Flush.
