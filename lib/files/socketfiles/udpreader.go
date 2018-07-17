@@ -33,11 +33,11 @@ func (r *udpReader) Close() error {
 }
 
 func (r *udpReader) uri() *url.URL {
-	q := w.ipSocket.uriQuery()
+	q := r.ipSocket.uriQuery()
 
 	return &url.URL{
 		Scheme:   "udp",
-		Host:     w.laddr.String(),
+		Host:     r.laddr.String(),
 		RawQuery: q.Encode(),
 	}
 }
