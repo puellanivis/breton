@@ -1,13 +1,13 @@
 package psi
 
-import ()
-
 var tableRegistry = make(map[uint8]func() PSI)
 
+// Register sets a mapping from the id to a function which returns a PSI of the appropriate type for that id.
 func Register(id uint8, fn func() PSI) {
 	tableRegistry[id] = fn
 }
 
+// PSI is a Program-Specific-Information table.
 type PSI interface {
 	TableID() uint8
 	SectionSyntax() *SectionSyntax
