@@ -22,7 +22,7 @@ const (
 )
 
 type stream struct {
-	mu    sync.Mutex
+	mu sync.Mutex
 
 	ready         chan struct{}
 	discontinuity chan struct{}
