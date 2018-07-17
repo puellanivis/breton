@@ -51,7 +51,7 @@ func (p {{.Name}}Slice) Radix() { radix(p) }
 func (p {{.Name}}Slice) Search(x {{.Type}}) int      { return Search{{.Name}}s(p, x) }
 func (p {{.Name}}Slice) SearchFor(x interface{}) int { return Search{{.Name}}s(p, x.({{.Type}})) }
 
-// Sort{{.Name}}s sorts a slice of {{.Type}}s in increasing order.
+// {{.Name}}s sorts a slice of {{.Type}}s in increasing order.
 func {{.Name}}s(a []{{.Type}}) { radix({{.Name}}Slice(a)) }
 
 //Search{{.Name}}s searches for x in a sorted slice of {{.Type}}s and returns the index

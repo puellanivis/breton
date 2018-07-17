@@ -51,7 +51,7 @@ func (p ByteSliceSlice) Radix() { radix(p) }
 func (p ByteSliceSlice) Search(x []byte) int         { return SearchByteSlices(p, x) }
 func (p ByteSliceSlice) SearchFor(x interface{}) int { return SearchByteSlices(p, x.([]byte)) }
 
-// SortByteSlices sorts a slice of []bytes in increasing order.
+// ByteSlices sorts a slice of []bytes in increasing order.
 func ByteSlices(a [][]byte) { radix(ByteSliceSlice(a)) }
 
 //SearchByteSlices searches for x in a sorted slice of []bytes and returns the index

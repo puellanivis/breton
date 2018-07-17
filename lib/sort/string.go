@@ -63,7 +63,7 @@ func (p StringSlice) Radix() { radix(p) }
 func (p StringSlice) Search(x string) int         { return SearchStrings(p, x) }
 func (p StringSlice) SearchFor(x interface{}) int { return SearchStrings(p, x.(string)) }
 
-// SortStrings sorts a slice of strings in increasing order.
+// Strings sorts a slice of strings in increasing order.
 func Strings(a []string) { radix(StringSlice(a)) }
 
 //SearchStrings searches for x in a sorted slice of strings and returns the index
