@@ -1,4 +1,4 @@
-// Package datafiles implements the "unix:" URL scheme, by reading/writing to a raw unix socket.
+// Package unixsocket implements the "unix:" URL scheme, by reading/writing to a raw unix socket.
 package unixsocket
 
 import (
@@ -25,6 +25,7 @@ type writer struct {
 
 func (w *writer) Sync() error { return nil }
 
+// URL query field keys.
 const (
 	FieldLocalAddress = "local_addr"
 )
