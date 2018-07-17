@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// MasterPlaylist implements the primary playlist of the m3u8 standard.
 type MasterPlaylist struct {
 	Version int `m3u8:"EXT-X-VERSION"`
 
@@ -21,6 +22,7 @@ type MasterPlaylist struct {
 	Define []Define `m3u8:"EXT-X-DEFINE,attribute-list"`
 }
 
+// MediaPlaylist implements the media-specific playlist of the m3u8 standard.
 type MediaPlaylist struct {
 	Version int `m3u8:"EXT-X-VERSION"`
 
@@ -40,6 +42,7 @@ type MediaPlaylist struct {
 	Define []Define `m3u8:"EXT-X-DEFINE,attribute-list"`
 }
 
+// MediaSegment implements the MEDIA-SEGMENT directive of the m3u8 standard.
 type MediaSegment struct {
 	// Encoded by EXTINF, tell the Marshaller to ignore them.
 	Duration float64 `m3u8:"-"`

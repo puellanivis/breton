@@ -17,7 +17,7 @@ var quotedString = regexp.MustCompile(`^"(?:[^"]+|\\")*"`)
 func unmarshalAttributeField(field reflect.Value, f reflect.StructField, val []byte) error {
 	switch field.Interface().(type) {
 	case Resolution:
-		return field.Addr().Interface().(*Resolution).UnmarshalString(string(val))
+		return field.Addr().Interface().(*Resolution).TextUnmarshal(val)
 
 	case time.Time:
 		t, err := time.Parse("2006-01-02T15:04:05.999Z07:00", string(val))

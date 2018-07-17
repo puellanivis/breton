@@ -1,5 +1,6 @@
 package m3u8
 
+// Media implements the MEDIA directive of the m3u8 standard.
 type Media struct {
 	Type    string `m3u8:"TYPE" enum:"AUDIO,VIDEO,SUBTITLES,CLOSED-CAPTIONS"`
 	GroupID string `m3u8:"GROUP-ID"`

@@ -1,5 +1,6 @@
 package m3u8
 
+// StreamInf implements the STREAM-INF directive of the m3u8 standard.
 type StreamInf struct {
 	Bandwidth        int        `m3u8:"BANDWIDTH"`
 	AverageBandwidth int        `m3u8:"AVERAGE-BANDWIDTH,optional"`
@@ -15,6 +16,7 @@ type StreamInf struct {
 	ClosedCaptions string `m3u8:"CLOSED-CAPTIONS,optional"`
 }
 
+// IFrameStreamInf implements the I-FRAME-STREAM-INF directive of the m3u8 standard.
 type IFrameStreamInf struct {
 	Bandwidth        int        `m3u8:"BANDWIDTH"`
 	AverageBandwidth int        `m3u8:"AVERAGE-BANDWIDTH,optional"`

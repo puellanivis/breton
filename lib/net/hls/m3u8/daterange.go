@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// DateRange implements the DATE-RANGE m3u8 field.
 type DateRange struct {
 	ID    string `m3u8:"ID"`
 	Class string `m3u8:"CLASS,optional"`
