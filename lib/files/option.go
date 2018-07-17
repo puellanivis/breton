@@ -73,8 +73,12 @@ type copyConfig struct {
 	bwLifetime observer
 }
 
+// CopyOption defines a function that applies a value or setting for a specific files.Copy operation.
 type CopyOption func(c *copyConfig) CopyOption
 
+// WithWatchdogTimeout sets a running interval timeout,
+// where if no copy progress is made during that time,
+// the files.Copy will fail with a timeout error.
 func WithWatchdogTimeout(timeout time.Duration) CopyOption {
 	return func(c *copyConfig) CopyOption {
 		save := c.runningTimeout
@@ -85,6 +89,7 @@ func WithWatchdogTimeout(timeout time.Duration) CopyOption {
 	}
 }
 
+// WithBuffer sets which buffer a files.Copy should use internally as temporary storage between the Read and Write.
 func WithBuffer(buf []byte) CopyOption {
 	return func(c *copyConfig) CopyOption {
 		save := c.buffer
@@ -95,6 +100,7 @@ func WithBuffer(buf []byte) CopyOption {
 	}
 }
 
+// WithBufferSize makes a new buffer of size bytes, which is used as temporary intermediate storage for the files.Copy.
 func WithBufferSize(size int) CopyOption {
 	if size < 0 {
 		panic("cannot use a negative buffer size!")
@@ -114,6 +120,7 @@ func WithMetricsScale(scale float64) CopyOption {
 	}
 }
 
+// WithBandwidthMetrics establishes a lifetime bandwidth metric for the files.Copy.
 func WithBandwidthMetrics(total interface{ Observe(float64) }) CopyOption {
 	return func(c *copyConfig) CopyOption {
 		save := c.bwLifetime
