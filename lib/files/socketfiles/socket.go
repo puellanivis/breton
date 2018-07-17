@@ -11,6 +11,7 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
+// URL query field keys.
 const (
 	FieldBufferSize   = "buffer_size"
 	FieldLocalAddress = "localaddr"
@@ -59,7 +60,7 @@ func (s *ipSocket) setForReader(conn net.Conn, q url.Values) error {
 	type bufferSizeSetter interface {
 		SetReadBuffer(int) error
 	}
-	if buffer_size, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
+	if bufferSize, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
 		if err != nil {
 			return err
 		}
@@ -69,11 +70,11 @@ func (s *ipSocket) setForReader(conn net.Conn, q url.Values) error {
 			return syscall.EINVAL
 		}
 
-		if err := conn.SetReadBuffer(buffer_size); err != nil {
+		if err := conn.SetReadBuffer(bufferSize); err != nil {
 			return err
 		}
 
-		s.bufferSize = buffer_size
+		s.bufferSize = bufferSize
 	}
 
 	return nil
@@ -88,7 +89,7 @@ func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
 	type bufferSizeSetter interface {
 		SetWriteBuffer(int) error
 	}
-	if buffer_size, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
+	if bufferSize, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
 		if err != nil {
 			return err
 		}
@@ -98,11 +99,11 @@ func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
 			return syscall.EINVAL
 		}
 
-		if err := conn.SetWriteBuffer(buffer_size); err != nil {
+		if err := conn.SetWriteBuffer(bufferSize); err != nil {
 			return err
 		}
 
-		s.bufferSize = buffer_size
+		s.bufferSize = bufferSize
 	}
 
 	var p *ipv4.Conn

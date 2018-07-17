@@ -18,7 +18,7 @@ func init() {
 	files.RegisterScheme(&tcpHandler{}, "tcp")
 }
 
-type TCPWriter struct {
+type tcpWriter struct {
 	mu sync.Mutex
 
 	closed chan struct{}
@@ -28,7 +28,7 @@ type TCPWriter struct {
 	ipSocket
 }
 
-func (w *TCPWriter) SetBitrate(bitrate int) int {
+func (w *tcpWriter) SetBitrate(bitrate int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -40,11 +40,11 @@ func (w *TCPWriter) SetBitrate(bitrate int) int {
 	return prev
 }
 
-func (w *TCPWriter) Sync() error {
+func (w *tcpWriter) Sync() error {
 	return nil
 }
 
-func (w *TCPWriter) Close() error {
+func (w *tcpWriter) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -57,7 +57,7 @@ func (w *TCPWriter) Close() error {
 	return w.conn.Close()
 }
 
-func (w *TCPWriter) Write(b []byte) (n int, err error) {
+func (w *tcpWriter) Write(b []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -66,7 +66,7 @@ func (w *TCPWriter) Write(b []byte) (n int, err error) {
 	return w.conn.Write(b)
 }
 
-func (w *TCPWriter) uri() *url.URL {
+func (w *tcpWriter) uri() *url.URL {
 	q := w.ipSocket.uriQuery()
 
 	if w.laddr != nil {
@@ -84,7 +84,7 @@ func (w *TCPWriter) uri() *url.URL {
 }
 
 func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	w := &TCPWriter{
+	w := &tcpWriter{
 		closed: make(chan struct{}),
 	}
 
