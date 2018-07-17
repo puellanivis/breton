@@ -2,7 +2,7 @@ package sort
 
 import (
 	"sort"
-	_ "unsafe" // this is to ensure that cgo is called.
+	_ "unsafe" // this is to explicitly signal this file is unsafe.
 )
 
 // RadixTest defines a function that Returns true if the i'th element of the sort.RadixInterface is set
