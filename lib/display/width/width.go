@@ -1,8 +1,9 @@
 package width
 
 import (
-	"golang.org/x/text/width"
 	"unicode"
+
+	"golang.org/x/text/width"
 )
 
 // AmbiguousIsWide sets if an unknown ambiguous character is assumed to be width == 2.
