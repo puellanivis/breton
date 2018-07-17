@@ -5,15 +5,20 @@ import (
 	"sort"
 )
 
-// Our Interface is just the built in sort.Interface
+// Interface is just a wrapper around the the built in sort.Interface
 type Interface interface {
 	sort.Interface
 }
 
+// Sort attempts a radix sort of the argument, otherwise, it tries to sort.Sort.
 func Sort(a interface{}) {
 	Radix(a)
 }
 
+// Stable runs sort.Stable on the given argument.
+//
+// If the argument it is a basic slice type, it is wrapped through this packages implementations.
+// If the argument is a sort.Interface, then it is called directly.
 func Stable(a interface{}) {
 	if a == nil {
 		return
@@ -93,6 +98,7 @@ func (a reverse) RadixFunc(r int) RadixTest {
 	}
 }
 
+// Reverse performs a reverse sort of a given argument, according to the conditions noted for Sort.
 func Reverse(a interface{}) sort.Interface {
 	if a == nil {
 		return sort.Reverse(sort.Interface(nil))
@@ -140,6 +146,7 @@ func Reverse(a interface{}) sort.Interface {
 	return sort.Reverse(a.(sort.Interface))
 }
 
+// IsSorted returns true if the given argument is in sorted order.
 func IsSorted(a interface{}) bool {
 	if a == nil {
 		return true

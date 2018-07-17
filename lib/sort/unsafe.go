@@ -2,7 +2,7 @@ package sort
 
 import (
 	"sort"
-	_ "unsafe"
+	_ "unsafe" // this is to ensure that cgo runs.
 )
 
 //go:linkname quickSort sort.quickSort
