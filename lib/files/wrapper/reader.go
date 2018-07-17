@@ -26,7 +26,7 @@ func NewReaderWithInfo(r io.Reader, info os.FileInfo) *Reader {
 	}
 }
 
-// NewReader returns a new Reader with a NewInfo with uri, len(b) and time.Time specified.
+// NewReaderFromBytes returns a new Reader with a NewInfo with uri, len(b) and time.Time specified.
 func NewReaderFromBytes(b []byte, uri *url.URL, t time.Time) *Reader {
 	return NewReaderWithInfo(bytes.NewReader(b), NewInfo(uri, len(b), t))
 }
