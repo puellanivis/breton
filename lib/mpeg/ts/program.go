@@ -10,6 +10,7 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
 
+// Program defines a MPEG-TS program within a Transport Stream.
 type Program struct {
 	mu sync.Mutex
 
@@ -20,10 +21,12 @@ type Program struct {
 	wr  io.WriteCloser
 }
 
+// PID returns the Program ID assigned to this Program.
 func (p *Program) PID() uint16 {
 	return p.pid
 }
 
+// StreamID returns the Stream ID assigned to the Program itself, not to its underlying Streams.
 func (p *Program) StreamID() uint16 {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -39,6 +42,7 @@ func (p *Program) StreamID() uint16 {
 	return p.pmt.Syntax.TableIDExtension
 }
 
+// NewWriter returns a newly allocated Stream for the Program.
 func (p *Program) NewWriter(ctx context.Context, typ ProgramType) (io.WriteCloser, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -72,6 +76,7 @@ func (p *Program) NewWriter(ctx context.Context, typ ProgramType) (io.WriteClose
 	return w, nil
 }
 
+// StreamPIDs returns the PIDs of all of the Streams for the Program.
 func (p *Program) StreamPIDs() []uint16 {
 	p.mu.Lock()
 	defer p.mu.Unlock()

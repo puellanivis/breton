@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// SectionSyntax defines the MPEG-TS Section Syntax which is common to all PSI tables.
 type SectionSyntax struct {
 	TableIDExtension  uint16
 	Version           uint8
@@ -37,6 +38,7 @@ func (s *SectionSyntax) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(out, " "))
 }
 
+// Unmarshal decodes a byte slice into the SectionSyntax.
 func (s *SectionSyntax) Unmarshal(b []byte) error {
 	s.TableIDExtension = (uint16(b[0]) << 8) | uint16(b[1])
 	s.Version = (b[2] >> shiftSyntaxVersion) & maskSyntaxVersion
@@ -47,6 +49,7 @@ func (s *SectionSyntax) Unmarshal(b []byte) error {
 	return nil
 }
 
+// Marshal encodes the SectionSyntax into a byte slice.
 func (s *SectionSyntax) Marshal() ([]byte, error) {
 	b := make([]byte, 5)
 

@@ -7,11 +7,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ProgramMap defines an MPEG-TS Program Map entry.
 type ProgramMap struct {
 	ProgramNumber uint16
 	PID           uint16
 }
 
+// Set assigns a given program number and pid into the ProgramMap.
 func (pm *ProgramMap) Set(pnum, pid uint16) {
 	pm.ProgramNumber = pnum
 	if pid > 0x1FFF {
@@ -20,6 +22,7 @@ func (pm *ProgramMap) Set(pnum, pid uint16) {
 	pm.PID = pid
 }
 
+// PAT defines an MPEG-TS Program Allocation Table.
 type PAT struct {
 	Syntax *SectionSyntax
 
@@ -54,14 +57,17 @@ func init() {
 	Register(tableidPAT, func() PSI { return new(PAT) })
 }
 
+// TableID implements mpeg/ts/psi.PSI.
 func (pat *PAT) TableID() uint8 {
 	return tableidPAT
 }
 
+// SectionSyntax returns the embedded SectionSyntax, and implements mpeg/ts/psi.PSI.
 func (pat *PAT) SectionSyntax() *SectionSyntax {
 	return pat.Syntax
 }
 
+// Unmarshal decodes a byte slice into the PAT.
 func (pat *PAT) Unmarshal(b []byte) error {
 	if b[0] != tableidPAT {
 		return errors.Errorf("table_id mismatch: x%02X != x%02X", b[0], tableidPAT)
@@ -86,6 +92,7 @@ func (pat *PAT) Unmarshal(b []byte) error {
 	return nil
 }
 
+// Marshal encodes the PAT into a byte slice.
 func (pat *PAT) Marshal() ([]byte, error) {
 	data := make([]byte, len(pat.Map)*4)
 

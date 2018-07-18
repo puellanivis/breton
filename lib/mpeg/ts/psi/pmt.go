@@ -8,6 +8,7 @@ import (
 	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
 )
 
+// PMT defines an MPEG-TS Program Map Table.
 type PMT struct {
 	Syntax *SectionSyntax
 
@@ -50,14 +51,17 @@ func init() {
 	Register(tableidPMT, func() PSI { return new(PMT) })
 }
 
+// TableID implements mpeg/ts/psi.PSI.
 func (pmt *PMT) TableID() uint8 {
 	return tableidPMT
 }
 
+// SectionSyntax returns the embedded SectionSyntax, and implements mpeg/ts/psi.PSI.
 func (pmt *PMT) SectionSyntax() *SectionSyntax {
 	return pmt.Syntax
 }
 
+// Unmarshal decodes a byte slice into the PMT.
 func (pmt *PMT) Unmarshal(b []byte) error {
 	if b[0] != tableidPMT {
 		return errors.Errorf("table_id mismatch: x%02X != x%02X", b[0], tableidPMT)
@@ -72,10 +76,10 @@ func (pmt *PMT) Unmarshal(b []byte) error {
 	pmt.crc = crc
 
 	pmt.PCRPID = uint16(data[0]&0x1F)<<8 | uint16(data[1])
-	pinfo_length := int(data[2]&0x03)<<8 | int(data[3])
+	pinfoLen := int(data[2]&0x03)<<8 | int(data[3])
 
 	start := 4
-	end := pinfo_length + start
+	end := pinfoLen + start
 
 	for start < end {
 		d, err := desc.Unmarshal(data[start:])
@@ -105,6 +109,7 @@ func (pmt *PMT) Unmarshal(b []byte) error {
 	return nil
 }
 
+// Marshal encodes the PMT into a byte slice.
 func (pmt *PMT) Marshal() ([]byte, error) {
 	data := make([]byte, 4)
 

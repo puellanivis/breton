@@ -21,6 +21,7 @@ type Stream struct {
 	Header // Optional PES Header fields.
 }
 
+// HeaderLength returns the length in bytes of the Header for this Stream.
 func (s *Stream) HeaderLength() (int, error) {
 	l := mandatoryHeaderLength
 
@@ -39,7 +40,6 @@ func (s *Stream) HeaderLength() (int, error) {
 	return l, nil
 }
 
-// String implements fmt.Stringer
 func (s *Stream) String() string {
 	out := []string{
 		fmt.Sprintf("ID:x%02X", s.ID),

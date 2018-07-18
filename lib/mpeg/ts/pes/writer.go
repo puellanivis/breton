@@ -4,6 +4,7 @@ import (
 	"io"
 )
 
+// Writer defines a Writer that will encode an Elementary Stream into a Packetized Elementary Stream.
 type Writer struct {
 	Stream
 
@@ -23,7 +24,6 @@ func NewWriter(streamid byte, wr io.Writer) *Writer {
 	}
 }
 
-// Write implements io.Writer.
 func (w *Writer) Write(b []byte) (n int, err error) {
 	pkt := &packet{
 		stream:  &w.Stream,

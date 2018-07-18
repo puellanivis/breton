@@ -12,10 +12,13 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
 
+// PacketSize is the length in bytes of an MPEG-TS packet.
 const PacketSize = packet.Length
 
+// Option defines a function that will apply some value or behavior to a TransportStream.
 type Option func(*TransportStream) Option
 
+// WithDebug sets a function that will be called for each MPEG-TS Packet processed by the TransportStream.
 func WithDebug(fn func(*packet.Packet)) Option {
 	return func(ts *TransportStream) Option {
 		ts.once.Do(ts.init)
@@ -37,6 +40,7 @@ func (ts *TransportStream) getDebug() func(*packet.Packet) {
 	return ts.debug
 }
 
+// WithUpdateRate sets the rate at which the TransportStream will update TODO.
 func WithUpdateRate(d time.Duration) Option {
 	return func(ts *TransportStream) Option {
 		ts.once.Do(ts.init)
@@ -58,6 +62,7 @@ func (ts *TransportStream) getUpdateRate() time.Duration {
 	return ts.updateRate
 }
 
+// TransportStream defines an MPEG Transport Stream.
 type TransportStream struct {
 	sink io.Writer
 
@@ -153,6 +158,7 @@ func (ts *TransportStream) newStreamPID() uint16 {
 	return pid
 }
 
+// NewProgram returns a new Program assigned to the given Stream ID.
 func (ts *TransportStream) NewProgram(streamID uint16) (*Program, error) {
 	ts.once.Do(ts.init)
 	ts.mu.Lock()
@@ -241,6 +247,7 @@ func cloneSDT(src *dvb.ServiceDescriptorTable) *dvb.ServiceDescriptorTable {
 	return &sdt
 }
 
+// SetDVBSDT sets the DVB Service Description Table for the TransportStream.
 func (ts *TransportStream) SetDVBSDT(sdt *dvb.ServiceDescriptorTable) {
 	clone := cloneSDT(sdt)
 
@@ -257,6 +264,7 @@ func (ts *TransportStream) getDVBSDT() *dvb.ServiceDescriptorTable {
 	return ts.dvbSDT
 }
 
+// GetDVBSDT returns a deep copy of the DVB Service Description Table being used by the TransportStream.
 func (ts *TransportStream) GetDVBSDT() *dvb.ServiceDescriptorTable {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
@@ -264,6 +272,7 @@ func (ts *TransportStream) GetDVBSDT() *dvb.ServiceDescriptorTable {
 	return cloneSDT(ts.dvbSDT)
 }
 
+// GetPAT returns a map defining the Program Allocation Table of the TransportStream.
 func (ts *TransportStream) GetPAT() map[uint16]uint16 {
 	ts.once.Do(ts.init)
 
@@ -291,6 +300,9 @@ func (ts *TransportStream) setPAT(pat map[uint16]uint16) {
 	}
 }
 
+// GetPMTs returns a map defining the Program Map Tables indexed by their pid.
+//
+// TODO: confirm behavior.
 func (ts *TransportStream) GetPMTs() map[uint16]*Program {
 	ts.once.Do(ts.init)
 	ts.mu.Lock()

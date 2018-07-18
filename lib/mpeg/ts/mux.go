@@ -19,6 +19,8 @@ import (
 
 var _ = glog.Info
 
+// Mux defines an MPEG Transport Stream, which will take multiple elementary streams,
+// and compose them into a single byte stream.
 type Mux struct {
 	TransportStream
 
@@ -32,6 +34,7 @@ type Mux struct {
 	outstanding sync.WaitGroup
 }
 
+// NewMux returns a new TransportStream Mux that composes the streams into the given io.Writer.
 func NewMux(wr io.Writer, opts ...Option) *Mux {
 	chain := make(chan struct{})
 	close(chain)
@@ -58,6 +61,7 @@ func NewMux(wr io.Writer, opts ...Option) *Mux {
 	return m
 }
 
+// NewProgram allocates and returns a new Program within the Mux assigned to the given stream id.
 func (m *Mux) NewProgram(ctx context.Context, streamID uint16) (*Program, error) {
 	if streamID == 0 {
 		return nil, errors.Errorf("stream_id 0x%04X is invalid", streamID)
@@ -83,6 +87,7 @@ func (m *Mux) NewProgram(ctx context.Context, streamID uint16) (*Program, error)
 	return p, nil
 }
 
+// Writer allocates and returns a new Stream in a new Program.
 func (m *Mux) Writer(ctx context.Context, streamID uint16, typ ProgramType) (io.WriteCloser, error) {
 	p, err := m.NewProgram(ctx, streamID)
 	if err != nil {
@@ -220,6 +225,7 @@ func (m *Mux) chainLink() (<-chan struct{}, chan struct{}) {
 	return wait, next
 }
 
+// WriterByPID creates a new io.WriteCloser on the specified PID.
 func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.WriteCloser, error) {
 	glog.Infof("pid:x%04X, isPES:%v", pid, isPES)
 
@@ -324,6 +330,9 @@ func (m *Mux) WriterByPID(ctx context.Context, pid uint16, isPES bool) (io.Write
 	return s, nil
 }
 
+// Close closes and ends the TransportStream finishing all writes.
+//
+// It returns a channel of errors that is closed when all streams and programs are complete.
 func (m *Mux) Close() <-chan error {
 	errch := make(chan error)
 
@@ -424,6 +433,9 @@ func (m *Mux) preamble(continuity byte) error {
 	return nil
 }
 
+// Serve handles the composition of the various Streams into Programs into the Transport Stream.
+//
+// It returns a channel of errors that is closed when service has completely finished.
 func (m *Mux) Serve(ctx context.Context) <-chan error {
 	wrPAT, err := m.WriterByPID(ctx, pidPAT, false)
 	if err != nil {
