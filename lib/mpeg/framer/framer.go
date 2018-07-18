@@ -9,12 +9,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Various MIME-Types for Audo/Video types.
 const (
 	AAC  = "audio/x-aac"
 	MP3  = "audio/mp3"
 	H264 = "video/h264"
 )
 
+// Scanner implemnets bufio.Scanner breaking up certain Audio/Video types into packet frames.
 type Scanner struct {
 	mediaType   string
 	frameDetect []byte
@@ -22,6 +24,7 @@ type Scanner struct {
 	*bufio.Scanner
 }
 
+// MediaType returns what MIME-Type was detected by the Scanner.
 func (s *Scanner) MediaType() string {
 	if len(s.frameDetect) <= 0 {
 		return "unknown/unknown"
@@ -30,6 +33,9 @@ func (s *Scanner) MediaType() string {
 	return s.mediaType
 }
 
+// GetPCR returns the current PCR from the Scanner, extracting the information from the MPEG frame header.
+//
+// TODO: currently unimplemented.
 func (s *Scanner) GetPCR() int64 {
 	return 0
 }
@@ -44,6 +50,10 @@ var (
 	syncWordNAL = []byte{0x00, 0x00, 0x00, 0x01}
 )
 
+// DetectContentType is a dropin replacement and wrapper for http.DetectContentType,
+// which additionally detects certain Audio/Video types.
+//
+// Before defering to http.DetectContentType, it looks for certain MPEG sync words supported by this library.
 func DetectContentType(data []byte) string {
 	switch {
 	// MPEG ADTS wrapped MP3
@@ -111,6 +121,8 @@ func (s *Scanner) splitter(data []byte, atEOF bool) (advance int, token []byte, 
 	}
 }
 
+// NewScanner returns a new Scanner, which implements bufio.Scanner.
+// The Scanner reads from the given io.Reader, and chunks the data into packet frames.
 func NewScanner(r io.Reader) *Scanner {
 	s := &Scanner{
 		Scanner: bufio.NewScanner(r),
