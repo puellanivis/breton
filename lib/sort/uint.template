@@ -9,11 +9,13 @@ import (
 type {{.Name}}Slice []{{.Type}}
 
 // Len implements sort.Interface.
-func (p {{.Name}}Slice) Len() int           { return len(p) }
+func (p {{.Name}}Slice) Len() int { return len(p) }
+
 // Less implements sort.Interface.
 func (p {{.Name}}Slice) Less(i, j int) bool { return p[i] < p[j] }
+
 // Swap implements sort.Interface.
-func (p {{.Name}}Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p {{.Name}}Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmp{{.Name}}(x, y {{.Type}}) int {
 	if x == y {
@@ -31,6 +33,7 @@ func cmp{{.Name}}(x, y {{.Type}}) int {
 func (p {{.Name}}Slice) Compare(i, j int) int {
 	return cmp{{.Name}}(p[i], p[j])
 }
+
 // CompareFunc implements Comparer.
 func (p {{.Name}}Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.({{.Type}})
@@ -39,7 +42,7 @@ func (p {{.Name}}Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
-// CompareFunc implements RadixInterface.
+// RadixRange implements RadixInterface.
 func (p {{.Name}}Slice) RadixRange() (int, int) {
 	allBits := {{.Type}}((1 << uint({{.MSB}})) - 1)
 	var anyBits {{.Type}}
@@ -53,7 +56,8 @@ func (p {{.Name}}Slice) RadixRange() (int, int) {
 
 	return bits.LeadingZeros{{.Width}}(uint{{.Width}}(bitMask)), end
 }
-// CompareFunc implements RadixInterface.
+
+// RadixFunc implements RadixInterface.
 func (p {{.Name}}Slice) RadixFunc(r int) RadixTest {
 	mask := {{.Type}}(1) << uint({{.MSB}}-r)
 	return func(i int) bool {
@@ -62,12 +66,14 @@ func (p {{.Name}}Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p {{.Name}}Slice) Sort()  { radix(p) }
+func (p {{.Name}}Slice) Sort() { radix(p) }
+
 // Radix is a convenience method.
 func (p {{.Name}}Slice) Radix() { radix(p) }
 
 // Search is a convenience method.
-func (p {{.Name}}Slice) Search(x {{.Type}}) int      { return Search{{.Name}}s(p, x) }
+func (p {{.Name}}Slice) Search(x {{.Type}}) int { return Search{{.Name}}s(p, x) }
+
 // SearchFor is a convenience method.
 func (p {{.Name}}Slice) SearchFor(x interface{}) int { return Search{{.Name}}s(p, x.({{.Type}})) }
 

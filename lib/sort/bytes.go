@@ -8,13 +8,21 @@ import (
 // ByteSliceSlice attaches the methods of sort.Interface to [][]byte, sorting in increasing order.
 type ByteSliceSlice [][]byte
 
-func (p ByteSliceSlice) Len() int           { return len(p) }
-func (p ByteSliceSlice) Less(i, j int) bool { return bytes.Compare(p[i], p[j]) < 0 }
-func (p ByteSliceSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+// Len implements sort.Interface.
+func (p ByteSliceSlice) Len() int { return len(p) }
 
+// Less implements sort.Interface.
+func (p ByteSliceSlice) Less(i, j int) bool { return bytes.Compare(p[i], p[j]) < 0 }
+
+// Swap implements sort.Interface.
+func (p ByteSliceSlice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
+// Compare implements Comparer.
 func (p ByteSliceSlice) Compare(i, j int) int {
 	return bytes.Compare(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p ByteSliceSlice) CompareFunc(x interface{}) func(int) int {
 	e := x.([]byte)
 	return func(i int) int {
@@ -22,6 +30,7 @@ func (p ByteSliceSlice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p ByteSliceSlice) RadixRange() (int, int) {
 	r := 0
 	for _, s := range p {
@@ -31,6 +40,8 @@ func (p ByteSliceSlice) RadixRange() (int, int) {
 	}
 	return 0, r * 8
 }
+
+// RadixFunc implements RadixInterface.
 func (p ByteSliceSlice) RadixFunc(r int) RadixTest {
 	n := r / 8
 	mask := byte(1 << uint(7-(r&0x7)))
@@ -45,10 +56,15 @@ func (p ByteSliceSlice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p ByteSliceSlice) Sort()  { radix(p) }
+func (p ByteSliceSlice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p ByteSliceSlice) Radix() { radix(p) }
 
-func (p ByteSliceSlice) Search(x []byte) int         { return SearchByteSlices(p, x) }
+// Search is a convenience method.
+func (p ByteSliceSlice) Search(x []byte) int { return SearchByteSlices(p, x) }
+
+// SearchFor is a convenience method.
 func (p ByteSliceSlice) SearchFor(x interface{}) int { return SearchByteSlices(p, x.([]byte)) }
 
 // ByteSlices sorts a slice of []bytes in increasing order.

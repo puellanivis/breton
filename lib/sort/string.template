@@ -9,16 +9,19 @@ import (
 type {{.Name}}Slice []{{.Type}}
 
 // Len implements sort.Interface.
-func (p {{.Name}}Slice) Len() int           { return len(p) }
+func (p {{.Name}}Slice) Len() int { return len(p) }
+
 // Less implements sort.Interface.
 func (p {{.Name}}Slice) Less(i, j int) bool { return {{.Lib}}.Compare(p[i], p[j]) < 0 }
+
 // Swap implements sort.Interface.
-func (p {{.Name}}Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p {{.Name}}Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 // Compare implements Comparer.
 func (p {{.Name}}Slice) Compare(i, j int) int {
 	return {{.Lib}}.Compare(p[i], p[j])
 }
+
 // CompareFunc implements Comparer.
 func (p {{.Name}}Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.({{.Type}})
@@ -37,6 +40,7 @@ func (p {{.Name}}Slice) RadixRange() (int, int) {
 	}
 	return 0, r * 8
 }
+
 // RadixFunc implements RadixInterface.
 func (p {{.Name}}Slice) RadixFunc(r int) RadixTest {
 	n := r / 8
@@ -52,12 +56,14 @@ func (p {{.Name}}Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p {{.Name}}Slice) Sort()  { radix(p) }
+func (p {{.Name}}Slice) Sort() { radix(p) }
+
 // Radix is a convenience method.
 func (p {{.Name}}Slice) Radix() { radix(p) }
 
 // Search is a convenience method.
-func (p {{.Name}}Slice) Search(x {{.Type}}) int      { return Search{{.Name}}s(p, x) }
+func (p {{.Name}}Slice) Search(x {{.Type}}) int { return Search{{.Name}}s(p, x) }
+
 // SearchFor is a convenience method.
 func (p {{.Name}}Slice) SearchFor(x interface{}) int { return Search{{.Name}}s(p, x.({{.Type}})) }
 

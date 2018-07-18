@@ -8,9 +8,14 @@ import (
 // Float64Slice attaches the methods of sort.Interface to []float64, sorting in increasing order.
 type Float64Slice []float64
 
-func (p Float64Slice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p Float64Slice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p Float64Slice) Less(i, j int) bool { return p[i] < p[j] || isNaN64(p[i]) && !isNaN64(p[j]) }
-func (p Float64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p Float64Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmpFloat64(x, y float64) int {
 	if x == y {
@@ -24,9 +29,12 @@ func cmpFloat64(x, y float64) int {
 	return +1
 }
 
+// Compare implements Comparer.
 func (p Float64Slice) Compare(i, j int) int {
 	return cmpFloat64(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p Float64Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.(float64)
 	return func(i int) int {
@@ -34,9 +42,12 @@ func (p Float64Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p Float64Slice) RadixRange() (int, int) {
 	return 0, 63
 }
+
+// RadixFunc implements RadixInterface.
 func (p Float64Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -53,10 +64,15 @@ func (p Float64Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Float64Slice) Sort()  { radix(p) }
+func (p Float64Slice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p Float64Slice) Radix() { radix(p) }
 
-func (p Float64Slice) Search(x float64) int        { return SearchFloat64s(p, x) }
+// Search is a convenience method.
+func (p Float64Slice) Search(x float64) int { return SearchFloat64s(p, x) }
+
+// SearchFor is a convenience method.
 func (p Float64Slice) SearchFor(x interface{}) int { return SearchFloat64s(p, x.(float64)) }
 
 // Float64s sorts a slice of float64s in increasing order.
@@ -75,9 +91,14 @@ func Float64sAreSorted(a []float64) bool { return sort.IsSorted(Float64Slice(a))
 // Float32Slice attaches the methods of sort.Interface to []float32, sorting in increasing order.
 type Float32Slice []float32
 
-func (p Float32Slice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p Float32Slice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p Float32Slice) Less(i, j int) bool { return p[i] < p[j] || isNaN32(p[i]) && !isNaN32(p[j]) }
-func (p Float32Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p Float32Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmpFloat32(x, y float32) int {
 	if x == y {
@@ -91,9 +112,12 @@ func cmpFloat32(x, y float32) int {
 	return +1
 }
 
+// Compare implements Comparer.
 func (p Float32Slice) Compare(i, j int) int {
 	return cmpFloat32(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p Float32Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.(float32)
 	return func(i int) int {
@@ -101,9 +125,12 @@ func (p Float32Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p Float32Slice) RadixRange() (int, int) {
 	return 0, 31
 }
+
+// RadixFunc implements RadixInterface.
 func (p Float32Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -120,10 +147,15 @@ func (p Float32Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Float32Slice) Sort()  { radix(p) }
+func (p Float32Slice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p Float32Slice) Radix() { radix(p) }
 
-func (p Float32Slice) Search(x float32) int        { return SearchFloat32s(p, x) }
+// Search is a convenience method.
+func (p Float32Slice) Search(x float32) int { return SearchFloat32s(p, x) }
+
+// SearchFor is a convenience method.
 func (p Float32Slice) SearchFor(x interface{}) int { return SearchFloat32s(p, x.(float32)) }
 
 // Float32s sorts a slice of float32s in increasing order.
