@@ -7,8 +7,10 @@ import (
 	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
 )
 
+// RunningStatus is an enum defining running state from the DVB standard for MPEG-TS.
 type RunningStatus uint8
 
+// RunningStatus enum values.
 const (
 	NotRunning RunningStatus = iota + 1
 	Starting
@@ -33,6 +35,7 @@ func (rs RunningStatus) String() string {
 	return fmt.Sprintf("x%X", uint8(rs))
 }
 
+// Service defines a single Service from the Service Description Table from the DVB standard for MPEG-TS.
 type Service struct {
 	ID            uint16
 	EITSchedule   bool

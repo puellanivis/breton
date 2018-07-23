@@ -6,7 +6,7 @@ import (
 )
 
 func TestTimestampEncoding(t *testing.T) {
-	var inputTS uint64 = 0
+	var inputTS uint64
 	b := encodeTS(inputTS)
 	expected := []byte{0x01, 0x00, 0x01, 0x00, 0x01}
 

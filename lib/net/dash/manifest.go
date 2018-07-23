@@ -41,6 +41,7 @@ type Manifest struct {
 	m *cachedMPD
 }
 
+// IsDynamic returns true if the Manifest describes a dynamic stream.
 func (m *Manifest) IsDynamic() bool {
 	return m.dynamic
 }

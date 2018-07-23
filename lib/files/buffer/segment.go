@@ -1,7 +1,5 @@
 package buffer
 
-import ()
-
 const segmentCapacity = 0x100
 
 type segment struct {

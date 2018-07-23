@@ -97,6 +97,7 @@ func initIntBench(n int) {
 	if width < 2 {
 		width = 2
 	}
+	fmt.Printf("using a slice of len %d\n", benchSize)
 	fmt.Printf("n = %d is using %d bits << %d\n", n, log, uintMSB-log)
 	b := make([]byte, width)
 

@@ -1,7 +1,6 @@
 package m3u8
 
-import ()
-
+// Key implements the cryptographic KEY directive in m3u8.
 type Key struct {
 	Method string `m3u8:"METHOD" enum:"NONE,AES-128,SAMPLE-AES"`
 	URI    string `m3u8:"URI,optional"`

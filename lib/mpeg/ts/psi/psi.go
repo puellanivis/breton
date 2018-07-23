@@ -1,13 +1,13 @@
 package psi
 
-import ()
-
 var tableRegistry = make(map[uint8]func() PSI)
 
+// Register sets a mapping from the id to a function which returns a PSI of the appropriate type for that id.
 func Register(id uint8, fn func() PSI) {
 	tableRegistry[id] = fn
 }
 
+// PSI defines an MPEG-TS Program Specific Information table.
 type PSI interface {
 	TableID() uint8
 	SectionSyntax() *SectionSyntax
@@ -20,6 +20,7 @@ func defaultTable() PSI {
 	return new(raw)
 }
 
+// Unmarshal decodes an abitrary Program Specific information table from a byte slice.
 func Unmarshal(b []byte) (psi PSI, err error) {
 	ptrVal := int(b[0])
 	b = b[1+ptrVal:]

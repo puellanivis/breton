@@ -8,6 +8,8 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
 
+// ServiceDescriptorTable defines a Service Descriptor Table from the DVB standard for MPEG-TS.
+// It is a PSI.
 type ServiceDescriptorTable struct {
 	Syntax *psi.SectionSyntax
 
@@ -26,10 +28,12 @@ func init() {
 	psi.Register(tableidSDT, func() psi.PSI { return new(ServiceDescriptorTable) })
 }
 
+// TableID implements mpeg/ts/psi.PSI.
 func (sdt *ServiceDescriptorTable) TableID() uint8 {
 	return tableidSDT
 }
 
+// SectionSyntax returns the embedded SectionSyntax, and implements mpeg/ts/psi.PSI.
 func (sdt *ServiceDescriptorTable) SectionSyntax() *psi.SectionSyntax {
 	return sdt.Syntax
 }
@@ -52,6 +56,7 @@ func (sdt *ServiceDescriptorTable) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(out, " "))
 }
 
+// Unmarshal decodes a byte slice into the ServiceDescriptorTable.
 func (sdt *ServiceDescriptorTable) Unmarshal(b []byte) error {
 	if b[0] != tableidSDT {
 		return errors.Errorf("table_id mismatch: x%02X != x%02X", b[0], tableidSDT)
@@ -84,6 +89,7 @@ func (sdt *ServiceDescriptorTable) Unmarshal(b []byte) error {
 	return nil
 }
 
+// Marshal encodes a ServiceDescriptorTable into a byte slice.
 func (sdt *ServiceDescriptorTable) Marshal() ([]byte, error) {
 	data := make([]byte, 3)
 

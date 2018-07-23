@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CommonMarshal takes care of the common elements of encoding a PSI table.
 func CommonMarshal(id uint8, private bool, syn *SectionSyntax, data []byte) ([]byte, error) {
 	// len(common_header) + len(data) + len(crc)
 	l := 4 + len(data) + 4
@@ -51,6 +52,7 @@ func CommonMarshal(id uint8, private bool, syn *SectionSyntax, data []byte) ([]b
 	return b, nil
 }
 
+// CommonUnmarshal takes care of the common elements of decoding a PSI table.
 func CommonUnmarshal(b []byte) (syn *SectionSyntax, data []byte, crc uint32, err error) {
 	secLen := int(b[1]&0x0F)<<8 | int(b[2])
 	if secLen > 1021 {

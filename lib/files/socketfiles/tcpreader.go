@@ -11,7 +11,7 @@ import (
 	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
-type TCPReader struct {
+type tcpReader struct {
 	conn *net.TCPConn
 	*wrapper.Info
 
@@ -19,7 +19,7 @@ type TCPReader struct {
 	loading <-chan struct{}
 }
 
-func (r *TCPReader) Read(b []byte) (n int, err error) {
+func (r *tcpReader) Read(b []byte) (n int, err error) {
 	for range r.loading {
 	}
 
@@ -30,11 +30,11 @@ func (r *TCPReader) Read(b []byte) (n int, err error) {
 	return r.conn.Read(b)
 }
 
-func (r *TCPReader) Seek(offset int64, whence int) (int64, error) {
+func (r *tcpReader) Seek(offset int64, whence int) (int64, error) {
 	return 0, os.ErrInvalid
 }
 
-func (r *TCPReader) Close() error {
+func (r *tcpReader) Close() error {
 	for range r.loading {
 	}
 
@@ -63,7 +63,7 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 	}
 
 	loading := make(chan struct{})
-	r := &TCPReader{
+	r := &tcpReader{
 		loading: loading,
 		Info:    wrapper.NewInfo(lurl, 0, time.Now()),
 	}

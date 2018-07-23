@@ -7,12 +7,14 @@ import (
 	"sync"
 )
 
+// Buffer is a DO NOT USE work-in-progress buffer to efficiently hold mutable byte-slices.
 type Buffer struct {
 	sync.RWMutex
 
 	segments []*segment
 }
 
+// Len returns the entire length of the given Buffer.
 func (b *Buffer) Len() int {
 	b.RLock()
 	defer b.RUnlock()
@@ -26,10 +28,12 @@ func (b *Buffer) Len() int {
 	return l
 }
 
+// WriteString writes a string into the Buffer.
 func (b *Buffer) WriteString(s string) (n int, err error) {
 	return b.Write([]byte(s))
 }
 
+// Write implements io.Writer.
 func (b *Buffer) Write(buf []byte) (n int, err error) {
 	b.Lock()
 	defer b.Unlock()
@@ -57,6 +61,7 @@ func (b *Buffer) Write(buf []byte) (n int, err error) {
 	}
 }
 
+// ReadAt implements io.ReaderAt.
 func (b *Buffer) ReadAt(buf []byte, off int64) (n int, err error) {
 	if off != 0 {
 		return 0, errors.New("Unsupported")
@@ -76,6 +81,7 @@ func (b *Buffer) ReadAt(buf []byte, off int64) (n int, err error) {
 	return n, nil
 }
 
+// WriteTo implements io.WriterTo.
 func (b *Buffer) WriteTo(w io.Writer) (n int64, err error) {
 	b.RLock()
 	defer b.RUnlock()

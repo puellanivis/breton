@@ -2,7 +2,7 @@ package sort
 
 import (
 	"sort"
-	_ "unsafe"
+	_ "unsafe" // this is to explicitly signal this file is unsafe.
 )
 
 //go:linkname quickSort sort.quickSort

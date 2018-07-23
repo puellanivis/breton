@@ -52,33 +52,32 @@ func Exit(status int) {
 // the first argument being the command's identifying string,
 // and then a series of numbers which indicate the various version points.
 // It returns the context.Context from util.Context(),
-// a function that should be defer'ed in your main() function,
-// which will take care of executing the queued AtExitFuncs even in a panic() situation,
-// and finally it may return an error if it fails to setup profiling.
-func Init(cmdname string, versions ...uint) (context.Context, func(), error) {
+// and a function that should be defer'ed in your main() function,
+// which will take care of executing the queued AtExitFuncs even in a panic() situation.
+func Init(cmdname string, versions ...uint) (context.Context, func()) {
 	initVersion(cmdname, versions...)
 
 	flag.Parse()
 
 	if *profile != "" {
-		f, err := os.Create(*profile + ".prof")
+		cpuf, err := os.Create(*profile + ".prof")
 		if err != nil {
-			return nil, nil, err
+			panic(err)
 		}
 
-		pprof.StartCPUProfile(f)
+		memf, err := os.Create(*profile + ".mprof")
+		if err != nil {
+			panic(err)
+		}
+
+		pprof.StartCPUProfile(cpuf)
 
 		AtExit(func() {
 			pprof.StopCPUProfile()
-			f.Close()
+			cpuf.Close()
 
-			f, err := os.Create(*profile + ".mprof")
-			if err != nil {
-				return
-			}
-
-			pprof.WriteHeapProfile(f)
-			f.Close()
+			pprof.WriteHeapProfile(memf)
+			memf.Close()
 		})
 	}
 
@@ -88,5 +87,5 @@ func Init(cmdname string, versions ...uint) (context.Context, func(), error) {
 		if r := recover(); r != nil {
 			panic(r)
 		}
-	}, nil
+	}
 }

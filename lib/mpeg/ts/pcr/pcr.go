@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// PCR defines the MPEG-TS Program Clock Reference.
 type PCR struct {
 	base      uint64
 	extension uint16
@@ -24,6 +25,7 @@ const (
 	pcrModulo = (1 << 33) - 1
 )
 
+// Marshal encodes the PCR into a byte slice.
 func (c *PCR) Marshal() ([]byte, error) {
 	//pcr := uint64(c.base & pcrModulo) << 15 | uint64(c.extension & 0x1ff)
 
@@ -40,6 +42,7 @@ func (c *PCR) Marshal() ([]byte, error) {
 	return b, nil
 }
 
+// Unmarshal decodes a byte slice into the PCR.
 func (c *PCR) Unmarshal(b []byte) error {
 	var pcr uint64
 	for _, b := range b[0:6] {
@@ -52,10 +55,12 @@ func (c *PCR) Unmarshal(b []byte) error {
 	return nil
 }
 
+// Duration returns the time.Duration that corresponds to the value of the PCR.
 func (c *PCR) Duration() time.Duration {
 	return (time.Duration(c.base&pcrModulo) * time.Microsecond) / 27
 }
 
+// Set overwrites the value of the PCR to match the time.Duration given.
 func (c *PCR) Set(d time.Duration) {
 	c.base = uint64((d*27)/time.Microsecond) & pcrModulo
 }

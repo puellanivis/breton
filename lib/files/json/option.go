@@ -1,7 +1,5 @@
 package json
 
-import ()
-
 type config struct {
 	prefix, indent string
 

@@ -19,7 +19,7 @@ func init() {
 	files.RegisterScheme(&udpHandler{}, "udp")
 }
 
-type UDPWriter struct {
+type udpWriter struct {
 	mu sync.Mutex
 
 	closed chan struct{}
@@ -34,7 +34,7 @@ type UDPWriter struct {
 	buf []byte
 }
 
-func (w *UDPWriter) IgnoreErrors(state bool) bool {
+func (w *udpWriter) IgnoreErrors(state bool) bool {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -45,7 +45,7 @@ func (w *UDPWriter) IgnoreErrors(state bool) bool {
 	return prev
 }
 
-func (w *UDPWriter) err(err error) error {
+func (w *udpWriter) err(err error) error {
 	if w.noerrs && err != io.ErrShortWrite {
 		return nil
 	}
@@ -53,7 +53,7 @@ func (w *UDPWriter) err(err error) error {
 	return err
 }
 
-func (w *UDPWriter) SetPacketSize(size int) int {
+func (w *udpWriter) SetPacketSize(size int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -69,7 +69,7 @@ func (w *UDPWriter) SetPacketSize(size int) int {
 	return prev
 }
 
-func (w *UDPWriter) SetBitrate(bitrate int) int {
+func (w *udpWriter) SetBitrate(bitrate int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -81,14 +81,14 @@ func (w *UDPWriter) SetBitrate(bitrate int) int {
 	return prev
 }
 
-func (w *UDPWriter) Sync() error {
+func (w *udpWriter) Sync() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
 	return w.err(w.sync())
 }
 
-func (w *UDPWriter) sync() error {
+func (w *udpWriter) sync() error {
 	if w.off < 1 {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (w *UDPWriter) sync() error {
 	return err
 }
 
-func (w *UDPWriter) mustWrite(b []byte) (n int, err error) {
+func (w *udpWriter) mustWrite(b []byte) (n int, err error) {
 	// We should have already prescaled the delay, so scale=1 here.
 	w.throttle(1)
 
@@ -117,7 +117,7 @@ func (w *UDPWriter) mustWrite(b []byte) (n int, err error) {
 	return n, err
 }
 
-func (w *UDPWriter) Close() error {
+func (w *udpWriter) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -136,7 +136,7 @@ func (w *UDPWriter) Close() error {
 	return err
 }
 
-func (w *UDPWriter) Write(b []byte) (n int, err error) {
+func (w *udpWriter) Write(b []byte) (n int, err error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -199,7 +199,7 @@ func (w *UDPWriter) Write(b []byte) (n int, err error) {
 	return n, nil
 }
 
-func (w *UDPWriter) uri() *url.URL {
+func (w *udpWriter) uri() *url.URL {
 	q := w.ipSocket.uriQuery()
 
 	if w.laddr != nil {
@@ -221,7 +221,7 @@ func (w *UDPWriter) uri() *url.URL {
 }
 
 func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	w := &UDPWriter{
+	w := &udpWriter{
 		closed: make(chan struct{}),
 	}
 
@@ -271,13 +271,13 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		return nil, &os.PathError{"create", uri.String(), err}
 	}
 
-	if pkt_size, ok, err := getSize(q, FieldPacketSize); ok || err != nil {
+	if pktSize, ok, err := getSize(q, FieldPacketSize); ok || err != nil {
 		if err != nil {
 			w.Close()
 			return nil, &os.PathError{"create", uri.String(), err}
 		}
 
-		w.buf = make([]byte, pkt_size)
+		w.buf = make([]byte, pktSize)
 	}
 
 	w.updateDelay(len(w.buf))

@@ -1,7 +1,5 @@
 package gnuflag
 
-import ()
-
 // -- string Value
 type stringValue string
 

@@ -1,7 +1,6 @@
 package pes
 
-import ()
-
+// Timestamp returns a pointer to the given argument.
 func Timestamp(ts uint64) *uint64 {
 	return &ts
 }

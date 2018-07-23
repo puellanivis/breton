@@ -1,4 +1,4 @@
-= What is this?
+# What is this?
 
 This library is intended as a state-of-the-art best-practices library that provides examples of best practices in writing Go code.
 
