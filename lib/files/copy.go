@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"errors"
 	"io"
 	"time"
 )
