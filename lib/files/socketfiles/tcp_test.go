@@ -6,7 +6,7 @@ import (
 )
 
 func TestTCPName(t *testing.T) {
-	w := &TCPWriter{
+	w := &tcpWriter{
 		ipSocket: ipSocket{
 			laddr: &net.TCPAddr{
 				IP:   []byte{127, 0, 0, 1},
@@ -33,7 +33,7 @@ func TestTCPName(t *testing.T) {
 		t.Errorf("got a bad URI, was expecting, but got:\n\t%v\n\t%v", expected, s)
 	}
 
-	w = &TCPWriter{
+	w = &tcpWriter{
 		ipSocket: ipSocket{
 			laddr: &net.TCPAddr{
 				IP:   []byte{127, 0, 0, 1},

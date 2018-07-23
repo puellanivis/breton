@@ -1,4 +1,4 @@
-// Package about implements a simple "about:" scheme.
+// Package aboutfiles implements a simple "about:" scheme.
 package aboutfiles
 
 import (
@@ -37,10 +37,10 @@ func notfound() ([]byte, error) {
 	return nil, os.ErrNotExist
 }
 
-var ErrUnresolvable = errors.New("unresolvable address")
+var errUnresolvable = errors.New("unresolvable address")
 
 func unresolvable() ([]byte, error) {
-	return nil, ErrUnresolvable
+	return nil, errUnresolvable
 }
 
 func version() ([]byte, error) {

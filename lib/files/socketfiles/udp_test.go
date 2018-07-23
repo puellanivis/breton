@@ -6,7 +6,7 @@ import (
 )
 
 func TestUDPName(t *testing.T) {
-	w := &UDPWriter{
+	w := &udpWriter{
 		ipSocket: ipSocket{
 			laddr: &net.UDPAddr{
 				IP:   []byte{127, 0, 0, 1},
@@ -34,7 +34,7 @@ func TestUDPName(t *testing.T) {
 		t.Errorf("got a bad URI, was expecting, but got:\n\t%v\n\t%v", expected, s)
 	}
 
-	w = &UDPWriter{
+	w = &udpWriter{
 		ipSocket: ipSocket{
 			laddr: &net.UDPAddr{
 				IP:   []byte{127, 0, 0, 1},

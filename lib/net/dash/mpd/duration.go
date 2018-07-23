@@ -9,12 +9,13 @@ import (
 )
 
 // Duration naively implements the xsd:duration format defined by https://www.w3.org/TR/2004/REC-xmlschema-2-20041028/datatypes.html#duration
-// N.B.: It is not intended to serve as a general xsd:duration as it does not implement the month side of durations.
+// N.B.: It is not intended to serve as a general xsd:duration as it does not implement the month side of xsd:duration.
 type Duration struct {
 	ns time.Duration
 	m  int
 }
 
+// A copy of various time.Duration constants.
 const (
 	Day         = 24 * time.Hour
 	Hour        = time.Hour
@@ -25,6 +26,10 @@ const (
 	Nanosecond  = time.Nanosecond
 )
 
+// Duration returns the mpd.Duration value as a time.Duration.
+//
+// If Duration contains a non-zero value for the month side of the xsd:duration,
+// then this function will return an error noting that the value is out of range..
 func (d Duration) Duration() (time.Duration, error) {
 	if d.m != 0 {
 		return 0, errors.New("value out of range")
@@ -33,18 +38,21 @@ func (d Duration) Duration() (time.Duration, error) {
 	return d.ns, nil
 }
 
+// Add returns the mpd.Duration plus the given time.Duration.
 func (d Duration) Add(dur time.Duration) Duration {
 	d.ns += dur
 
 	return d
 }
 
+// Scale returns the mpd.Duration scaled by the given time.Duration.
 func (d Duration) Scale(dur time.Duration) Duration {
 	d.ns *= dur
 
 	return d
 }
 
+// AddToTime returns the given time.Time plus the given mpd.Duration value..
 func (d Duration) AddToTime(t time.Time) time.Time {
 	if d.m != 0 {
 		t = t.AddDate(0, d.m, 0)
@@ -53,7 +61,7 @@ func (d Duration) AddToTime(t time.Time) time.Time {
 	return t.Add(d.ns)
 }
 
-// MarshalXMLAttr implements the xml attribute marshaller interface.
+// MarshalXMLAttr implements xml.MarshalerAttr.
 func (d Duration) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	if s := d.XMLString(); s != "" {
 		return xml.Attr{
@@ -65,6 +73,9 @@ func (d Duration) MarshalXMLAttr(name xml.Name) (xml.Attr, error) {
 	return xml.Attr{}, nil
 }
 
+// NewDuration returns an mpd.Duration corresponding to the length in months and time.Duration.
+//
+// It returns an error if the sign of two arguments are different.
 func NewDuration(months int, d time.Duration) (Duration, error) {
 	if (d < 0 && months > 0) || (d > 0 && months < 0) {
 		return Duration{}, errors.New("invalid duration")
@@ -175,7 +186,7 @@ var durationScales = []time.Duration{
 	Nanosecond,
 }
 
-// UnmarshalXMLAttr implements the xml attribute unmarshaller interface.
+// UnmarshalXMLAttr implements xml.UnmarshalerAttr.
 func (d *Duration) UnmarshalXMLAttr(attr xml.Attr) error {
 	var dur time.Duration
 	var months int

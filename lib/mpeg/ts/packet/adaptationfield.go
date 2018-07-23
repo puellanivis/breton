@@ -9,6 +9,7 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/pcr"
 )
 
+// AdaptationField defines the MPEG-TS Adaptation Field structure of a packet.
 type AdaptationField struct {
 	Discontinuity bool
 	RandomAccess  bool
@@ -110,9 +111,11 @@ const (
 
 	flagAFExtLTWValid = 0x80
 
+	// AdaptationFieldMinLength is the minimum length (in bytes) that an Adaptation Field can encode into.
 	AdaptationFieldMinLength = 2
 )
 
+// Len returns the actual length in bytes that the AdaptationField would encode into.
 func (af *AdaptationField) Len() int {
 	if af == nil {
 		return 0

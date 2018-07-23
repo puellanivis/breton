@@ -4,15 +4,22 @@ import (
 	"sort"
 )
 
+// Comparer defines a set of Comparison functions that will return <0 for i<j, ==0 for i==j, and >0 for i>j.
 type Comparer interface {
 	Compare(i, j int) int
 	CompareFunc(x interface{}) func(int) int
 }
 
+// Search returns sort.Search(n, f)
 func Search(n int, f func(int) bool) int {
 	return sort.Search(n, f)
 }
 
+// SearchFor takes arbitrary arguments, and attempts to find x as an element of a.
+//
+// If a implements `interface{ SearchFor(x interface{}) int }` the results of calling this method are returned.
+// If a is a Comparer this is used as the function of sort.Search.
+// All basic slices of types supported by this packager are also accepted.
 func SearchFor(a interface{}, x interface{}) int {
 	type searcherFor interface {
 		SearchFor(x interface{}) int

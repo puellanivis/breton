@@ -98,7 +98,7 @@ const flushInterval = 30 * time.Second
 
 func init() {
 	go func() {
-		for _ = range time.Tick(flushInterval) {
+		for range time.Tick(flushInterval) {
 			Flush()
 		}
 	}()

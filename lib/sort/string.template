@@ -8,13 +8,21 @@ import (
 // {{.Name}}Slice attaches the methods of sort.Interface to []{{.Type}}, sorting in increasing order.
 type {{.Name}}Slice []{{.Type}}
 
-func (p {{.Name}}Slice) Len() int           { return len(p) }
-func (p {{.Name}}Slice) Less(i, j int) bool { return {{.Lib}}.Compare(p[i], p[j]) < 0 }
-func (p {{.Name}}Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+// Len implements sort.Interface.
+func (p {{.Name}}Slice) Len() int { return len(p) }
 
+// Less implements sort.Interface.
+func (p {{.Name}}Slice) Less(i, j int) bool { return {{.Lib}}.Compare(p[i], p[j]) < 0 }
+
+// Swap implements sort.Interface.
+func (p {{.Name}}Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
+// Compare implements Comparer.
 func (p {{.Name}}Slice) Compare(i, j int) int {
 	return {{.Lib}}.Compare(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p {{.Name}}Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.({{.Type}})
 	return func(i int) int {
@@ -22,6 +30,7 @@ func (p {{.Name}}Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p {{.Name}}Slice) RadixRange() (int, int) {
 	r := 0
 	for _, s := range p {
@@ -31,6 +40,8 @@ func (p {{.Name}}Slice) RadixRange() (int, int) {
 	}
 	return 0, r * 8
 }
+
+// RadixFunc implements RadixInterface.
 func (p {{.Name}}Slice) RadixFunc(r int) RadixTest {
 	n := r / 8
 	mask := byte(1 << uint(7-(r&0x7)))
@@ -45,13 +56,18 @@ func (p {{.Name}}Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p {{.Name}}Slice) Sort()  { radix(p) }
+func (p {{.Name}}Slice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p {{.Name}}Slice) Radix() { radix(p) }
 
-func (p {{.Name}}Slice) Search(x {{.Type}}) int      { return Search{{.Name}}s(p, x) }
+// Search is a convenience method.
+func (p {{.Name}}Slice) Search(x {{.Type}}) int { return Search{{.Name}}s(p, x) }
+
+// SearchFor is a convenience method.
 func (p {{.Name}}Slice) SearchFor(x interface{}) int { return Search{{.Name}}s(p, x.({{.Type}})) }
 
-// Sort{{.Name}}s sorts a slice of {{.Type}}s in increasing order.
+// {{.Name}}s sorts a slice of {{.Type}}s in increasing order.
 func {{.Name}}s(a []{{.Type}}) { radix({{.Name}}Slice(a)) }
 
 //Search{{.Name}}s searches for x in a sorted slice of {{.Type}}s and returns the index

@@ -412,7 +412,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 	return nil
 }
 
-// FlagStruct uses reflection to take a structure and turn it into a series of flags.
+// Struct uses reflection to take a structure and turn it into a series of flags.
 // It recognizes the struct tags of `flag:"flag-name,short=F,default=defval"` and `desc:"usage"`.
 // The "desc" tag is intended to be much more generic than just for use in this library.
 // To ignore a struct value use the tag `flag:"-"`, and `flag:","` will use the variable’s name.
@@ -431,7 +431,7 @@ func (fs *FlagSet) Struct(prefix string, value interface{}) error {
 	return fs.structVar(prefix, v)
 }
 
-// Uses the FlagStruct for the default CommandLine flagset.
+// Struct uses default CommandLine flagset.
 func Struct(prefix string, value interface{}) error {
 	return CommandLine.Struct(prefix, value)
 }

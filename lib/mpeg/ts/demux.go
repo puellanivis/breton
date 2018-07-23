@@ -15,6 +15,8 @@ import (
 
 var _ = glog.Info
 
+// Demux defines an MPEG Transport Stream, which will take a composed byte stream,
+// and decompose it into multiple elementary streams.
 type Demux struct {
 	TransportStream
 
@@ -30,6 +32,7 @@ type Demux struct {
 	pendingWG sync.WaitGroup
 }
 
+// NewDemux returns a new Demux that is using the given io.Reader as a byte stream.
 func NewDemux(rd io.Reader, opts ...Option) *Demux {
 	d := &Demux{
 		src: rd,
@@ -78,6 +81,7 @@ func (d *Demux) getPipe(ctx context.Context, pid uint16) (*bufpipe.Pipe, error) 
 	return pipe, nil
 }
 
+// Reader locates the specified stream id, and returns an io.ReadCloser that corresponds to that Stream only.
 func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, error) {
 	if streamID == 0 {
 		return nil, errors.Errorf("stream_id 0x%04X is invalid", streamID)
@@ -162,6 +166,7 @@ func (d *Demux) Reader(ctx context.Context, streamID uint16) (io.ReadCloser, err
 	return s, nil
 }
 
+// ReaderByPID returns a new io.ReadCloser that reads a raw Program based on the given Program ID.
 func (d *Demux) ReaderByPID(ctx context.Context, pid uint16, isPES bool) (io.ReadCloser, error) {
 	if pid == pidNULL {
 		return nil, errors.Errorf("pid 0x%04X is invalid", pid)
@@ -221,6 +226,9 @@ func (d *Demux) closePID(pid uint16) error {
 	return pipe.Close()
 }
 
+// Close closes and ends the TransportStream finishing all reads.
+//
+// It returns a channel of errors that is closed when all streams and programs are complete.
 func (d *Demux) Close() <-chan error {
 	errch := make(chan error)
 
@@ -283,14 +291,14 @@ func (d *Demux) get(pkt *packet.Packet) (wr *bufpipe.Pipe, debug func(*packet.Pa
 	return wr, debug
 }
 
-func (d *Demux) readOne(b []byte) (error, bool) {
+func (d *Demux) readOne(b []byte) (bool, error) {
 	if _, err := d.src.Read(b); err != nil {
-		return err, true
+		return true, err
 	}
 
 	pkt := new(packet.Packet)
 	if err := pkt.Unmarshal(b); err != nil {
-		return err, false
+		return false, err
 	}
 
 	wr, debug := d.get(pkt)
@@ -300,7 +308,7 @@ func (d *Demux) readOne(b []byte) (error, bool) {
 	}
 
 	if wr == nil {
-		return nil, false
+		return false, nil
 	}
 
 	if pkt.PUSI {
@@ -308,7 +316,7 @@ func (d *Demux) readOne(b []byte) (error, bool) {
 			d.mu.Lock()
 			defer d.mu.Unlock()
 
-			return d.closePID(pkt.PID), false
+			return false, d.closePID(pkt.PID)
 		}
 	}
 
@@ -316,10 +324,10 @@ func (d *Demux) readOne(b []byte) (error, bool) {
 		d.mu.Lock()
 		defer d.mu.Unlock()
 
-		return d.closePID(pkt.PID), false
+		return false, d.closePID(pkt.PID)
 	}
 
-	return nil, false
+	return false, nil
 }
 
 func retError(err error) <-chan error {
@@ -329,6 +337,9 @@ func retError(err error) <-chan error {
 	return errch
 }
 
+// Serve handles the decomposition of the byte stream into the various Programs and Streams.
+//
+// It returns a channel of errors that is closed when service has completely finished.
 func (d *Demux) Serve(ctx context.Context) <-chan error {
 	rdPAT, err := d.ReaderByPID(ctx, pidPAT, false)
 	if err != nil {
@@ -446,7 +457,7 @@ func (d *Demux) Serve(ctx context.Context) <-chan error {
 			default:
 			}
 
-			err, isFatal := d.readOne(b)
+			isFatal, err := d.readOne(b)
 			if err != nil {
 				if err == io.EOF {
 					return

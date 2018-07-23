@@ -8,6 +8,7 @@ import (
 	desc "github.com/puellanivis/breton/lib/mpeg/ts/descriptor"
 )
 
+// StreamData defines the Stream Data for a Program Map Table.
 type StreamData struct {
 	Type byte
 	PID  uint16

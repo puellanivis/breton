@@ -1,7 +1,5 @@
 package sort
 
-import ()
-
 type picker func(l, radix, last int) bool
 
 var qsortInstead = qsortSometimes

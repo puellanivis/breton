@@ -1,8 +1,9 @@
 package width
 
 import (
-	"golang.org/x/text/unicode/rangetable"
 	"unicode"
+
+	"golang.org/x/text/unicode/rangetable"
 )
 
 // AdditionalZeroWidth is a Unicode Range of expected zero-width glyphs outside of Cf, Mn, and Me.

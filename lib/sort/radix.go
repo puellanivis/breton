@@ -2,20 +2,25 @@ package sort
 
 import (
 	"sort"
-	_ "unsafe"
+	_ "unsafe" // this is to explicitly signal this file is unsafe.
 )
 
-// Returns true if the i'th element of the sort.RadixInterface is set
+// RadixTest defines a function that Returns true if the i'th element of the sort.RadixInterface is set
 type RadixTest func(i int) bool
 
+// RadixInterface defines the functions necessary for Radix to use a radix sort rather than sort.Sort.
 type RadixInterface interface {
 	Interface
 
-	// Returns start, and end of values to run through for RadixFunc
+	// Returns start, and end of radix values to run through for RadixFunc
 	RadixRange() (int, int)
 	RadixFunc(r int) RadixTest
 }
 
+// Radix attempts to perform a radix sort on the given argument.
+//
+// If the argument does not implement RadixInterface, or is not a builtin basic slice,
+// but it implements sort.Interface, then sort.Sort will be called on the argument.
 func Radix(a interface{}) {
 	if a == nil {
 		return

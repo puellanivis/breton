@@ -10,8 +10,10 @@ import (
 	"github.com/puellanivis/breton/lib/mpeg/ts/psi"
 )
 
+// ProgramType defines an enum describing some common MPEG-TS program types.
 type ProgramType byte
 
+// ProgramType enum values.
 const (
 	ProgramTypeVideo ProgramType = 0x01
 	ProgramTypeAudio ProgramType = 0x03
@@ -22,7 +24,7 @@ const (
 )
 
 type stream struct {
-	mu    sync.Mutex
+	mu sync.Mutex
 
 	ready         chan struct{}
 	discontinuity chan struct{}

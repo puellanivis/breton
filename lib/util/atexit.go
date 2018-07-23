@@ -6,7 +6,6 @@ import (
 	"runtime/pprof"
 	"sync"
 
-	"github.com/puellanivis/breton/lib/glog"
 	flag "github.com/puellanivis/breton/lib/gnuflag"
 )
 
@@ -48,47 +47,45 @@ func Exit(status int) {
 }
 
 // Init is initialization code that provides basic functionality for command-line programs.
-// It parses flags, sets up AtExit, and queues flushing the log AtExit time.
+// It parses flags, sets up AtExit, and will start profiling if the appropriate flag is set.
 // It takes as parameters version information,
 // the first argument being the command's identifying string,
 // and then a series of numbers which indicate the various version points.
-// It returns a function that should be defer'ed in your main() function,
-// which will take care of executing the queued AtExitFuncs even in a panic() situation,
-// and the context.Context from util.Context().
-func Init(cmdname string, versions ...uint) (func(), context.Context) {
+// It returns the context.Context from util.Context(),
+// and a function that should be defer'ed in your main() function,
+// which will take care of executing the queued AtExitFuncs even in a panic() situation.
+func Init(cmdname string, versions ...uint) (context.Context, func()) {
 	initVersion(cmdname, versions...)
 
 	flag.Parse()
-	AtExit(func() {
-		glog.Flush()
-	})
 
 	if *profile != "" {
-		f, err := os.Create(*profile + ".prof")
+		cpuf, err := os.Create(*profile + ".prof")
 		if err != nil {
-			glog.Fatal(err)
+			panic(err)
 		}
 
-		pprof.StartCPUProfile(f)
+		memf, err := os.Create(*profile + ".mprof")
+		if err != nil {
+			panic(err)
+		}
+
+		pprof.StartCPUProfile(cpuf)
 
 		AtExit(func() {
 			pprof.StopCPUProfile()
-			f.Close()
+			cpuf.Close()
 
-			f, err := os.Create(*profile + ".mprof")
-			if err != nil {
-				glog.Fatal(err)
-			}
-			pprof.WriteHeapProfile(f)
-			f.Close()
+			pprof.WriteHeapProfile(memf)
+			memf.Close()
 		})
 	}
 
-	return func() {
+	return utilCtx, func() {
 		runExitFuncs()
 
 		if r := recover(); r != nil {
 			panic(r)
 		}
-	}, utilCtx
+	}
 }

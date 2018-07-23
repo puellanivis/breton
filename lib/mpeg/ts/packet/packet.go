@@ -8,8 +8,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TransportScrambleControl is an enum of what kind of MPEG Transport Scramble Control is to be used.
 type TransportScrambleControl byte
 
+// TransportScrambleControl enum values.
 const (
 	ScrambleNone TransportScrambleControl = iota
 	scrambleReserve
@@ -17,6 +19,7 @@ const (
 	ScrambleOdd
 )
 
+// Packet defines a single MPEG-TS packet.
 type Packet struct {
 	PID      uint16
 	TEI      bool
@@ -79,15 +82,22 @@ const (
 	flagPayload         = 0x10
 	flagAdaptationField = 0x20
 
-	Length       = 188
+	// Length is how long an MPEG-TS packet is.
+	Length = 188
+
+	// HeaderLength is the length of an MPEG-TS packet.
 	HeaderLength = 4
-	MaxPayload   = Length - HeaderLength
+
+	// MaxPayload is the maximum length of payload that may be put into a packet.
+	MaxPayload = Length - HeaderLength
 )
 
+// Bytes returns the payload of the Packet as a byte slice.
 func (p *Packet) Bytes() []byte {
 	return p.Payload
 }
 
+// Unmarshal decodes a byte slice into the Packet.
 func (p *Packet) Unmarshal(b []byte) error {
 	if len(b) != Length || b[0] != 'G' {
 		return errors.Errorf("invalid packet %v", b[:4])
@@ -126,6 +136,7 @@ func (p *Packet) Unmarshal(b []byte) error {
 
 var fullPadding = bytes.Repeat([]byte{0xFF}, Length)
 
+// Marshal encodes a Packet into a byte slice.
 func (p *Packet) Marshal() ([]byte, error) {
 	if p.PID > 0x1fff {
 		return nil, errors.Errorf("PID %d is greater than maximum 0x1fff", p.PID)

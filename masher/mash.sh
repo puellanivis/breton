@@ -155,7 +155,16 @@ fi
 
 if [[ $NOCOMPILE != "true" ]]; then
 	echo getting dependencies...
-	go get -v -d || exit 1
+	if [[ -r Gopkg.toml ]]; then
+		DEP_UP=""
+		if [[ -r Gopkg.lock ]]; then
+			DEP_UP="-update"
+		fi
+
+		dep ensure $DEP_UP
+	else
+		go get -v -d || exit 1
+	fi
 fi
 
 if [[ "$NOBUILD" == "true" ]]; then

@@ -25,10 +25,12 @@ func genSeed() int64 {
 	return u
 }
 
+// SecureSeed seeds the default global random source with a cryptographically secure seed.
 func SecureSeed() {
 	globalRand.SecureSeed()
 }
 
+// Reseeder sets up a Reseeder on the default global random source to periodically reseed with a cryptographically secure seed.
 func Reseeder(d time.Duration) {
 	globalRand.Reseeder(d)
 }

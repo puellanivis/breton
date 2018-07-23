@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// Reader implements an io.Reader that decodes an Elementary Stream from Packetized Elementary Stream.
+// Reader implements an io.Reader that decodes an Elementary Stream from a Packetized Elementary Stream.
 // The Stream field is set anew after every packet that is read.
 type Reader struct {
 	Stream
@@ -33,7 +33,6 @@ func (r *Reader) mustRead(b []byte) error {
 	return err
 }
 
-// Read implements io.Reader.
 func (r *Reader) Read(b []byte) (n int, err error) {
 	if r.buf.Len() > 0 {
 		var err error

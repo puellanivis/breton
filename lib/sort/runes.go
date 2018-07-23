@@ -9,9 +9,14 @@ import (
 // RuneSliceSlice attaches the methods of sort.Interface to [][]rune, sorting in increasing order.
 type RuneSliceSlice [][]rune
 
-func (p RuneSliceSlice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p RuneSliceSlice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p RuneSliceSlice) Less(i, j int) bool { return p.cmp(p[i], p[j]) < 0 }
-func (p RuneSliceSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p RuneSliceSlice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func (p RuneSliceSlice) cmp(x, y []rune) int {
 	for n, r := range x {
@@ -28,9 +33,12 @@ func (p RuneSliceSlice) cmp(x, y []rune) int {
 	return 0
 }
 
+// Compare implements Comparer.
 func (p RuneSliceSlice) Compare(i, j int) int {
 	return p.cmp(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p RuneSliceSlice) CompareFunc(x interface{}) func(int) int {
 	e := x.([]rune)
 	return func(i int) int {
@@ -40,6 +48,7 @@ func (p RuneSliceSlice) CompareFunc(x interface{}) func(int) int {
 
 var runeMSB = int(31 - bits.LeadingZeros32(uint32(unicode.MaxRune)))
 
+// RadixRange implements RadixInterface.
 func (p RuneSliceSlice) RadixRange() (int, int) {
 	r := 0
 	for _, s := range p {
@@ -49,6 +58,8 @@ func (p RuneSliceSlice) RadixRange() (int, int) {
 	}
 	return 0, r * runeMSB
 }
+
+// RadixFunc implements RadixInterface.
 func (p RuneSliceSlice) RadixFunc(r int) RadixTest {
 	n := r / runeMSB
 	mask := rune(1) << uint(runeMSB-(r%runeMSB))
@@ -63,11 +74,15 @@ func (p RuneSliceSlice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p RuneSliceSlice) Sort()               { radix(p) }
-func (p RuneSliceSlice) Search(x []rune) int { return SearchRuneSlices(p, x) }
-func (p RuneSliceSlice) Radix()              { radix(p) }
+func (p RuneSliceSlice) Sort() { radix(p) }
 
-// SortRuneSlices sorts a slice of []runes in increasing order.
+// Search is a convenience method.
+func (p RuneSliceSlice) Search(x []rune) int { return SearchRuneSlices(p, x) }
+
+// Radix is a convenience method.
+func (p RuneSliceSlice) Radix() { radix(p) }
+
+// RuneSlices sorts a slice of []runes in increasing order.
 func RuneSlices(a [][]rune) { radix(RuneSliceSlice(a)) }
 
 //SearchRuneSlices searches for x in a sorted slice of []runes and returns the index

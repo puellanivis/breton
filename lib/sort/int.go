@@ -8,9 +8,14 @@ import (
 // IntSlice attaches the methods of sort.Interface to []int, sorting in increasing order.
 type IntSlice []int
 
-func (p IntSlice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p IntSlice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p IntSlice) Less(i, j int) bool { return p[i] < p[j] }
-func (p IntSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p IntSlice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmpInt(x, y int) int {
 	if x == y {
@@ -24,9 +29,12 @@ func cmpInt(x, y int) int {
 	return +1
 }
 
+// Compare implements Comparer.
 func (p IntSlice) Compare(i, j int) int {
 	return cmpInt(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p IntSlice) CompareFunc(x interface{}) func(int) int {
 	e := x.(int)
 	return func(i int) int {
@@ -34,6 +42,7 @@ func (p IntSlice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p IntSlice) RadixRange() (int, int) {
 	allBits := int(^1)
 	var anyBits int
@@ -51,6 +60,8 @@ func (p IntSlice) RadixRange() (int, int) {
 
 	return bits.LeadingZeros(uint(bitMask)), end
 }
+
+// RadixFunc implements RadixInterface.
 func (p IntSlice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -65,10 +76,15 @@ func (p IntSlice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p IntSlice) Sort()  { radix(p) }
+func (p IntSlice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p IntSlice) Radix() { radix(p) }
 
-func (p IntSlice) Search(x int) int            { return SearchInts(p, x) }
+// Search is a convenience method.
+func (p IntSlice) Search(x int) int { return SearchInts(p, x) }
+
+// SearchFor is a convenience method.
 func (p IntSlice) SearchFor(x interface{}) int { return SearchInts(p, x.(int)) }
 
 // Ints sorts a slice of ints in increasing order.
@@ -87,9 +103,14 @@ func IntsAreSorted(a []int) bool { return sort.IsSorted(IntSlice(a)) }
 // Int64Slice attaches the methods of sort.Interface to []int64, sorting in increasing order.
 type Int64Slice []int64
 
-func (p Int64Slice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p Int64Slice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p Int64Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Int64Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p Int64Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmpInt64(x, y int64) int {
 	if x == y {
@@ -103,9 +124,12 @@ func cmpInt64(x, y int64) int {
 	return +1
 }
 
+// Compare implements Comparer.
 func (p Int64Slice) Compare(i, j int) int {
 	return cmpInt64(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p Int64Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.(int64)
 	return func(i int) int {
@@ -113,6 +137,7 @@ func (p Int64Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p Int64Slice) RadixRange() (int, int) {
 	allBits := int64(^1)
 	var anyBits int64
@@ -130,6 +155,8 @@ func (p Int64Slice) RadixRange() (int, int) {
 
 	return bits.LeadingZeros64(uint64(bitMask)), end
 }
+
+// RadixFunc implements RadixInterface.
 func (p Int64Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -144,10 +171,15 @@ func (p Int64Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int64Slice) Sort()  { radix(p) }
+func (p Int64Slice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p Int64Slice) Radix() { radix(p) }
 
-func (p Int64Slice) Search(x int64) int          { return SearchInt64s(p, x) }
+// Search is a convenience method.
+func (p Int64Slice) Search(x int64) int { return SearchInt64s(p, x) }
+
+// SearchFor is a convenience method.
 func (p Int64Slice) SearchFor(x interface{}) int { return SearchInt64s(p, x.(int64)) }
 
 // Int64s sorts a slice of int64s in increasing order.
@@ -166,9 +198,14 @@ func Int64sAreSorted(a []int64) bool { return sort.IsSorted(Int64Slice(a)) }
 // Int32Slice attaches the methods of sort.Interface to []int32, sorting in increasing order.
 type Int32Slice []int32
 
-func (p Int32Slice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p Int32Slice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p Int32Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Int32Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p Int32Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmpInt32(x, y int32) int {
 	if x == y {
@@ -182,9 +219,12 @@ func cmpInt32(x, y int32) int {
 	return +1
 }
 
+// Compare implements Comparer.
 func (p Int32Slice) Compare(i, j int) int {
 	return cmpInt32(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p Int32Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.(int32)
 	return func(i int) int {
@@ -192,6 +232,7 @@ func (p Int32Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p Int32Slice) RadixRange() (int, int) {
 	allBits := int32(^1)
 	var anyBits int32
@@ -209,6 +250,8 @@ func (p Int32Slice) RadixRange() (int, int) {
 
 	return bits.LeadingZeros32(uint32(bitMask)), end
 }
+
+// RadixFunc implements RadixInterface.
 func (p Int32Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -223,10 +266,15 @@ func (p Int32Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int32Slice) Sort()  { radix(p) }
+func (p Int32Slice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p Int32Slice) Radix() { radix(p) }
 
-func (p Int32Slice) Search(x int32) int          { return SearchInt32s(p, x) }
+// Search is a convenience method.
+func (p Int32Slice) Search(x int32) int { return SearchInt32s(p, x) }
+
+// SearchFor is a convenience method.
 func (p Int32Slice) SearchFor(x interface{}) int { return SearchInt32s(p, x.(int32)) }
 
 // Int32s sorts a slice of int32s in increasing order.
@@ -245,9 +293,14 @@ func Int32sAreSorted(a []int32) bool { return sort.IsSorted(Int32Slice(a)) }
 // Int16Slice attaches the methods of sort.Interface to []int16, sorting in increasing order.
 type Int16Slice []int16
 
-func (p Int16Slice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p Int16Slice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p Int16Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Int16Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p Int16Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmpInt16(x, y int16) int {
 	if x == y {
@@ -261,9 +314,12 @@ func cmpInt16(x, y int16) int {
 	return +1
 }
 
+// Compare implements Comparer.
 func (p Int16Slice) Compare(i, j int) int {
 	return cmpInt16(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p Int16Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.(int16)
 	return func(i int) int {
@@ -271,6 +327,7 @@ func (p Int16Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p Int16Slice) RadixRange() (int, int) {
 	allBits := int16(^1)
 	var anyBits int16
@@ -288,6 +345,8 @@ func (p Int16Slice) RadixRange() (int, int) {
 
 	return bits.LeadingZeros16(uint16(bitMask)), end
 }
+
+// RadixFunc implements RadixInterface.
 func (p Int16Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -302,10 +361,15 @@ func (p Int16Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int16Slice) Sort()  { radix(p) }
+func (p Int16Slice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p Int16Slice) Radix() { radix(p) }
 
-func (p Int16Slice) Search(x int16) int          { return SearchInt16s(p, x) }
+// Search is a convenience method.
+func (p Int16Slice) Search(x int16) int { return SearchInt16s(p, x) }
+
+// SearchFor is a convenience method.
 func (p Int16Slice) SearchFor(x interface{}) int { return SearchInt16s(p, x.(int16)) }
 
 // Int16s sorts a slice of int16s in increasing order.
@@ -324,9 +388,14 @@ func Int16sAreSorted(a []int16) bool { return sort.IsSorted(Int16Slice(a)) }
 // Int8Slice attaches the methods of sort.Interface to []int8, sorting in increasing order.
 type Int8Slice []int8
 
-func (p Int8Slice) Len() int           { return len(p) }
+// Len implements sort.Interface.
+func (p Int8Slice) Len() int { return len(p) }
+
+// Less implements sort.Interface.
 func (p Int8Slice) Less(i, j int) bool { return p[i] < p[j] }
-func (p Int8Slice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+
+// Swap implements sort.Interface.
+func (p Int8Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
 func cmpInt8(x, y int8) int {
 	if x == y {
@@ -340,9 +409,12 @@ func cmpInt8(x, y int8) int {
 	return +1
 }
 
+// Compare implements Comparer.
 func (p Int8Slice) Compare(i, j int) int {
 	return cmpInt8(p[i], p[j])
 }
+
+// CompareFunc implements Comparer.
 func (p Int8Slice) CompareFunc(x interface{}) func(int) int {
 	e := x.(int8)
 	return func(i int) int {
@@ -350,6 +422,7 @@ func (p Int8Slice) CompareFunc(x interface{}) func(int) int {
 	}
 }
 
+// RadixRange implements RadixInterface.
 func (p Int8Slice) RadixRange() (int, int) {
 	allBits := int8(^1)
 	var anyBits int8
@@ -367,6 +440,8 @@ func (p Int8Slice) RadixRange() (int, int) {
 
 	return bits.LeadingZeros8(uint8(bitMask)), end
 }
+
+// RadixFunc implements RadixInterface.
 func (p Int8Slice) RadixFunc(r int) RadixTest {
 	if r == 0 {
 		return func(i int) bool {
@@ -381,10 +456,15 @@ func (p Int8Slice) RadixFunc(r int) RadixTest {
 }
 
 // Sort is a convenience method.
-func (p Int8Slice) Sort()  { radix(p) }
+func (p Int8Slice) Sort() { radix(p) }
+
+// Radix is a convenience method.
 func (p Int8Slice) Radix() { radix(p) }
 
-func (p Int8Slice) Search(x int8) int           { return SearchInt8s(p, x) }
+// Search is a convenience method.
+func (p Int8Slice) Search(x int8) int { return SearchInt8s(p, x) }
+
+// SearchFor is a convenience method.
 func (p Int8Slice) SearchFor(x interface{}) int { return SearchInt8s(p, x.(int8)) }
 
 // Int8s sorts a slice of int8s in increasing order.
