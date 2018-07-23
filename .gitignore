@@ -5,4 +5,5 @@ tmp
 projects
 .cache
 .dep
+.mash
 test
