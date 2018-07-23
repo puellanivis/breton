@@ -6,6 +6,7 @@ import (
 	"runtime"
 )
 
+// DefaultThreadCount defines the number of threads the mapreduce package will assume it should use.
 var DefaultThreadCount = runtime.NumCPU()
 
 // A Mapper processes across a set of data.
@@ -264,6 +265,9 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 	panic("bad type passed to MapReduce.Run")
 }
 
+// Run executes over the given data a new MapReduce constructed from the given Mapper,
+// if the given Mapper also implements Reducer,
+// then this Reducer is used for the MapReduce.
 func Run(ctx context.Context, mapper Mapper, data interface{}, opts ...Option) <-chan error {
 	var reducer Reducer
 
