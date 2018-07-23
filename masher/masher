@@ -193,7 +193,7 @@ if which go > /dev/null 2>&1 ; then
 	if [[ "$LINUX" != "--deb" ]]; then
 		echo Found Local Go Version: $GO_VERSION
 		case $GO_VERSION in
-			1.10|1.10.*|1.10[a-z]*)
+			1.11|1.11.*|1.11[a-z]*)
 				LOCALTEST="true"
 		esac
 	fi
