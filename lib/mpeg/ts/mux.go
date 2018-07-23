@@ -104,7 +104,7 @@ const (
 func (m *Mux) packetizer(rd io.ReadCloser, s *stream, isPES bool, next chan struct{}) {
 	defer func() {
 		if err := rd.Close(); err != nil {
-			glog.Error("packetizer: 0x%04X: rd.Close: %+v", s.pid, err)
+			glog.Errorf("packetizer: 0x%04X: rd.Close: %+v", s.pid, err)
 		}
 	}()
 
@@ -129,7 +129,7 @@ func (m *Mux) packetizer(rd io.ReadCloser, s *stream, isPES bool, next chan stru
 		}
 
 		if n == len(buf) {
-			glog.Warningf("packetizer: 0x%04X: unexpected full read of packet buffer")
+			glog.Warningf("packetizer: 0x%04X: unexpected full read of packet buffer", s.pid)
 		}
 
 		// trunc the buffer to only what was read.
