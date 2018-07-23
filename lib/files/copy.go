@@ -11,6 +11,10 @@ const defaultBufferSize = 32 * 1024
 // Copy is a context aware version of io.Copy.
 // Do not use to Discard a reader, as a canceled context would stop the read, and it would not be fully discarded.
 func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption) (written int64, err error) {
+	if dst == nil {
+		return 0, errors.New("nil io.Writer passed to files.Copy")
+	}
+
 	c := new(copyConfig)
 
 	for _, opt := range opts {
