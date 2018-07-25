@@ -97,6 +97,10 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 			if fields[0] != "" {
 				name = fields[0]
+
+				if prefix != "" {
+					name = fmt.Sprintf("%s-%s", prefix, name)
+				}
 			}
 
 			if name == "-" {
