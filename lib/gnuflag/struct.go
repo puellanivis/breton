@@ -97,13 +97,19 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 			if fields[0] != "" {
 				name = fields[0]
+
+				if prefix != "" {
+					name = fmt.Sprintf("%s-%s", prefix, name)
+				}
 			}
 
 			if name == "-" {
 				continue
 			}
 
-			for _, field := range fields[1:] {
+			for j := 1; j < len(fields); j++ {
+				field := fields[j]
+
 				switch {
 				case strings.HasPrefix(field, "short="):
 					// This is kind of a “cheat”, ranging over a string uses UTF-8 runes.
@@ -115,17 +121,17 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				case strings.HasPrefix(field, "default="):
 					defval = field[len("default="):]
-					if i+1 < len(fields) {
+					if j+1 < len(fields) {
 						// Commas aren't escaped, and def is always last.
-						defval += "," + strings.Join(fields[i+1:], ",")
+						defval += "," + strings.Join(fields[j+1:], ",")
 						break
 					}
 
 				case strings.HasPrefix(field, "def="):
 					defval = field[4:]
-					if i+1 < len(fields) {
+					if j+1 < len(fields) {
 						// Commas aren't escaped, and def is always last.
-						defval += "," + strings.Join(fields[i+1:], ",")
+						defval += "," + strings.Join(fields[j+1:], ",")
 						break
 					}
 				}
