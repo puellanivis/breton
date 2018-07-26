@@ -15,6 +15,18 @@ type request struct {
 	req  *http.Request
 }
 
+func newHTTPRequest(method string, uri url) *http.Request {
+	return &http.Request{
+		Method:     method,
+		URL:        uri,
+		Proto:      "HTTP/1.1",
+		ProtoMajor: 1,
+		ProtoMinor: 1,
+		Header:     make(Header),
+		Host:       u.Host,
+	}
+}
+
 func (r *request) Name() string {
 	return r.name
 }
@@ -39,9 +51,10 @@ func (r *request) SetContentType(contentType string) string {
 
 func (r *request) SetBody(body []byte) []byte {
 	save := r.body
-
-	r.req.ContentLength = int64(len(body))
 	r.body = body
+
+	r.req.Method = http.MethodPost
+	r.req.ContentLength = int64(len(r.body))
 
 	r.req.GetBody = func() (io.ReadCloser, error) {
 		if len(r.body) < 1 {

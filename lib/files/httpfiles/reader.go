@@ -102,10 +102,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		cl = http.DefaultClient
 	}
 
-	req := &http.Request{
-		URL:    uri,
-		Header: make(http.Header),
-	}
+	req := newHTTPRequest(http.MethodGet, uri)
 	req = req.WithContext(ctx)
 
 	if ua, ok := getUserAgent(ctx); ok {

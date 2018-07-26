@@ -31,11 +31,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		cl = http.DefaultClient
 	}
 
-	req := &http.Request{
-		Method: "POST",
-		URL:    uri,
-		Header: make(http.Header),
-	}
+	req := newHTTPRequest(http.MethodPost, uri)
 	req = req.WithContext(ctx)
 
 	if ua, ok := getUserAgent(ctx); ok {
