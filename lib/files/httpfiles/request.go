@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 type request struct {
@@ -15,15 +16,15 @@ type request struct {
 	req  *http.Request
 }
 
-func newHTTPRequest(method string, uri url) *http.Request {
+func newHTTPRequest(method string, uri *url.URL) *http.Request {
 	return &http.Request{
 		Method:     method,
 		URL:        uri,
 		Proto:      "HTTP/1.1",
 		ProtoMajor: 1,
 		ProtoMinor: 1,
-		Header:     make(Header),
-		Host:       u.Host,
+		Header:     make(http.Header),
+		Host:       uri.Host,
 	}
 }
 
