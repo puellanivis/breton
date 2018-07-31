@@ -46,6 +46,10 @@ func (r *tcpReader) Close() error {
 }
 
 func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+	if uri.Host == "" {
+		return nil, &os.PathError{"open", uri.String(), errInvalidURL}
+	}
+
 	laddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
 		return nil, &os.PathError{"open", uri.String(), err}
