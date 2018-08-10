@@ -332,7 +332,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	${TMPFS} \
 	--user "${RUNAS}" \
 	--volume "${BASE}:${SRCROOT}:rw" \
-	--volume "${BASE}/.mash/mod:/go/src/mod:rw" \
+	--volume "${BASE}/.mash/mod:/go/pkg/mod:rw" \
 	$DEP_CACHE \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
