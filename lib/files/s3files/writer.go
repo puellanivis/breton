@@ -35,7 +35,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 			Body:   bytes.NewReader(b),
 		}
 
-		_, err = cl.PutObject(req)
+		_, err = cl.PutObjectWithContext(ctx, req)
 		if err != nil {
 			return &os.PathError{"sync", uri.String(), err}
 		}

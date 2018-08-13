@@ -112,7 +112,7 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		Prefix: aws.String(key),
 	}
 
-	res, err := cl.ListObjects(req)
+	res, err := cl.ListObjectsWithContext(ctx, req)
 	if err != nil {
 		return nil, &os.PathError{"list", uri.String(), err}
 	}

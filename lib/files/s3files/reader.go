@@ -37,7 +37,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		Key:    aws.String(key),
 	}
 
-	res, err := cl.GetObject(req)
+	res, err := cl.GetObjectWithContext(ctx, req)
 	if err != nil {
 		return nil, &os.PathError{"read", uri.String(), err}
 	}
