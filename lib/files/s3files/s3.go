@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -65,6 +66,10 @@ func (h *handler) getClient(ctx context.Context, bucket string) (*s3.S3, error) 
 	defer h.mu.Unlock()
 
 	region := h.defRegion
+
+	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
+		bucket, region = bucket[:i], bucket[i+1:]
+	}
 
 	var err error
 
