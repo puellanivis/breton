@@ -61,15 +61,9 @@ func newRegion(r string) (*region, error) {
 	}, nil
 }
 
-func (h *handler) getClient(ctx context.Context, bucket string) (*s3.S3, error) {
+func (h *handler) getClient(ctx context.Context, bucket, region string) (*s3.S3, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-
-	region := h.defRegion
-
-	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
-		bucket, region = bucket[:i], bucket[i+1:]
-	}
 
 	var err error
 
@@ -107,7 +101,12 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		return nil, &os.PathError{"list", uri.String(), os.ErrInvalid}
 	}
 
-	cl, err := h.getClient(ctx, bucket)
+	region := h.defRegion
+	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
+		bucket, region = bucket[:i], bucket[i+1:]
+	}
+
+	cl, err := h.getClient(ctx, bucket, region)
 	if err != nil {
 		return nil, &os.PathError{"list", uri.String(), err}
 	}

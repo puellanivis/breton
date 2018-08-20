@@ -21,10 +21,15 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
 	}
 
+	region := h.defRegion
+	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
+		bucket, region = bucket[:i], bucket[i+1:]
+	}
+
 	// The s3files.Writer does not actually perform the request until wrapper.Sync is called,
 	// So there is no need for complex synchronization like the s3files.Reader needs.
 	w := wrapper.NewWriter(ctx, uri, func(b []byte) error {
-		cl, err := h.getClient(ctx, bucket)
+		cl, err := h.getClient(ctx, bucket, region)
 		if err != nil {
 			return &os.PathError{"sync", uri.String(), err}
 		}

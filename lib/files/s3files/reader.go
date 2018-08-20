@@ -27,7 +27,12 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
 	}
 
-	cl, err := h.getClient(ctx, bucket)
+	region := h.defRegion
+	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
+		bucket, region = bucket[:i], bucket[i+1:]
+	}
+
+	cl, err := h.getClient(ctx, bucket, region)
 	if err != nil {
 		return nil, &os.PathError{"open", uri.String(), err}
 	}
