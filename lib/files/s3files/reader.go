@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"

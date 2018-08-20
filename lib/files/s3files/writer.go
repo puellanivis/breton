@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
