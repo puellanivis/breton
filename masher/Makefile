@@ -18,7 +18,7 @@ install:
 	cp masher $(HOME)/bin/
 
 container:
-	docker build --rm --build-arg PROJECT=${PROJECT} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:latest .
+	docker build --rm --network=host --build-arg PROJECT=${PROJECT} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:latest .
 
 push:
 	[ -n "${BRANCH}" ] && docker push ${REPO}:${BRANCH} || true
