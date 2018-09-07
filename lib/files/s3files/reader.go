@@ -39,10 +39,10 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		l = *res.ContentLength
 	}
 
-	t := time.Now()
+	lm := time.Now()
 	if res.LastModified != nil {
-		t = *res.LastModified
+		lm = *res.LastModified
 	}
 
-	return wrapper.NewReaderWithInfo(res.Body, wrapper.NewInfo(uri, int(l), t)), nil
+	return wrapper.NewReaderWithInfo(res.Body, wrapper.NewInfo(uri, int(l), lm)), nil
 }
