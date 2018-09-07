@@ -118,7 +118,7 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		return nil, &os.PathError{"list", uri.String(), os.ErrInvalid}
 	}
 
-	bucket, key := uri.Host, uri.Path
+	bucket, key := uri.Host, strings.TrimPrefix(uri.Path, "/")
 
 	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
