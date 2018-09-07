@@ -114,10 +114,11 @@ func getBucketKey(op string, uri *url.URL) (bucket, key string, err error) {
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	bucket, key, err := getBucketKey("list", uri)
-	if err != nil {
-		return nil, err
+	if uri.Host == "" {
+		return nil, &os.PathError{"list", uri.String(), os.ErrInvalid}
 	}
+
+	bucket, key := uri.Host, uri.Path
 
 	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
