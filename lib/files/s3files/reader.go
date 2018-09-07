@@ -2,7 +2,6 @@ package s3files
 
 import (
 	"context"
-	"io"
 	"net/url"
 	"os"
 	"time"
@@ -13,19 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
-
-type reader struct {
-	io.ReadCloser
-	*wrapper.Info
-}
-
-func (r *reader) Seek(offset int64, whence int) (int64, error) {
-	if s, ok := r.ReadCloser.(io.Seeker); ok {
-		return s.Seek(offset, whence)
-	}
-
-	return 0, &os.PathError{"seek", r.Name(), os.ErrInvalid}
-}
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	bucket, key, err := getBucketKey("open", uri)
@@ -58,8 +44,5 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		t = *res.LastModified
 	}
 
-	return &reader{
-		ReadCloser: res.Body,
-		Info:       wrapper.NewInfo(uri, int(l), t),
-	}, nil
+	return wrapper.NewReaderWithInfo(res.Body, wrapper.NewInfo(uri, int(l), t)), nil
 }
