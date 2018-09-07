@@ -5,7 +5,6 @@ import (
 	"context"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
@@ -15,22 +14,13 @@ import (
 )
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	bucket := uri.Host
-	key := uri.Path
-
-	if bucket == "" || key == "" {
-		return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
+	bucket, key, err := getBucketKey("create", uri)
+	if err != nil {
+		return nil, err
 	}
 
-	region := h.defRegion
-	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
-		bucket, region = bucket[:i], bucket[i+1:]
-	}
-
-	// The s3files.Writer does not actually perform the request until wrapper.Sync is called,
-	// So there is no need for complex synchronization like the s3files.Reader needs.
 	w := wrapper.NewWriter(ctx, uri, func(b []byte) error {
-		cl, err := h.getClient(ctx, bucket, region)
+		cl, err := h.getClient(ctx, bucket)
 		if err != nil {
 			return &os.PathError{"sync", uri.String(), err}
 		}

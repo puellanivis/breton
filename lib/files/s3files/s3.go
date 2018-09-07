@@ -61,19 +61,35 @@ func newRegion(r string) (*region, error) {
 	}, nil
 }
 
-func (h *handler) getClient(ctx context.Context, bucket, region string) (*s3.S3, error) {
+// lookup looks up a specific region from the handler’s map.
+//
+// Caller MUST be holding the handler‘s mutex.
+func (h *handler) lookup(region string) (*region, error) {
+	if r := h.rmap[region]; r != nil {
+		return r, nil
+	}
+
+	r, err := newRegion(region)
+	if err != nil {
+		return nil, err
+	}
+	h.rmap[region] = r
+
+	return r, nil
+}
+
+func (h *handler) getClient(ctx context.Context, bucket string) (*s3.S3, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	var err error
+	region := h.defRegion
+	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
+		bucket, region = bucket[:i], bucket[i+1:]
+	}
 
-	r := h.rmap[region]
-	if r == nil {
-		r, err = newRegion(region)
-		if err != nil {
-			return nil, err
-		}
-		h.rmap[region] = r
+	r, err := h.lookup(region)
+	if err != nil {
+		return nil, err
 	}
 
 	region, err = s3manager.GetBucketRegion(ctx, r.sess, bucket, region)
@@ -81,32 +97,29 @@ func (h *handler) getClient(ctx context.Context, bucket, region string) (*s3.S3,
 		return nil, err
 	}
 
-	r = h.rmap[region]
-	if r == nil {
-		r, err = newRegion(region)
-		if err != nil {
-			return nil, err
-		}
-		h.rmap[region] = r
+	r, err = h.lookup(region)
+	if err != nil {
+		return nil, err
 	}
 
 	return r.cl, nil
 }
 
+func getBucketKey(op string, uri *url.URL) (bucket, key string, err error) {
+	if uri.Host == "" || uri.Path == "" {
+		return "", "", &os.PathError{op, uri.String(), os.ErrInvalid}
+	}
+
+	return uri.Host, uri.Path, nil
+}
+
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	bucket := uri.Host
-	key := uri.Path
-
-	if bucket == "" || key == "" {
-		return nil, &os.PathError{"list", uri.String(), os.ErrInvalid}
+	bucket, key, err := getBucketKey("list", uri)
+	if err != nil {
+		return nil, err
 	}
 
-	region := h.defRegion
-	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
-		bucket, region = bucket[:i], bucket[i+1:]
-	}
-
-	cl, err := h.getClient(ctx, bucket, region)
+	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
 		return nil, &os.PathError{"list", uri.String(), err}
 	}

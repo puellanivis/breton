@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -20,20 +19,21 @@ type reader struct {
 	*wrapper.Info
 }
 
+func (r *reader) Seek(offset int64, whence int) (int64, error) {
+	if s, ok := r.ReadCloser.(io.Seeker); ok {
+		return s.Seek(offset, whence)
+	}
+
+	return 0, &os.PathError{"seek", r.Name(), os.ErrInvalid}
+}
+
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	bucket := uri.Host
-	key := uri.Path
-
-	if bucket == "" || key == "" {
-		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
+	bucket, key, err := getBucketKey("open", uri)
+	if err != nil {
+		return nil, err
 	}
 
-	region := h.defRegion
-	if i := strings.LastIndexByte(bucket, '.'); i >= 0 {
-		bucket, region = bucket[:i], bucket[i+1:]
-	}
-
-	cl, err := h.getClient(ctx, bucket, region)
+	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
 		return nil, &os.PathError{"open", uri.String(), err}
 	}
@@ -48,10 +48,18 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, &os.PathError{"read", uri.String(), err}
 	}
 
-	b, err := files.ReadFrom(res.Body)
-	if err != nil {
-		return nil, &os.PathError{"read", uri.String(), err}
+	var l int64
+	if res.ContentLength != nil {
+		l = *res.ContentLength
 	}
 
-	return wrapper.NewReaderFromBytes(b, uri, time.Now()), nil
+	t := time.Now()
+	if res.LastModified != nil {
+		t = *res.LastModified
+	}
+
+	return &reader{
+		ReadCloser: res.Body,
+		Info:       wrapper.NewInfo(uri, int(l), t),
+	}, nil
 }
