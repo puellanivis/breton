@@ -48,15 +48,6 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, &os.PathError{"read", uri.String(), err}
 	}
 
-	var l int64
-	if res.ContentLength != nil {
-		l = *res.ContentLength
-	}
-
-	if l < 0 {
-		return nil, &os.PathError{"read", uri.String(), os.ErrInvalid}
-	}
-
 	b, err := files.ReadFrom(res.Body)
 	if err != nil {
 		return nil, &os.PathError{"read", uri.String(), err}
