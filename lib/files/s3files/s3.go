@@ -126,8 +126,9 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 	}
 
 	req := &s3.ListObjectsInput{
-		Bucket: aws.String(bucket),
-		Prefix: aws.String(key),
+		Bucket:    aws.String(bucket),
+		Delimiter: aws.String("/"),
+		Prefix:    aws.String(key),
 	}
 
 	res, err := cl.ListObjectsWithContext(ctx, req)
