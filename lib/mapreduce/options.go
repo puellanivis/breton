@@ -42,7 +42,7 @@ func WithMapperCount(num int) Option {
 // If after calculating the work for each Mapper,
 // the number of elements to be handled per Mapper is less than this value,
 // then the number of Mappers will be set to a value,
-// where the number of elements handled by each Mapper is greather than or equal to this value.
+// where the number of elements handled by each Mapper is greater than or equal to this value.
 //
 // A value less than 1 resets all stripe size settings, both minimum and maximum.
 func WithMinStripeSize(size int) Option {
@@ -80,10 +80,13 @@ func WithMaxStripeSize(size int) Option {
 
 // WithOrdering sets the ordering state of the Reduce phase.
 //
-// When the Reduce phase is ordered, then the Reduce phase of each Mapper will happen in Order,
-// that is, the end of the Reduce for range [0,1) HAPPENS BEFORE the start of the Reduce for range [1,2).
+// When the Reduce phase is ordered,
+// then the Reduce phase of each Mapper will happen in Order,
+// that is, given a < b < c,
+// the end of the Reduce for range [a,b) HAPPENS BEFORE the start of the Reduce for range [b,c).
 //
-// Even if all Mappers complete before the first Mapper completes,
+// So, when the Reduce phase is ordered,
+// even if all other Mappers complete before the first Mapper completes,
 // the Reduce for the first Mapper WILL execute first.
 func WithOrdering(ordered bool) Option {
 	return func(c *config) {
