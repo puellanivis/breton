@@ -1,7 +1,5 @@
 package mapreduce
 
-import ()
-
 type config struct {
 	threadCount int
 	mapperCount int
