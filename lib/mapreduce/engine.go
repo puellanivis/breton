@@ -104,6 +104,8 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 			stripe = minSize
 			extraWork = 0
 
+			// Here, the math is simple, and the code is simple.
+			//
 			// Our mapper count is ⌊width ÷ stripe⌋.
 			mappers = width / stripe
 
