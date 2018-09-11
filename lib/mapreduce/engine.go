@@ -53,7 +53,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	errch := make(chan error)
 
 	threads := e.threadCount()
-	pool := make(chan struct{}, threads)
+	pool := newThreadPool(threads)
 
 	mappers := e.conf.mapperCount
 	if mappers < 1 {
@@ -155,9 +155,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 				End:   end,
 			}
 
-			select {
-			case <-pool:
-			case <-ctx.Done():
+			if err := pool.wait(ctx); err != nil {
 				return
 			}
 
@@ -166,9 +164,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 				errch <- err
 			}
 
-			select {
-			case pool <- struct{}{}:
-			case <-ctx.Done():
+			if err := pool.done(ctx); err != nil {
 				return
 			}
 
@@ -197,18 +193,8 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	}
 
 	go func() {
-		defer func() {
-			wg.Wait()
-			close(errch)
-		}()
-
-		for i := 0; i < threads; i++ {
-			select {
-			case pool <- struct{}{}:
-			case <-ctx.Done():
-				return
-			}
-		}
+		wg.Wait()
+		close(errch)
 	}()
 
 	return errch
