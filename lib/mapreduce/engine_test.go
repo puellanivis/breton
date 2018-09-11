@@ -4,6 +4,7 @@ import (
 	"context"
 	"runtime"
 	"testing"
+	"time"
 )
 
 type TestMR struct {
@@ -169,4 +170,91 @@ func TestEngineMinSliceSize(t *testing.T) {
 	for i := 0; i <= rng.Width(); i++ {
 		f(i)
 	}
+}
+
+type TestMRBlock struct {
+	reduces      int
+	duringReduce bool
+}
+
+func (mr *TestMRBlock) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
+	out = struct{}{}
+
+	if !mr.duringReduce {
+		<-ctx.Done()
+		return out, ctx.Err()
+	}
+
+	return out, nil
+}
+
+func (mr *TestMRBlock) Reduce(ctx context.Context, in interface{}) error {
+	mr.reduces++
+
+	if mr.duringReduce {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
+	return nil
+}
+
+func TestEngineStall(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	DefaultThreadCount = -1
+
+	rng := Range{
+		Start: 42,
+		End:   42 + 53, // Give this a width of 53, a prime number.
+	}
+
+	mr := &TestMRBlock{}
+
+	e := &engine{
+		m: mr,
+		r: mr,
+	}
+
+	n := 4
+
+	WithThreadCount(n)(&e.conf)
+	WithMapperCount(n)(&e.conf)
+
+	var errCount int
+	for err := range e.run(ctx, rng) {
+		t.Logf("%+v", err)
+		errCount++
+	}
+
+	if errCount != n {
+		t.Errorf("expected %d errors, but got %d", n, errCount)
+	}
+
+	expectedReduces := 0
+	if mr.reduces != expectedReduces {
+		t.Errorf("wrong number of mappers got to reduce phase, expected %d, but got %d", expectedReduces, mr.reduces)
+	}
+
+	errCount = 0
+	mr.duringReduce = true
+
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	for err := range e.run(ctx, rng) {
+		t.Logf("%+v", err)
+		errCount++
+	}
+
+	if errCount != n {
+		t.Errorf("expected %d errors, but got %d", n, errCount)
+	}
+
+	expectedReduces = 1
+	if mr.reduces != expectedReduces {
+		t.Errorf("wrong number of mappers got to reduce phase, expected %d, but got %d", expectedReduces, mr.reduces)
+	}
+
 }

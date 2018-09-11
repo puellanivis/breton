@@ -2,9 +2,10 @@ package mapreduce
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 type engine struct {
@@ -50,10 +51,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		return quickError(errors.New("bad range"))
 	}
 
-	errch := make(chan error)
-
 	threads := e.threadCount()
-	pool := newThreadPool(threads)
 
 	mappers := e.conf.mapperCount
 	if mappers < 1 {
@@ -114,12 +112,18 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		}
 	}
 
-	var mu sync.Mutex
-
+	var reducerMutex sync.Mutex
+	pool := newThreadPool(threads)
 	chain := newExecChain(e.conf.ordered)
 
 	var wg sync.WaitGroup
 	wg.Add(mappers)
+	errch := make(chan error, mappers)
+
+	go func() {
+		wg.Wait()
+		close(errch)
+	}()
 
 	last := rng.Start
 	for i := 0; i < mappers; i++ {
@@ -149,15 +153,18 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 			}
 
 			if err := pool.wait(ctx); err != nil {
+				errch <- err
 				return
 			}
 
 			out, err := e.m.Map(ctx, rng)
 			if err != nil {
 				errch <- err
+				return
 			}
 
 			if err := pool.done(ctx); err != nil {
+				errch <- err
 				return
 			}
 
@@ -168,14 +175,24 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 			select {
 			case <-ready:
 			case <-ctx.Done():
+				errch <- ctx.Err()
 				return
 			}
 
-			mu.Lock()
-			defer mu.Unlock()
+			reducerMutex.Lock()
+			defer reducerMutex.Unlock()
+
+			// Our context may have expired waiting for mutex, so check again.
+			select {
+			case <-ctx.Done():
+				errch <- ctx.Err()
+				return
+			default:
+			}
 
 			if err := e.r.Reduce(ctx, out); err != nil {
 				errch <- err
+				return
 			}
 		}()
 	}
@@ -183,11 +200,6 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	if last != rng.End {
 		panic(fmt.Errorf("dropped entries! %d != %d", last, rng.End))
 	}
-
-	go func() {
-		wg.Wait()
-		close(errch)
-	}()
 
 	return errch
 }
