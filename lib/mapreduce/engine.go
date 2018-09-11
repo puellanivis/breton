@@ -13,31 +13,46 @@ type engine struct {
 	conf config
 }
 
-func (e *engine) run(ctx context.Context, rng Range) <-chan error {
-	width := rng.Width()
+// threadCount returns the valid threadCount value to use based on configuration.
+// It guards against invalid values.
+func (e *engine) threadCount() int {
+	n := e.conf.threadCount
 
-	if width <= 0 {
-		errch := make(chan error, 1)
+	if n < 1 {
+		n = DefaultThreadCount
 
-		if width < 0 {
-			errch <- errors.New("bad range")
+		if n < 1 {
+			// Even if the package-level Default was set to less than one,
+			// we need to ensure it is at least one.
+			n = 1
 		}
 
-		close(errch)
-		return errch
+		e.conf.threadCount = n
+	}
+
+	return n
+}
+
+func quickError(err error) <-chan error {
+	errch := make(chan error, 1)
+
+	if err != nil {
+		errch <- err
+	}
+
+	close(errch)
+	return errch
+}
+
+func (e *engine) run(ctx context.Context, rng Range) <-chan error {
+	width := rng.Width()
+	if width <= 0 {
+		return quickError(errors.New("bad range"))
 	}
 
 	errch := make(chan error)
 
-	threads := e.conf.threadCount
-	if threads <= 0 {
-		threads = DefaultThreadCount
-
-		if threads < 1 {
-			// If the default was set to less than one, we want to ensure it is at least one.
-			threads = 1
-		}
-	}
+	threads := e.threadCount()
 	pool := make(chan struct{}, threads)
 
 	mappers := e.conf.mapperCount
@@ -46,20 +61,55 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	}
 
 	stripe := width / mappers
+	extraWork := width % mappers // How many mappers need one more element in order to cover the whole width.
 
-	// extraWork is how many mappers need one more element in order to cover the whole width.
-	extraWork := width % mappers
+	switch {
+	case e.conf.stripeSize > 0:
+		maxSize := e.conf.stripeSize
 
-	if e.conf.stripeSize > 0 && stripe > e.conf.stripeSize {
-		// If the number of mappers we have already makes a stripe size of less than the configured value,
-		// then we do not need to recalculate the mapper count.
-		stripe = e.conf.stripeSize
-		mappers = width / stripe
-		if width%stripe > 0 {
-			mappers++
+		// We need to calculate the stripe size for an extra-work mapper, if there are extra-work mappers.
+		maxWorkSize := stripe
+		if extraWork > 0 {
+			maxWorkSize++
 		}
 
-		extraWork = 0 // do not add any extra work for any mappers.
+		if maxWorkSize > maxSize {
+			// We only recalculate mapper count if the stripe size is greater than the max stripe size.
+			stripe = maxSize
+			extraWork = 0
+
+			// Here, the math is simple, but the code is complex.
+			//
+			// Our mapper count is ⌈width ÷ stripe⌉,
+			// but integer math on computers gives ⌊width / stripe⌋.
+			mappers = width / stripe
+
+			if width%stripe > 0 {
+				// So, if the work does not split up exactly, so we need another mapper.
+				mappers++
+
+				// And now, we may as well just recalculate the whole coverage anew… just to be sure.
+				stripe = width / mappers
+				extraWork = width % mappers
+			}
+		}
+
+	case e.conf.stripeSize < 0:
+		minSize := -e.conf.stripeSize
+
+		// strip is already the smallest work size.
+
+		if stripe < minSize {
+			// We only recalculate mapper count if the stripe size is less than the min stripe size.
+			stripe = minSize
+			extraWork = 0
+
+			// Our mapper count is ⌊width ÷ stripe⌋.
+			mappers = width / stripe
+
+			// Now we just need to recalculate the extra coverage.
+			extraWork = width % mappers
+		}
 	}
 
 	var mu sync.Mutex
@@ -75,7 +125,6 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	wg.Add(mappers)
 
 	last := rng.Start
-
 	for i := 0; i < mappers; i++ {
 		start := last
 		end := start + stripe
@@ -104,14 +153,22 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 				End:   end,
 			}
 
-			<-pool
+			select {
+			case <-pool:
+			case <-ctx.Done():
+				return
+			}
 
 			out, err := e.m.Map(ctx, rng)
 			if err != nil {
 				errch <- err
 			}
 
-			pool <- struct{}{}
+			select {
+			case pool <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 
 			if out == nil || e.r == nil {
 				return
@@ -138,13 +195,18 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	}
 
 	go func() {
-		defer close(errch)
+		defer func() {
+			wg.Wait()
+			close(errch)
+		}()
 
 		for i := 0; i < threads; i++ {
-			pool <- struct{}{}
+			select {
+			case pool <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 		}
-
-		wg.Wait()
 	}()
 
 	return errch

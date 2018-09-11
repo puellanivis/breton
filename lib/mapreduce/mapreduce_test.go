@@ -133,7 +133,7 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 		t.Errorf("%d mappers: %+v", maxN, err)
 	}
 
-	t.Log(maxN, sc.a)
+	t.Log("ordering=false", maxN, sc.a)
 
 	var r RuneSlice
 	for _, v := range sc.a {
@@ -153,7 +153,7 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 		t.Errorf("%d mappers: %+v", maxN, err)
 	}
 
-	t.Log(maxN, sc.a)
+	t.Log("ordering=true", maxN, sc.a)
 
 	r = nil
 	for _, v := range sc.a {

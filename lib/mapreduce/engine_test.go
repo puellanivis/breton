@@ -8,6 +8,7 @@ import (
 
 type TestMR struct {
 	ranges []Range
+	widths []int
 }
 
 func (mr *TestMR) Map(ctx context.Context, in interface{}) (out interface{}, err error) {
@@ -24,16 +25,23 @@ func (mr *TestMR) Reduce(ctx context.Context, in interface{}) error {
 	rng := in.(Range)
 
 	mr.ranges = append(mr.ranges, rng)
+	mr.widths = append(mr.widths, rng.Width())
 
 	return nil
 }
 
+func (mr *TestMR) reset() {
+	mr.ranges = nil
+	mr.widths = nil
+}
+
 func TestEngine(t *testing.T) {
+	ctx := context.Background()
 	DefaultThreadCount = -1
 
 	rng := Range{
 		Start: 42,
-		End:   69,
+		End:   42 + 53, // Give this a width of 53, a prime number.
 	}
 
 	mr := &TestMR{}
@@ -41,31 +49,120 @@ func TestEngine(t *testing.T) {
 	e := &engine{
 		m: mr,
 		r: mr,
-
-		conf: config{
-			ordered:     true,
-			threadCount: 1,
-		},
 	}
 
+	WithOrdering(true)(&e.conf)
+	WithThreadCount(1)(&e.conf)
+
 	f := func(n int) {
-		e.conf.mapperCount = n
+		WithMapperCount(n)(&e.conf)
 
-		mr.ranges = nil
+		mr.reset()
 
-		errs := false
-
-		for err := range e.run(context.Background(), rng) {
+		for err := range e.run(ctx, rng) {
 			t.Errorf("%d mappers: %+v", n, err)
-			errs = true
 		}
+
+		t.Log(n, len(mr.widths), mr.widths)
 
 		if n > 0 && len(mr.ranges) != n {
+			t.Log(mr.ranges)
+
 			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(mr.ranges))
 		}
+	}
 
-		if errs {
-			t.Log(n, mr.ranges)
+	for i := 0; i <= rng.Width(); i++ {
+		f(i)
+	}
+}
+
+func TestEngineMaxSliceSize(t *testing.T) {
+	ctx := context.Background()
+	DefaultThreadCount = -1
+
+	rng := Range{
+		Start: 42,
+		End:   42 + 53, // Give this a width of 53, a prime number.
+	}
+
+	mr := &TestMR{}
+
+	e := &engine{
+		m: mr,
+		r: mr,
+	}
+
+	testWidth := 7
+
+	WithOrdering(true)(&e.conf)
+	WithThreadCount(1)(&e.conf)
+	WithMaxStripeSize(testWidth)(&e.conf)
+
+	f := func(n int) {
+		WithMapperCount(n)(&e.conf)
+
+		mr.reset()
+
+		for err := range e.run(ctx, rng) {
+			t.Errorf("%d mappers: %+v", n, err)
+		}
+
+		t.Log(n, len(mr.widths), mr.widths)
+
+		for _, width := range mr.widths {
+			if width > testWidth {
+				t.Log(mr.ranges)
+				t.Errorf("range was greater than maximum, expected %d, but got %d", width, testWidth)
+				break
+			}
+		}
+	}
+
+	for i := 0; i <= rng.Width(); i++ {
+		f(i)
+	}
+}
+
+func TestEngineMinSliceSize(t *testing.T) {
+	ctx := context.Background()
+	DefaultThreadCount = -1
+
+	rng := Range{
+		Start: 42,
+		End:   42 + 53, // Give this a width of 53, a prime number.
+	}
+
+	mr := &TestMR{}
+
+	e := &engine{
+		m: mr,
+		r: mr,
+	}
+
+	testWidth := 7
+
+	WithOrdering(true)(&e.conf)
+	WithThreadCount(1)(&e.conf)
+	WithMinStripeSize(testWidth)(&e.conf)
+
+	f := func(n int) {
+		WithMapperCount(n)(&e.conf)
+
+		mr.reset()
+
+		for err := range e.run(ctx, rng) {
+			t.Errorf("%d mappers: %+v", n, err)
+		}
+
+		t.Log(n, len(mr.widths), mr.widths)
+
+		for _, width := range mr.widths {
+			if width < testWidth {
+				t.Log(mr.ranges)
+				t.Errorf("range was less than minimum, expected %d, but got %d", width, testWidth)
+				break
+			}
 		}
 	}
 

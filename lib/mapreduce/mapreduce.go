@@ -105,7 +105,7 @@ func New(mapper Mapper, reducer Reducer, opts ...Option) *MapReduce {
 	}
 
 	for _, opt := range opts {
-		_ = opt(&mr.conf)
+		opt(&mr.conf)
 	}
 
 	return mr
@@ -186,10 +186,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 	case reflect.Slice, reflect.Array, reflect.Map:
 		// If it has no elements, short-circuit succeed.
 		if v.Len() < 1 {
-			ch := make(chan error)
-			close(ch)
-
-			return ch
+			return quickError(nil)
 		}
 
 	case reflect.Struct:
@@ -206,7 +203,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 	e := mr.engine()
 
 	for _, opt := range opts {
-		_ = opt(&e.conf)
+		opt(&e.conf)
 	}
 
 	if r, ok := data.(Range); ok {
@@ -223,51 +220,40 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 			// channel is already read-only, we do not need to do anything further here.
 		case reflect.BothDir:
 			v = v.Convert(reflect.ChanOf(reflect.RecvDir, typ.Elem()))
-
 		default:
-			panic("channel as input to mapper must allow receive")
+			panic("input channel must receive")
 		}
 
-		m := e.m
-
-		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
-			return m.Map(ctx, v.Interface())
+		mapper := e.m
+		e.m = MapFunc(func(ctx context.Context, _ interface{}) (interface{}, error) {
+			return mapper.Map(ctx, v.Interface())
 		})
 
-		n := e.conf.threadCount
-		if n <= 0 {
-			n = DefaultThreadCount
-
-			if n < 1 {
-				// Even if the default was set to less than one, we want to ensure it is at least one.
-				n = 1
-			}
-
-			// Now, make sure that the thread count used in this engine is the same as used here.
-			e.conf.threadCount = n
-		}
-
-		return e.run(ctx, Range{End: n})
+		return e.run(ctx, Range{
+			End: e.threadCount(),
+		})
 
 	case reflect.Slice, reflect.Array:
-		m := e.m
-		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
+		mapper := e.m
+		e.m = MapFunc(func(ctx context.Context, in interface{}) (interface{}, error) {
 			r := in.(Range)
 
-			return m.Map(ctx, v.Slice3(r.Start, r.End, r.End).Interface())
+			return mapper.Map(ctx, v.Slice3(r.Start, r.End, r.End).Interface())
 		})
 
-		return e.run(ctx, Range{End: v.Len()})
+		return e.run(ctx, Range{
+			End: v.Len(),
+		})
 
 	case reflect.Map:
 		// We extract and freeze a slice of mapkeys, so that there is a canonical list for all map calls.
 		keys := v.MapKeys()
 
-		// get the slice type for []<MapKeyType>
+		// get a slice type for []<MapKeyType>
 		typ := reflect.SliceOf(v.Type().Key())
 
-		m := e.m
-		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
+		mapper := e.m
+		e.m = MapFunc(func(ctx context.Context, in interface{}) (interface{}, error) {
 			r := in.(Range)
 
 			// Here, we build the slice that we will pass in,
@@ -277,15 +263,17 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 			// Since there is non-trivial work necessary to convert the slice types,
 			// and we are already splitting the work load through our MapReduce engine,
 			// we can do this []reflect.Value -> []<MapKeyType> as a part of the map call process,
-			// so that the costs are spread across each map the same as the rest of the mapper work.
+			// so that the costs are spread across each mapper the same as the rest of the mapper work.
 			for _, key := range keys[r.Start:r.End] {
 				sl = reflect.Append(sl, key)
 			}
 
-			return m.Map(ctx, sl.Interface())
+			return mapper.Map(ctx, sl.Interface())
 		})
 
-		return e.run(ctx, Range{End: len(keys)})
+		return e.run(ctx, Range{
+			End: len(keys),
+		})
 	}
 
 	// As a final sanity check, we panic with bad type here.
@@ -302,5 +290,5 @@ func Run(ctx context.Context, mapper Mapper, data interface{}, opts ...Option) <
 		reducer = r
 	}
 
-	return New(mapper, reducer, opts...).Run(ctx, data)
+	return New(mapper, reducer).Run(ctx, data, opts...)
 }

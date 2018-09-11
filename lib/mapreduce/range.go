@@ -15,7 +15,7 @@ func (r Range) String() string {
 	return fmt.Sprintf("[%d,%d)", r.Start, r.End)
 }
 
-// Width returns the number of whole number integers within the Range.
+// Width returns the number of integers within the Range.
 func (r Range) Width() int {
 	return r.End - r.Start
 }
