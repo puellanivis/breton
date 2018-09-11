@@ -2,6 +2,7 @@ package mapreduce
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"runtime"
 )
@@ -109,6 +110,10 @@ func New(mapper Mapper, reducer Reducer, opts ...Option) *MapReduce {
 
 // Map invokes the Mapper defined for the MapReduce.
 func (mr *MapReduce) Map(ctx context.Context, in interface{}) (interface{}, error) {
+	if mr.m == nil {
+		return nil, errors.New("MapReduce object does not define a Map")
+	}
+
 	return mr.m.Map(ctx, in)
 }
 
