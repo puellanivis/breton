@@ -2,10 +2,9 @@ package mapreduce
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
-
-	"github.com/pkg/errors"
 )
 
 type engine struct {
