@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"runtime"
+	"sync"
 )
 
 // DefaultThreadCount defines the number of threads the mapreduce package will assume it should use.
@@ -82,6 +83,8 @@ func (r ReduceFunc) Reduce(ctx context.Context, in interface{}) error {
 // Such a MapReduce still implements Reducer,
 // but will not actually do anything within the Reduce call.
 type MapReduce struct {
+	mu sync.Mutex
+
 	m Mapper
 	r Reducer
 
@@ -110,21 +113,41 @@ func New(mapper Mapper, reducer Reducer, opts ...Option) *MapReduce {
 
 // Map invokes the Mapper defined for the MapReduce.
 func (mr *MapReduce) Map(ctx context.Context, in interface{}) (interface{}, error) {
-	if mr.m == nil {
+	mr.mu.Lock()
+	m := mr.m
+	mr.mu.Unlock()
+
+	if m == nil {
 		return nil, errors.New("MapReduce object does not define a Map")
 	}
 
-	return mr.m.Map(ctx, in)
+	return m.Map(ctx, in)
 }
 
 // Reduce invokes the Reducer defined for the MapReduce,
 // or simply returns nil if no Reducer was defined.
 func (mr *MapReduce) Reduce(ctx context.Context, in interface{}) error {
-	if mr.r == nil {
+	mr.mu.Lock()
+	r := mr.r
+	mr.mu.Unlock()
+
+	if r == nil {
 		return nil
 	}
 
-	return mr.r.Reduce(ctx, in)
+	return r.Reduce(ctx, in)
+}
+
+func (mr *MapReduce) engine() *engine {
+	mr.mu.Lock()
+	defer mr.mu.Unlock()
+
+	return &engine{
+		m: mr.m,
+		r: mr.r,
+
+		conf: mr.conf,
+	}
 }
 
 // Run performs the MapReduce over the data given, overriding any defaults with the given Options.
@@ -180,12 +203,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		panic("bad type passed to MapReduce.Run")
 	}
 
-	e := &engine{
-		m: mr.m,
-		r: mr.r,
-
-		conf: mr.conf,
-	}
+	e := mr.engine()
 
 	for _, opt := range opts {
 		_ = opt(&e.conf)
@@ -210,8 +228,10 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 			panic("channel as input to mapper must allow receive")
 		}
 
+		m := e.m
+
 		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
-			return mr.Map(ctx, v.Interface())
+			return m.Map(ctx, v.Interface())
 		})
 
 		n := e.conf.threadCount
@@ -230,10 +250,11 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		return e.run(ctx, Range{End: n})
 
 	case reflect.Slice, reflect.Array:
+		m := e.m
 		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
 			r := in.(Range)
 
-			return mr.Map(ctx, v.Slice3(r.Start, r.End, r.End).Interface())
+			return m.Map(ctx, v.Slice3(r.Start, r.End, r.End).Interface())
 		})
 
 		return e.run(ctx, Range{End: v.Len()})
@@ -245,6 +266,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 		// get the slice type for []<MapKeyType>
 		typ := reflect.SliceOf(v.Type().Key())
 
+		m := e.m
 		e.m = MapFunc(func(ctx context.Context, in interface{}) (out interface{}, err error) {
 			r := in.(Range)
 
@@ -260,7 +282,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 				sl = reflect.Append(sl, key)
 			}
 
-			return mr.Map(ctx, sl.Interface())
+			return m.Map(ctx, sl.Interface())
 		})
 
 		return e.run(ctx, Range{End: len(keys)})
