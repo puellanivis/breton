@@ -115,13 +115,8 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	}
 
 	var mu sync.Mutex
-	chain := make(chan struct{})
-	close(chain)
 
-	unordered := make(chan struct{})
-	if !e.conf.ordered {
-		close(unordered)
-	}
+	chain := newExecChain(e.conf.ordered)
 
 	var wg sync.WaitGroup
 	wg.Add(mappers)
@@ -140,9 +135,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		}
 		last = end
 
-		ready := chain
-		chain = make(chan struct{})
-		next := chain
+		ready, next := chain.next()
 
 		go func() {
 			defer func() {
@@ -173,7 +166,6 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 			}
 
 			select {
-			case <-unordered:
 			case <-ready:
 			case <-ctx.Done():
 				return
