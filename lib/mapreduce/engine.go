@@ -46,7 +46,7 @@ func quickError(err error) <-chan error {
 
 func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	width := rng.Width()
-	if width <= 0 {
+	if width < 1 {
 		return quickError(errors.New("bad range"))
 	}
 
@@ -56,7 +56,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	pool := make(chan struct{}, threads)
 
 	mappers := e.conf.mapperCount
-	if mappers <= 0 {
+	if mappers < 1 {
 		mappers = threads
 	}
 
@@ -81,7 +81,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 			// Here, the math is simple, but the code is complex.
 			//
 			// Our mapper count is ⌈width ÷ stripe⌉,
-			// but integer math on computers gives ⌊width / stripe⌋.
+			// but integer math on computers gives ⌊width ÷ stripe⌋.
 			mappers = width / stripe
 
 			if width%stripe > 0 {
