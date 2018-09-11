@@ -30,7 +30,7 @@ func TestName(t *testing.T) {
 	}
 }
 
-type structTest struct{
+type structTest struct {
 	Alpha string `flag:",default=10" desc:"a first element with a default"`
 
 	Beta  string `                desc:"a flag with name from field and no default"`

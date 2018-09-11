@@ -1,7 +1,9 @@
 package socketfiles
 
 import (
+	"context"
 	"net"
+	"net/url"
 	"testing"
 )
 
@@ -53,5 +55,50 @@ func TestUDPName(t *testing.T) {
 	if s := uri.String(); s != expected {
 		t.Errorf("got a bad URI, was expecting, but got:\n\t%v\n\t%v", expected, s)
 	}
+}
 
+func TestUDPNoSlashSlash(t *testing.T) {
+	uri, err := url.Parse("udp:0.0.0.0:0")
+	if err != nil {
+		t.Fatal("unexpected error parsing constant URL")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	_, err = (&udpHandler{}).Open(ctx, uri)
+	if err == nil {
+		t.Fatal("expected Open(\"udp:0.0.0.0:0\") to error, it did not")
+	}
+	cancel()
+
+	ctx, cancel = context.WithCancel(context.Background())
+
+	_, err = (&udpHandler{}).Create(ctx, uri)
+	if err == nil {
+		t.Fatal("expected Open(\"udp:0.0.0.0:0\") to error, it did not")
+	}
+	cancel()
+}
+
+func TestUDPEmptyURL(t *testing.T) {
+	uri, err := url.Parse("udp:")
+	if err != nil {
+		t.Fatal("unexpected error parsing constant URL")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	_, err = (&udpHandler{}).Open(ctx, uri)
+	if err == nil {
+		t.Fatal("expected Open(\"udp:0.0.0.0:0\") to error, it did not")
+	}
+	cancel()
+
+	ctx, cancel = context.WithCancel(context.Background())
+
+	_, err = (&udpHandler{}).Create(ctx, uri)
+	if err == nil {
+		t.Fatal("expected Open(\"udp:0.0.0.0:0\") to error, it did not")
+	}
+	cancel()
 }

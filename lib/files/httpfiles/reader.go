@@ -83,9 +83,7 @@ func (r *reader) Close() error {
 	for range r.loading {
 	}
 
-	if r.err != nil {
-		return r.err
-	}
+	// Ignore the r.err, as it is a request-scope error, and not relevant to closing.
 
 	if c, ok := r.r.(io.Closer); ok {
 		return c.Close()
@@ -102,10 +100,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		cl = http.DefaultClient
 	}
 
-	req := &http.Request{
-		URL:    uri,
-		Header: make(http.Header),
-	}
+	req := newHTTPRequest(http.MethodGet, uri)
 	req = req.WithContext(ctx)
 
 	if ua, ok := getUserAgent(ctx); ok {

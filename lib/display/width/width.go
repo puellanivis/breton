@@ -36,6 +36,8 @@ func guessWidth(r rune) int {
 }
 
 // Rune returns the expected display width of a rune. The logic largely matches what PuTTY does.
+//
+// Control Characters other than NUL return a value of -1.
 func Rune(r rune) int {
 	switch width.LookupRune(r).Kind() {
 	case width.EastAsianAmbiguous, width.Neutral:
@@ -51,9 +53,18 @@ func Rune(r rune) int {
 }
 
 // String returns the sum display length expected of the string given.
-func String(s string) (n int) {
+//
+// If any rune in the string returns a width of -1, this function will return -1.
+func String(s string) int {
+	var n int
+
 	for _, r := range s {
-		n += Rune(r)
+		w := Rune(r)
+		if w < 0 {
+			return -1
+		}
+
+		n += w
 	}
 
 	return n

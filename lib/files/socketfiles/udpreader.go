@@ -43,6 +43,10 @@ func (r *udpReader) uri() *url.URL {
 }
 
 func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+	if uri.Host == "" {
+		return nil, &os.PathError{"open", uri.String(), errInvalidURL}
+	}
+
 	r := new(udpReader)
 
 	laddr, err := net.ResolveUDPAddr("udp", uri.Host)

@@ -38,14 +38,16 @@ func (r *tcpReader) Close() error {
 	for range r.loading {
 	}
 
-	if r.err != nil {
-		return r.err
-	}
+	// Ignore the r.err, as it is a request-scope error, and not relevant to closing.
 
 	return r.conn.Close()
 }
 
 func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+	if uri.Host == "" {
+		return nil, &os.PathError{"open", uri.String(), errInvalidURL}
+	}
+
 	laddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
 		return nil, &os.PathError{"open", uri.String(), err}

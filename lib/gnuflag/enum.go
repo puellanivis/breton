@@ -61,7 +61,10 @@ func (e *enumValue) ValueType() string {
 
 // String returns the canonical valid string of the value of the EnumValue.
 func (e *enumValue) String() string {
-	val := *e.val
+	var val int
+	if e.val != nil {
+		val = *e.val
+	}
 
 	if val < 0 || val >= len(e.valid) {
 		return strconv.Itoa(val)
@@ -75,6 +78,10 @@ var ErrBadEnum = errors.New("bad enum value")
 
 // Set attempts to set the given EnumValue to the given string.
 func (e *enumValue) Set(s string) error {
+	if e.val == nil {
+		return errors.New("uninitialized enum usage")
+	}
+
 	if s == "" {
 		*e.val = 0
 		return nil
@@ -91,6 +98,10 @@ func (e *enumValue) Set(s string) error {
 
 // Get returns the value of the enum flag. Expect it to be of type int.
 func (e *enumValue) Get() interface{} {
+	if e.val == nil {
+		return 0
+	}
+
 	return *e.val
 }
 

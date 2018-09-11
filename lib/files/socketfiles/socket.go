@@ -3,12 +3,17 @@ package socketfiles
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/url"
 	"strconv"
 	"syscall"
 
 	"golang.org/x/net/ipv4"
+)
+
+var (
+	errInvalidURL = errors.New("invalid url")
 )
 
 // URL query field keys.
