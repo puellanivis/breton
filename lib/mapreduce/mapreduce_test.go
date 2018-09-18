@@ -9,12 +9,6 @@ import (
 	"testing"
 )
 
-type RuneSlice []rune
-
-func (a RuneSlice) Len() int           { return len(a) }
-func (a RuneSlice) Less(i, j int) bool { return a[i] < a[j] }
-func (a RuneSlice) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-
 type StringCollector struct {
 	a [][]string
 }
@@ -25,6 +19,10 @@ func (sc *StringCollector) Reduce(ctx context.Context, in interface{}) error {
 	sc.a = append(sc.a, a)
 
 	return nil
+}
+
+func (sc *StringCollector) reset() {
+	sc.a = nil
 }
 
 var (
@@ -64,7 +62,7 @@ func TestMapReduceOverSlice(t *testing.T) {
 	ctx := context.Background()
 
 	f := func(n int) {
-		sc.a = nil
+		sc.reset()
 
 		for err := range mr.Run(ctx, testInput, WithThreadCount(n), WithMapperCount(n), WithOrdering(false)) {
 			t.Errorf("%d mappers: %+v", n, err)
@@ -75,14 +73,14 @@ func TestMapReduceOverSlice(t *testing.T) {
 			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
 		}
 
-		var r RuneSlice
+		var r []rune
 		for _, v := range sc.a {
 			for _, s := range v {
 				r = append(r, []rune(s)...)
 			}
 		}
 
-		sort.Sort(r)
+		sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
 		got := string(r)
 
 		if got != testString {
@@ -135,7 +133,7 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 
 	t.Log("ordering=false", maxN, sc.a)
 
-	var r RuneSlice
+	var r []rune
 	for _, v := range sc.a {
 		for _, s := range v {
 			r = append(r, []rune(s)...)
@@ -171,16 +169,18 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 func TestMapReduceOverMap(t *testing.T) {
 	DefaultThreadCount = -1
 
-	sc := &StringCollector{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sc := new(StringCollector)
 	mr := New(stringReceiver, sc, WithThreadCount(1))
-	ctx := context.Background()
 
 	m := make(map[string]int)
 	for i, v := range testInput {
 		m[v] = i
 	}
 
-	f := func(n int) {
+	for n := -1; n <= len(testInput)+1; n++ {
 		sc.a = nil
 
 		for err := range mr.Run(ctx, m, WithThreadCount(n), WithMapperCount(n)) {
@@ -192,24 +192,20 @@ func TestMapReduceOverMap(t *testing.T) {
 			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
 		}
 
-		var r RuneSlice
+		var r []rune
 		for _, v := range sc.a {
 			for _, s := range v {
 				r = append(r, []rune(s)...)
 			}
 		}
 
-		sort.Sort(r)
+		sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
 		got := string(r)
 
 		if got != testString {
 			t.Logf("mapreduce(map[string]int, %d): %q", n, got)
 			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
 		}
-	}
-
-	for i := -1; i <= len(testInput)+1; i++ {
-		f(i)
 	}
 }
 
@@ -244,14 +240,14 @@ func TestMapReduceOverChannel(t *testing.T) {
 			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
 		}
 
-		var r RuneSlice
+		var r []rune
 		for _, v := range sc.a {
 			for _, s := range v {
 				r = append(r, []rune(s)...)
 			}
 		}
 
-		sort.Sort(r)
+		sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
 		got := string(r)
 
 		if got != testString {

@@ -8,9 +8,7 @@ import (
 )
 
 type engine struct {
-	m    Mapper
-	r    Reducer
-	conf config
+	MapReduce
 }
 
 // threadCount returns the valid threadCount value to use based on configuration.

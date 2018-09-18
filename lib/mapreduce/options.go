@@ -15,12 +15,19 @@ type config struct {
 }
 
 // Option defines a function that applies a setting or value to a MapReduce configuration.
-type Option func(c *config)
+type Option func(mr *MapReduce) Option
 
 // WithThreadCount sets the number of threads (concurrently executing goroutines) that the MapReduce should use.
 func WithThreadCount(num int) Option {
-	return func(c *config) {
-		c.threadCount = num
+	return func(mr *MapReduce) Option {
+		mr.mu.Lock()
+		defer mr.mu.Unlock()
+
+		save := mr.conf.threadCount
+
+		mr.conf.threadCount = num
+
+		return WithThreadCount(save)
 	}
 }
 
@@ -28,8 +35,29 @@ func WithThreadCount(num int) Option {
 //
 // This value MAY BE overridden, if stripe size values are also specified.
 func WithMapperCount(num int) Option {
-	return func(c *config) {
-		c.mapperCount = num
+	return func(mr *MapReduce) Option {
+		mr.mu.Lock()
+		defer mr.mu.Unlock()
+
+		save := mr.conf.mapperCount
+
+		mr.conf.mapperCount = num
+
+		return WithMapperCount(save)
+	}
+}
+
+func withStripeSize(size int) Option {
+	return func(mr *MapReduce) Option {
+		mr.mu.Lock()
+		defer mr.mu.Unlock()
+
+		save := mr.conf.stripeSize
+
+		// We encode a minimum limit as a negative value.
+		mr.conf.stripeSize = size
+
+		return withStripeSize(save)
 	}
 }
 
@@ -50,10 +78,7 @@ func WithMinStripeSize(size int) Option {
 		size = 0
 	}
 
-	return func(c *config) {
-		// We encode a minimum limit as a negative value.
-		c.stripeSize = -size
-	}
+	return withStripeSize(-size)
 }
 
 // WithMaxStripeSize sets the maximum number of elements that each Mapper will receive.
@@ -73,9 +98,7 @@ func WithMaxStripeSize(size int) Option {
 		size = 0
 	}
 
-	return func(c *config) {
-		c.stripeSize = size
-	}
+	return withStripeSize(size)
 }
 
 // WithOrdering sets the ordering state of the Reduce phase.
@@ -89,7 +112,14 @@ func WithMaxStripeSize(size int) Option {
 // even if all other Mappers complete before the first Mapper completes,
 // the Reduce for the first Mapper WILL execute first.
 func WithOrdering(ordered bool) Option {
-	return func(c *config) {
-		c.ordered = ordered
+	return func(mr *MapReduce) Option {
+		mr.mu.Lock()
+		defer mr.mu.Unlock()
+
+		save := mr.conf.ordered
+
+		mr.conf.ordered = ordered
+
+		return WithOrdering(save)
 	}
 }

@@ -105,7 +105,7 @@ func New(mapper Mapper, reducer Reducer, opts ...Option) *MapReduce {
 	}
 
 	for _, opt := range opts {
-		opt(&mr.conf)
+		opt(mr)
 	}
 
 	return mr
@@ -143,10 +143,12 @@ func (mr *MapReduce) engine() *engine {
 	defer mr.mu.Unlock()
 
 	return &engine{
-		m: mr.m,
-		r: mr.r,
+		MapReduce: MapReduce{
+			m: mr.m,
+			r: mr.r,
 
-		conf: mr.conf,
+			conf: mr.conf,
+		},
 	}
 }
 
@@ -203,7 +205,7 @@ func (mr *MapReduce) Run(ctx context.Context, data interface{}, opts ...Option) 
 	e := mr.engine()
 
 	for _, opt := range opts {
-		opt(&e.conf)
+		opt(&e.MapReduce)
 	}
 
 	if r, ok := data.(Range); ok {

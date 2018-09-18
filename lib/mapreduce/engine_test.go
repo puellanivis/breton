@@ -46,17 +46,18 @@ func TestEngine(t *testing.T) {
 	}
 
 	mr := &TestMR{}
-
 	e := &engine{
-		m: mr,
-		r: mr,
+		MapReduce: MapReduce{
+			m: mr,
+			r: mr,
+		},
 	}
 
-	WithOrdering(true)(&e.conf)
-	WithThreadCount(1)(&e.conf)
+	WithOrdering(true)(&e.MapReduce)
+	WithThreadCount(1)(&e.MapReduce)
 
-	f := func(n int) {
-		WithMapperCount(n)(&e.conf)
+	for n := 0; n <= rng.Width(); n++ {
+		WithMapperCount(n)(&e.MapReduce)
 
 		mr.reset()
 
@@ -72,10 +73,6 @@ func TestEngine(t *testing.T) {
 			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(mr.ranges))
 		}
 	}
-
-	for i := 0; i <= rng.Width(); i++ {
-		f(i)
-	}
 }
 
 func TestEngineMaxSliceSize(t *testing.T) {
@@ -90,18 +87,20 @@ func TestEngineMaxSliceSize(t *testing.T) {
 	mr := &TestMR{}
 
 	e := &engine{
-		m: mr,
-		r: mr,
+		MapReduce: MapReduce{
+			m: mr,
+			r: mr,
+		},
 	}
 
 	testWidth := 7
 
-	WithOrdering(true)(&e.conf)
-	WithThreadCount(1)(&e.conf)
-	WithMaxStripeSize(testWidth)(&e.conf)
+	WithOrdering(true)(&e.MapReduce)
+	WithThreadCount(1)(&e.MapReduce)
+	WithMaxStripeSize(testWidth)(&e.MapReduce)
 
 	f := func(n int) {
-		WithMapperCount(n)(&e.conf)
+		WithMapperCount(n)(&e.MapReduce)
 
 		mr.reset()
 
@@ -137,18 +136,20 @@ func TestEngineMinSliceSize(t *testing.T) {
 	mr := &TestMR{}
 
 	e := &engine{
-		m: mr,
-		r: mr,
+		MapReduce: MapReduce{
+			m: mr,
+			r: mr,
+		},
 	}
 
 	testWidth := 7
 
-	WithOrdering(true)(&e.conf)
-	WithThreadCount(1)(&e.conf)
-	WithMinStripeSize(testWidth)(&e.conf)
+	WithOrdering(true)(&e.MapReduce)
+	WithThreadCount(1)(&e.MapReduce)
+	WithMinStripeSize(testWidth)(&e.MapReduce)
 
 	f := func(n int) {
-		WithMapperCount(n)(&e.conf)
+		WithMapperCount(n)(&e.MapReduce)
 
 		mr.reset()
 
@@ -213,14 +214,16 @@ func TestEngineStall(t *testing.T) {
 	mr := &TestMRBlock{}
 
 	e := &engine{
-		m: mr,
-		r: mr,
+		MapReduce: MapReduce{
+			m: mr,
+			r: mr,
+		},
 	}
 
 	n := 4
 
-	WithThreadCount(n)(&e.conf)
-	WithMapperCount(n)(&e.conf)
+	WithThreadCount(n)(&e.MapReduce)
+	WithMapperCount(n)(&e.MapReduce)
 
 	var errCount int
 	for err := range e.run(ctx, rng) {
