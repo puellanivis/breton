@@ -155,17 +155,28 @@ if [[ -n $REGISTRY ]]; then
 	REGISTRY="${REGISTRY%/}/"
 fi
 
+if ! which git > /dev/null 2>&1 ; then
+	echo Please install git >&2
+	exit 1
+fi
+
+inrepo=$(git rev-parse --is-inside-work-tree 2>&1)
+if [[ $? -eq 0 ]]; then
+	case "$inrepo" in
+	fatal*) BRANCH="local" ;;
+	false*) BRANCH="local" ;;
+	*)
+		HASHID=$(git rev-parse --short HEAD)
+		HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
+		BRANCH=$(basename ${HEAD})
+	;;
+	esac
+else
+	BRANCH="local"
+fi
+
 if [[ -z $IMAGE ]]; then
 	IMAGE="${USER}/masher"
-
-	if ! which git > /dev/null 2>&1 ; then
-		echo Please install git >&2
-		exit 1
-	fi
-
-	HASHID=$(git rev-parse --short HEAD)
-	HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
-	BRANCH=$(basename ${HEAD})
 
 	IMAGE="${IMAGE}:latest"
 fi
