@@ -74,6 +74,10 @@ func (fs *filesystem) getHost(uri *url.URL) *host {
 		hostkey: fs.knownhosts,
 	}
 
+	if fs.hosts == nil {
+		fs.hosts = make(map[string]*host)
+	}
+
 	fs.hosts[hash] = h
 
 	return h
