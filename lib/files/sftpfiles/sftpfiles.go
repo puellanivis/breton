@@ -44,10 +44,16 @@ func init() {
 			// TODO(puellanivis): remove this debug message
 			fmt.Println("!!! knownhosts:", filename, err)
 		}
+	} else {
+		// TODO(puellanivis): remove this debug message
+		fmt.Println("!!! no homedir:", err)
 	}
 
 	if name, err := user.CurrentUsername(); err == nil {
 		username = name
+	} else {
+		// TODO(puellanivis): remove this debug message
+		fmt.Println("!!! no username:", err)
 	}
 
 	files.RegisterScheme(fs, "sftp", "scp")
