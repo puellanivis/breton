@@ -40,6 +40,9 @@ func init() {
 
 		if cb, err := knownhosts.New(filename); err == nil {
 			fs.knownhosts = cb
+		} else {
+			// TODO(puellanivis): remove this debug message
+			fmt.Println("!!! knownhosts:" filename, err)
 		}
 	}
 
