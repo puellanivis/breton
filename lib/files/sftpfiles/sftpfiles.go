@@ -42,7 +42,7 @@ func init() {
 			fs.knownhosts = cb
 		} else {
 			// TODO(puellanivis): remove this debug message
-			fmt.Println("!!! knownhosts:" filename, err)
+			fmt.Println("!!! knownhosts:", filename, err)
 		}
 	}
 
