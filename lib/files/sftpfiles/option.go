@@ -28,6 +28,7 @@ func withAuths(auths []ssh.AuthMethod) files.Option {
 	}
 }
 
+// WithAuth includes an arbitrary ssh.AuthMethod to be used for authentication during the ssh.Dial.
 func WithAuth(auth ssh.AuthMethod) files.Option {
 	type authAdder interface {
 		AddAuth(ssh.AuthMethod) []ssh.AuthMethod
@@ -44,6 +45,9 @@ func WithAuth(auth ssh.AuthMethod) files.Option {
 	}
 }
 
+// IgnoreHostKeys specifies whether the ssh.Dial should ignore host keys during connection. Using this is insecure!
+//
+// Setting this to true will override any existing WithHostKey option, unless it is later turned off.
 func IgnoreHostKeys(state bool) files.Option {
 	type ignorer interface {
 		IgnoreHostKeys(bool) bool
@@ -77,6 +81,11 @@ func withHostKeyCallback(cb ssh.HostKeyCallback, algos []string) files.Option {
 	}
 }
 
+// WithHostKey defines an expected host key from the authorized key format specified in the sshd(8) man page.
+//
+// i.e. ssh-keytype BASE64BLOB string-comment
+//
+// If the IgnoreHostKeys option has been set, then this option will be ignored.
 func WithHostKey(hostkey []byte) files.Option {
 	type hostkeySetter interface {
 		SetHostKeyCallback(ssh.HostKeyCallback) ssh.HostKeyCallback

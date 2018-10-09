@@ -7,11 +7,13 @@ import (
 	"golang.org/x/crypto/ssh/agent"
 )
 
+// Agent defines a connection to an ssh-agent through net.Conn.
 type Agent struct {
 	conn net.Conn
 	agent.Agent
 }
 
+// Close implements io.Closer
 func (a *Agent) Close() error {
 	return a.conn.Close()
 }
