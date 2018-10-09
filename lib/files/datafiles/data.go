@@ -2,11 +2,12 @@
 package datafiles
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
+	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -25,6 +26,15 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
 }
 
+type withHeaders struct {
+	files.Reader
+	header http.Header
+}
+
+func (w *withHeaders) Header() http.Header {
+	return w.header
+}
+
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
 		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
@@ -38,35 +48,41 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		}
 	}
 
-	data := []byte(path)
-
-	var isBase64 bool
-
-	fields := bytes.SplitN(data, []byte(","), 2)
-	if len(fields) < 2 {
+	i := strings.IndexByte(path, ',')
+	if i < 0 {
 		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
 	}
 
-	data = fields[1]
-	for _, meta := range bytes.Split(fields[0], []byte(";")) {
-		switch string(meta) {
-		case "base64":
-			isBase64 = true
-		}
+	contentType, data := path[:i], []byte(path[i+1:])
+	var isBase64 bool
+
+	if strings.HasSuffix(contentType, ";base64") {
+		contentType = strings.TrimSuffix(contentType, ";base64")
+		isBase64 = true
 	}
+
+	if contentType == "" {
+		contentType = "text/plain;charset=US-ASCII"
+	}
+
+	header := make(http.Header)
+	header.Set("Content-Type", contentType)
 
 	if isBase64 {
 		b := make([]byte, b64enc.DecodedLen(len(data)))
 
 		n, err := b64enc.Decode(b, data)
 		if err != nil {
-			return nil, &os.PathError{"open", uri.String(), err}
+			return nil, &os.PathError{"decode", uri.String(), err}
 		}
 
 		data = b[:n]
 	}
 
-	return wrapper.NewReaderFromBytes(data, uri, time.Now()), nil
+	return &withHeaders{
+		Reader: wrapper.NewReaderFromBytes(data, uri, time.Now()),
+		header: header,
+	}, nil
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
