@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/sftp"
 )
 
-type reader struct {
+type writer struct {
 	name string
 	*host
 
@@ -19,11 +19,11 @@ type reader struct {
 	err     error
 }
 
-func (r *reader) Name() string {
+func (r *writer) Name() string {
 	return r.name
 }
 
-func (r *reader) Stat() (os.FileInfo, error) {
+func (r *writer) Stat() (os.FileInfo, error) {
 	for range r.loading {
 	}
 
@@ -34,7 +34,7 @@ func (r *reader) Stat() (os.FileInfo, error) {
 	return r.f.Stat()
 }
 
-func (r *reader) Read(b []byte) (n int, err error) {
+func (r *writer) Write(b []byte) (n int, err error) {
 	for range r.loading {
 	}
 
@@ -42,10 +42,10 @@ func (r *reader) Read(b []byte) (n int, err error) {
 		return 0, r.err
 	}
 
-	return r.f.Read(b)
+	return r.f.Write(b)
 }
 
-func (r *reader) Seek(offset int64, whence int) (int64, error) {
+func (r *writer) Seek(offset int64, whence int) (int64, error) {
 	for range r.loading {
 	}
 
@@ -56,7 +56,14 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 	return r.f.Seek(offset, whence)
 }
 
-func (r *reader) Close() error {
+func (r *writer) Sync() error {
+	for range r.loading {
+	}
+
+	return nil
+}
+
+func (r *writer) Close() error {
 	for range r.loading {
 	}
 
@@ -67,21 +74,29 @@ func (r *reader) Close() error {
 	return r.f.Close()
 }
 
-func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+type noopSync struct {
+	*sftp.File
+}
+
+func (f noopSync) Sync() error {
+	return nil
+}
+
+func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	h := fs.getHost(uri)
 
 	if cl := h.GetClient(); cl != nil {
-		f, err := cl.Open(uri.Path)
+		f, err := cl.Create(uri.Path)
 		if err != nil {
-			return nil, &os.PathError{"open", uri.String(), err}
+			return nil, &os.PathError{"create", uri.String(), err}
 		}
 
-		return f, nil
+		return noopSync{f}, nil
 	}
 
 	loading := make(chan struct{})
 
-	r := &reader{
+	r := &writer{
 		name: uri.String(),
 		host: h,
 
@@ -104,9 +119,9 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 			return
 		}
 
-		f, err := cl.Open(uri.Path)
+		f, err := cl.Create(uri.Path)
 		if err != nil {
-			r.err = &os.PathError{"open", uri.String(), err}
+			r.err = &os.PathError{"create", uri.String(), err}
 			return
 		}
 

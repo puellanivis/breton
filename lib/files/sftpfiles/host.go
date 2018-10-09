@@ -1,6 +1,7 @@
 package sftpfiles
 
 import (
+	"errors"
 	"net/url"
 	"sync"
 
@@ -22,7 +23,14 @@ type host struct {
 	hostkeyAlgos  []string
 }
 
-func (h *host) GetClient() (*sftp.Client, error) {
+func (h *host) GetClient() *sftp.Client {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	return h.cl
+}
+
+func (h *host) ConnectClient() (*sftp.Client, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -30,38 +38,23 @@ func (h *host) GetClient() (*sftp.Client, error) {
 		return h.cl, nil
 	}
 
-	uri := h.uri
-
-	if uri.Port() == "" {
-		clone := *uri
-		uri = &clone
-
-		uri.Host = uri.Host + ":22"
-	}
-
 	hk := h.hostkey
 	if h.ignoreHostkey {
 		hk = ssh.InsecureIgnoreHostKey()
 	}
 
-	auths := h.cloneAuths()
-
-	var user string
-
-	switch {
-	case uri.User != nil:
-		user = uri.User.Username()
-
-		if pw, ok := uri.User.Password(); ok {
-			auths = append(auths, ssh.Password(pw))
-		}
-
-	default:
-		user = username
+	if hk == nil {
+		return nil, errors.New("no hostkey validation defined")
 	}
 
-	conn, err := ssh.Dial("tcp", uri.Host, &ssh.ClientConfig{
-		User:              user,
+	auths := h.cloneAuths()
+
+	if pw, ok := h.uri.User.Password(); ok {
+		auths = append(auths, ssh.Password(pw))
+	}
+
+	conn, err := ssh.Dial("tcp", h.uri.Host, &ssh.ClientConfig{
+		User:              h.uri.User.Username(),
 		Auth:              auths,
 		HostKeyCallback:   hk,
 		HostKeyAlgorithms: h.hostkeyAlgos,
@@ -85,8 +78,8 @@ func (h *host) cloneAuths() []ssh.AuthMethod {
 	return append([]ssh.AuthMethod{}, h.auths...)
 }
 
-// AddAuths adds the given ssh.AuthMethod to the authorization methods for the host, and return the previous value.
-func (h *host) AddAuths(auth ssh.AuthMethod) []ssh.AuthMethod {
+// AddAuth adds the given ssh.AuthMethod to the authorization methods for the host, and return the previous value.
+func (h *host) AddAuth(auth ssh.AuthMethod) []ssh.AuthMethod {
 	return h.SetAuths(append(h.cloneAuths(), auth))
 }
 
