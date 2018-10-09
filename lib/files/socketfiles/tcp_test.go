@@ -1,8 +1,11 @@
 package socketfiles
 
 import (
+	"context"
 	"net"
+	"net/url"
 	"testing"
+	"time"
 )
 
 func TestTCPName(t *testing.T) {
@@ -52,5 +55,70 @@ func TestTCPName(t *testing.T) {
 	if s := uri.String(); s != expected {
 		t.Errorf("got a bad URI, was expecting, but got:\n\t%v\n\t%v", expected, s)
 	}
+}
 
+func TestTCPNoSlashSlash(t *testing.T) {
+	uri, err := url.Parse("tcp:0.0.0.0:0")
+	if err != nil {
+		t.Fatal("unexpected error parsing constant URL")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+
+	r, err := (&tcpHandler{}).Open(ctx, uri)
+	if err == nil {
+		r.Close()
+		t.Fatal("expected Open(\"tcp:0.0.0.0:0\") to error, it did not")
+	}
+	cancel()
+
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+
+	w, err := (&tcpHandler{}).Create(ctx, uri)
+	if err == nil {
+		w.Close()
+		t.Fatal("expected Create(\"tcp:0.0.0.0:0\") to error, it did not")
+	}
+	cancel()
+}
+
+func TestTCPEmptyURL(t *testing.T) {
+	uri, err := url.Parse("tcp:")
+	if err != nil {
+		t.Fatal("unexpected error parsing constant URL")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+
+	r, err := (&tcpHandler{}).Open(ctx, uri)
+	if err == nil {
+		r.Close()
+		t.Fatal("expected Open(\"tcp:\") to error, it did not")
+	}
+	cancel()
+
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
+
+	w, err := (&tcpHandler{}).Create(ctx, uri)
+	if err == nil {
+		w.Close()
+		t.Fatal("expected Create(\"tcp:\") to error, it did not")
+	}
+	cancel()
+}
+
+func TestTCPBadLocalAddr(t *testing.T) {
+	uri, err := url.Parse("tcp://0.0.0.0:0?localaddr=invalid")
+	if err != nil {
+		t.Fatal("unexpected error parsing constant URL")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+
+	w, err := (&tcpHandler{}).Create(ctx, uri)
+	if err == nil {
+		w.Close()
+		t.Fatal("exepcted Create(\"tcp://0.0.0.0:0?localaddr=invalid\") to error, it did not")
+	}
+	cancel()
 }

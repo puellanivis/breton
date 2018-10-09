@@ -17,6 +17,10 @@ func TestZeroWidth(t *testing.T) {
 		t.Error("Expected that Mn characters are width == 0, but width of COMBINING MACRON gave instead ", l)
 
 	}
+
+	if l := Rune('\x00'); l != 0 {
+		t.Error("Expected that NUL is width == 0, but gave instead ", l)
+	}
 }
 
 func TestSingleWidth(t *testing.T) {
@@ -38,6 +42,10 @@ func TestSingleWidth(t *testing.T) {
 
 	if l := Rune('\u0298'); l != 1 {
 		t.Error("Expected that East_Asian_Neutral characters are width == 1, but width of LATIN LETTER BILABIAL CLICK  gave instead ", l)
+	}
+
+	if l := Rune('\u00AD'); l != 1 {
+		t.Error("Expected that SOFT HYPHEN is width == 1, but gave instead ", l)
 	}
 }
 
@@ -70,7 +78,13 @@ func TestAmbiguousWidth(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
-	if l := String("þ\u0300á\u0398"); l != 3 {
+	testString := "þ\u0300á\u0398"
+
+	if l := String(testString); l != 3 {
 		t.Error("Test string had wrong length, expected 3, got ", l)
+	}
+
+	if l := String(testString + "\b"); l != -1 {
+		t.Error("Test string with control code should return width -1, got ", l)
 	}
 }

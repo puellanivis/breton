@@ -3,12 +3,18 @@ package socketfiles
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/url"
 	"strconv"
 	"syscall"
 
 	"golang.org/x/net/ipv4"
+)
+
+var (
+	errInvalidURL = errors.New("invalid url")
+	errInvalidIP  = errors.New("invalid ip")
 )
 
 // URL query field keys.
@@ -195,6 +201,9 @@ func getInt(q url.Values, field string) (val int, specified bool, err error) {
 func buildAddr(addr, portString string) (ip net.IP, port int, err error) {
 	if addr != "" {
 		ip = net.ParseIP(addr)
+		if ip == nil {
+			return nil, 0, errInvalidIP
+		}
 	}
 
 	if portString != "" {

@@ -84,6 +84,10 @@ func (w *tcpWriter) uri() *url.URL {
 }
 
 func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+	if uri.Host == "" {
+		return nil, &os.PathError{"create", uri.String(), errInvalidURL}
+	}
+
 	w := &tcpWriter{
 		closed: make(chan struct{}),
 	}

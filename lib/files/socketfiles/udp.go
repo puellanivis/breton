@@ -129,8 +129,8 @@ func (w *udpWriter) Close() error {
 		close(w.closed)
 	}
 
-	if err := w.conn.Close(); err != nil {
-		return err
+	if err2 := w.conn.Close(); err == nil {
+		err = err2
 	}
 
 	return err
@@ -221,6 +221,10 @@ func (w *udpWriter) uri() *url.URL {
 }
 
 func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+	if uri.Host == "" {
+		return nil, &os.PathError{"create", uri.String(), errInvalidURL}
+	}
+
 	w := &udpWriter{
 		closed: make(chan struct{}),
 	}

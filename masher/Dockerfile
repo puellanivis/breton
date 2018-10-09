@@ -1,6 +1,6 @@
 # This docker image builds upon the golang docker image to support a more automated process for building
 # golang files.
-FROM golang:1.11beta2
+FROM golang:1.11.1
 MAINTAINER Cassondra Foesch <puellanivis@gmail.com>
 
 # Setup various environment and argument settings which define the building environment.
@@ -12,13 +12,15 @@ WORKDIR /go/src
 # Update pkgs and pull down:
 #  * bsdtar		(bsdtar handles .zip files as well as tarballs)
 #  * ca-certificates	(some packages may be retrieved by https)
-#  * lintian            (a linter for debian package definitions)
 #  * fakeroot           (used by debian package builder)
+#  * lintian            (a linter for debian package definitions)
+#  * tzdata             (timezone data)
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	bsdtar \
 	ca-certificates \
-	lintian \
 	fakeroot \
+	lintian \
+	tzdata \
 	&& apt-get clean \
 	&& rm -rf /var/lib/apt/lists/*
 
@@ -27,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # However, I don’t think it makes sense to use older version, better to be able to advance as it releases outselves.
 RUN mkdir -p /usr/bin && \
 	cd /usr && \
-	curl -sS -L https://github.com/google/protobuf/releases/download/v3.6.0/protoc-3.6.0-linux-x86_64.zip | \
+	curl -sS -L https://github.com/google/protobuf/releases/download/v3.6.1/protoc-3.6.1-linux-x86_64.zip | \
 		bsdtar -xvf- --exclude=readme.txt && \
 	chmod 755 /usr/bin/protoc
 
