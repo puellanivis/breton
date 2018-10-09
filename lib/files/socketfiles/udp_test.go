@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"testing"
+	"time"
 )
 
 func TestUDPName(t *testing.T) {
@@ -63,7 +64,7 @@ func TestUDPNoSlashSlash(t *testing.T) {
 		t.Fatal("unexpected error parsing constant URL")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 
 	_, err = (&udpHandler{}).Open(ctx, uri)
 	if err == nil {
@@ -71,11 +72,11 @@ func TestUDPNoSlashSlash(t *testing.T) {
 	}
 	cancel()
 
-	ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 
 	_, err = (&udpHandler{}).Create(ctx, uri)
 	if err == nil {
-		t.Fatal("expected Open(\"udp:0.0.0.0:0\") to error, it did not")
+		t.Fatal("expected Create(\"udp:0.0.0.0:0\") to error, it did not")
 	}
 	cancel()
 }
@@ -86,19 +87,35 @@ func TestUDPEmptyURL(t *testing.T) {
 		t.Fatal("unexpected error parsing constant URL")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 
 	_, err = (&udpHandler{}).Open(ctx, uri)
 	if err == nil {
-		t.Fatal("expected Open(\"udp:0.0.0.0:0\") to error, it did not")
+		t.Fatal("expected Open(\"udp:\") to error, it did not")
 	}
 	cancel()
 
-	ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 
 	_, err = (&udpHandler{}).Create(ctx, uri)
 	if err == nil {
-		t.Fatal("expected Open(\"udp:0.0.0.0:0\") to error, it did not")
+		t.Fatal("expected Create(\"udp:\") to error, it did not")
+	}
+	cancel()
+}
+
+func TestUDPBadLocalAddr(t *testing.T) {
+	uri, err := url.Parse("udp://0.0.0.0:0?localaddr=invalid")
+	if err != nil {
+		t.Fatal("unexpected error parsing constant URL")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+
+	w, err := (&udpHandler{}).Create(ctx, uri)
+	if err == nil {
+		w.Close()
+		t.Fatal("exepcted Create(\"udp://0.0.0.0:0?localaddr=invalid\") to error, it did not")
 	}
 	cancel()
 }

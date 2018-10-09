@@ -44,9 +44,19 @@ func (r *reader) Close() error {
 }
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	laddr, err := net.ResolveUnixAddr("unix", uri.Path)
+	path := uri.Path
+	if path == "" {
+		path = uri.Opaque
+	}
+
+	laddr, err := net.ResolveUnixAddr("unix", path)
 	if err != nil {
 		return nil, err
+	}
+
+	fixURL := &url.URL{
+		Scheme: "unix",
+		Opaque: laddr.String(),
 	}
 
 	l, err := net.ListenUnix("unix", laddr)
@@ -54,15 +64,10 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, err
 	}
 
-	// Maybe we asked for an arbitrary port,
-	// so we need to update the uri’s Path value with the actual address from the listener.
-	listenURL := *uri
-	listenURL.Path = l.Addr().String()
-
 	loading := make(chan struct{})
 	r := &reader{
 		loading: loading,
-		Info:    wrapper.NewInfo(&listenURL, 0, time.Now()),
+		Info:    wrapper.NewInfo(fixURL, 0, time.Now()),
 	}
 
 	go func() {

@@ -19,6 +19,8 @@ func init() {
 	files.RegisterScheme(&handler{}, "data")
 }
 
+var b64enc = base64.StdEncoding
+
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
 }
@@ -54,9 +56,9 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	}
 
 	if isBase64 {
-		b := make([]byte, len(data))
+		b := make([]byte, b64enc.DecodedLen(len(data)))
 
-		n, err := base64.StdEncoding.Decode(b, data)
+		n, err := b64enc.Decode(b, data)
 		if err != nil {
 			return nil, &os.PathError{"open", uri.String(), err}
 		}
