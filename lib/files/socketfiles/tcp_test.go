@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"testing"
+	"time"
 )
 
 func TestTCPName(t *testing.T) {
@@ -62,19 +63,21 @@ func TestTCPNoSlashSlash(t *testing.T) {
 		t.Fatal("unexpected error parsing constant URL")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 
-	_, err = (&tcpHandler{}).Open(ctx, uri)
+	r, err := (&tcpHandler{}).Open(ctx, uri)
 	if err == nil {
+		r.Close()
 		t.Fatal("expected Open(\"tcp:0.0.0.0:0\") to error, it did not")
 	}
 	cancel()
 
-	ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 
-	_, err = (&tcpHandler{}).Create(ctx, uri)
+	w, err := (&tcpHandler{}).Create(ctx, uri)
 	if err == nil {
-		t.Fatal("expected Open(\"tcp:0.0.0.0:0\") to error, it did not")
+		w.Close()
+		t.Fatal("expected Create(\"tcp:0.0.0.0:0\") to error, it did not")
 	}
 	cancel()
 }
@@ -85,19 +88,37 @@ func TestTCPEmptyURL(t *testing.T) {
 		t.Fatal("unexpected error parsing constant URL")
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 
-	_, err = (&tcpHandler{}).Open(ctx, uri)
+	r, err := (&tcpHandler{}).Open(ctx, uri)
 	if err == nil {
-		t.Fatal("expected Open(\"tcp:0.0.0.0:0\") to error, it did not")
+		r.Close()
+		t.Fatal("expected Open(\"tcp:\") to error, it did not")
 	}
 	cancel()
 
-	ctx, cancel = context.WithCancel(context.Background())
+	ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 
-	_, err = (&tcpHandler{}).Create(ctx, uri)
+	w, err := (&tcpHandler{}).Create(ctx, uri)
 	if err == nil {
-		t.Fatal("expected Open(\"tcp:0.0.0.0:0\") to error, it did not")
+		w.Close()
+		t.Fatal("expected Create(\"tcp:\") to error, it did not")
+	}
+	cancel()
+}
+
+func TestTCPBadLocalAddr(t *testing.T) {
+	uri, err := url.Parse("tcp://0.0.0.0:0?localaddr=invalid")
+	if err != nil {
+		t.Fatal("unexpected error parsing constant URL")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+
+	w, err := (&tcpHandler{}).Create(ctx, uri)
+	if err == nil {
+		w.Close()
+		t.Fatal("exepcted Create(\"tcp://0.0.0.0:0?localaddr=invalid\") to error, it did not")
 	}
 	cancel()
 }
