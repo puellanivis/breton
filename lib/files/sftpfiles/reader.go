@@ -60,7 +60,9 @@ func (r *reader) Close() error {
 	for range r.loading {
 	}
 
-	if r.f == nil {
+	if r.err != nil {
+		// This error is a connection error, and request-scoped.
+		// So, in the context of Close, the error is irrelevant, so we ignore it.
 		return nil
 	}
 
