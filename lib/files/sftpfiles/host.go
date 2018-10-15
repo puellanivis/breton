@@ -28,9 +28,15 @@ type Host struct {
 // NewHost returns a Host defined for a specific host/user based on a given URL.
 // No connection is made, and no authentication or hostkey validation is defined.
 func NewHost(uri *url.URL) *Host {
+	var auths []ssh.AuthMethod
+
+	if pw, ok := uri.User.Password(); ok {
+		auths = append(auths, ssh.Password(pw))
+	}
+
 	uri = &url.URL{
 		Host: uri.Host,
-		User: uri.User,
+		User: url.User(uri.User.Username()),
 	}
 
 	if uri.Port() == "" {
@@ -42,7 +48,8 @@ func NewHost(uri *url.URL) *Host {
 	}
 
 	return &Host{
-		uri: uri,
+		uri:   uri,
+		auths: auths,
 	}
 }
 
@@ -117,15 +124,9 @@ func (h *Host) Connect() (*sftp.Client, error) {
 		return nil, errors.New("no hostkey validation defined")
 	}
 
-	auths := h.cloneAuths()
-
-	if pw, ok := h.uri.User.Password(); ok {
-		auths = append(auths, ssh.Password(pw))
-	}
-
 	conn, err := ssh.Dial("tcp", h.uri.Host, &ssh.ClientConfig{
 		User:              h.uri.User.Username(),
-		Auth:              auths,
+		Auth:              h.cloneAuths(),
 		HostKeyCallback:   hk,
 		HostKeyAlgorithms: h.hostkeyAlgos,
 	})
