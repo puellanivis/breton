@@ -96,13 +96,13 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = &os.PathError{"connect", uri.Host, ctx.Err()}
+			r.err = &os.PathError{"connect", h.Name(), ctx.Err()}
 			return
 		}
 
 		cl, err := h.Connect()
 		if err != nil {
-			r.err = &os.PathError{"connect", uri.Host, err}
+			r.err = &os.PathError{"connect", h.Name(), err}
 			return
 		}
 

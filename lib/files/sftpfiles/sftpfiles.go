@@ -75,7 +75,7 @@ func (fs *filesystem) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, er
 
 	cl, err := h.Connect()
 	if err != nil {
-		return nil, &os.PathError{"connect", uri.String(), err}
+		return nil, &os.PathError{"connect", h.Name(), err}
 	}
 
 	fi, err := cl.ReadDir(uri.Path)
