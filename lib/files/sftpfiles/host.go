@@ -60,8 +60,9 @@ func NewHost(uri *url.URL) *Host {
 	}
 
 	uri = &url.URL{
-		Host: uri.Host,
-		User: user,
+		Scheme: "sftp",
+		Host:   uri.Host,
+		User:   user,
 	}
 
 	if uri.Port() == "" {
@@ -170,9 +171,14 @@ func (h *Host) cloneAuths() []ssh.AuthMethod {
 	return append([]ssh.AuthMethod{}, h.auths...)
 }
 
+// addAuths is an internal convenience func to add any number of auths.
+func (h *Host) addAuths(auths ...ssh.AuthMethod) []ssh.AuthMethod {
+	return h.SetAuths(append(h.cloneAuths(), auths...))
+}
+
 // AddAuth adds the given ssh.AuthMethod to the authorization methods for the Host, and return the previous value.
 func (h *Host) AddAuth(auth ssh.AuthMethod) []ssh.AuthMethod {
-	return h.SetAuths(append(h.cloneAuths(), auth))
+	return h.addAuths(auth)
 }
 
 // SetAuths sets the slice of ssh.AuthMethod on the Host, and returns the previous value.

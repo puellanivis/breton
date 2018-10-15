@@ -62,7 +62,7 @@ func (fs *filesystem) getHost(uri *url.URL) *Host {
 		return h
 	}
 
-	_ = h.SetAuths(append([]ssh.AuthMethod{}, fs.auths...))
+	_ = h.addAuths(fs.auths...)
 	_, _ = h.SetHostKeyCallback(fs.knownhosts, nil)
 
 	fs.hosts[key] = h
