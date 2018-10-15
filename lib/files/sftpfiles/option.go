@@ -92,7 +92,7 @@ func WithHostKey(hostkey []byte) files.Option {
 
 	key, _, _, _, err := ssh.ParseAuthorizedKey(hostkey)
 	if err != nil {
-		return func(f files.File) (files.Option, error) {
+		return func(_ files.File) (files.Option, error) {
 			return nil, err
 		}
 	}
