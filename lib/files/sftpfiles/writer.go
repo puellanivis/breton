@@ -11,7 +11,7 @@ import (
 )
 
 type writer struct {
-	name string
+	uri *url.URL
 	*Host
 
 	loading <-chan struct{}
@@ -19,59 +19,61 @@ type writer struct {
 	err     error
 }
 
-func (r *writer) Name() string {
-	return r.name
+func (w *writer) Name() string {
+	return w.uri.String()
 }
 
-func (r *writer) Stat() (os.FileInfo, error) {
-	for range r.loading {
+func (w *writer) Stat() (os.FileInfo, error) {
+	for range w.loading {
 	}
 
-	if r.err != nil {
-		return nil, r.err
+	if w.err != nil {
+		return nil, w.err
 	}
 
-	return r.f.Stat()
+	return w.f.Stat()
 }
 
-func (r *writer) Write(b []byte) (n int, err error) {
-	for range r.loading {
+func (w *writer) Write(b []byte) (n int, err error) {
+	for range w.loading {
 	}
 
-	if r.err != nil {
-		return 0, r.err
+	if w.err != nil {
+		return 0, w.err
 	}
 
-	return r.f.Write(b)
+	return w.f.Write(b)
 }
 
-func (r *writer) Seek(offset int64, whence int) (int64, error) {
-	for range r.loading {
+func (w *writer) Seek(offset int64, whence int) (int64, error) {
+	for range w.loading {
 	}
 
-	if r.err != nil {
-		return 0, r.err
+	if w.err != nil {
+		return 0, w.err
 	}
 
-	return r.f.Seek(offset, whence)
+	return w.f.Seek(offset, whence)
 }
 
-func (r *writer) Sync() error {
-	for range r.loading {
+func (w *writer) Sync() error {
+	for range w.loading {
 	}
 
 	return nil
 }
 
-func (r *writer) Close() error {
-	for range r.loading {
+func (w *writer) Close() error {
+	for range w.loading {
 	}
 
-	if r.f == nil {
+	if w.err != nil {
+		// This error is a connection error, and request-scoped.
+		// So, in the context of Close, the error is irrelevant, so we ignore it.
 		return nil
 	}
 
-	return r.f.Close()
+	return w.f.Close()
 }
 
 type noopSync struct {
@@ -96,8 +98,12 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 
 	loading := make(chan struct{})
 
-	r := &writer{
-		name: uri.String(),
+	fixURL := *uri
+	fixURL.Host = h.uri.Host
+	fixURL.User = h.uri.User
+
+	w := &writer{
+		uri:  &fixURL,
 		Host: h,
 
 		loading: loading,
@@ -109,24 +115,24 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = &os.PathError{"connect", h.Name(), ctx.Err()}
+			w.err = &os.PathError{"connect", h.Name(), ctx.Err()}
 			return
 		}
 
 		cl, err := h.Connect()
 		if err != nil {
-			r.err = &os.PathError{"connect", h.Name(), err}
+			w.err = &os.PathError{"connect", h.Name(), err}
 			return
 		}
 
 		f, err := cl.Create(uri.Path)
 		if err != nil {
-			r.err = &os.PathError{"create", uri.String(), err}
+			w.err = &os.PathError{"create", w.Name(), err}
 			return
 		}
 
-		r.f = f
+		w.f = f
 	}()
 
-	return r, nil
+	return w, nil
 }

@@ -11,7 +11,7 @@ import (
 )
 
 type reader struct {
-	name string
+	uri *url.URL
 	*Host
 
 	loading <-chan struct{}
@@ -20,7 +20,7 @@ type reader struct {
 }
 
 func (r *reader) Name() string {
-	return r.name
+	return r.uri.String()
 }
 
 func (r *reader) Stat() (os.FileInfo, error) {
@@ -83,8 +83,12 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 
 	loading := make(chan struct{})
 
+	fixURL := *uri
+	fixURL.Host = h.uri.Host
+	fixURL.User = h.uri.User
+
 	r := &reader{
-		name: uri.String(),
+		uri:  &fixURL,
 		Host: h,
 
 		loading: loading,
@@ -108,7 +112,7 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 
 		f, err := cl.Open(uri.Path)
 		if err != nil {
-			r.err = &os.PathError{"open", uri.String(), err}
+			r.err = &os.PathError{"open", r.Name(), err}
 			return
 		}
 

@@ -80,7 +80,11 @@ func (fs *filesystem) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, er
 
 	fi, err := cl.ReadDir(uri.Path)
 	if err != nil {
-		return nil, &os.PathError{"readdir", uri.String(), err}
+		fixURL := *uri
+		fixURL.Host = h.uri.Host
+		fixURL.User = h.uri.User
+
+		return nil, &os.PathError{"readdir", fixURL.String(), err}
 	}
 
 	return fi, nil
