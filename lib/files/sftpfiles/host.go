@@ -60,7 +60,7 @@ func NewHost(uri *url.URL) *Host {
 	}
 
 	uri = &url.URL{
-		Scheme: "sftp",
+		Scheme: "ssh",
 		Host:   uri.Host,
 		User:   user,
 	}
