@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"sync"
 
+	"github.com/puellanivis/breton/lib/os/user"
+
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
@@ -25,26 +27,45 @@ type Host struct {
 	hostkeyAlgos  []string
 }
 
+var (
+	userInit    sync.Once
+	defaultUser *url.Userinfo
+)
+
+func getUser() *url.Userinfo {
+	userInit.Do(func() {
+		name, err := user.CurrentUsername()
+		if err != nil {
+			return
+		}
+
+		defaultUser = url.User(name)
+	})
+
+	return defaultUser
+}
+
 // NewHost returns a Host defined for a specific host/user based on a given URL.
 // No connection is made, and no authentication or hostkey validation is defined.
 func NewHost(uri *url.URL) *Host {
 	var auths []ssh.AuthMethod
 
-	if pw, ok := uri.User.Password(); ok {
-		auths = append(auths, ssh.Password(pw))
+	user := getUser()
+	if uri.User != nil {
+		user = url.User(uri.User.Username())
+
+		if pw, ok := uri.User.Password(); ok {
+			auths = append(auths, ssh.Password(pw))
+		}
 	}
 
 	uri = &url.URL{
 		Host: uri.Host,
-		User: url.User(uri.User.Username()),
+		User: user,
 	}
 
 	if uri.Port() == "" {
 		uri.Host += ":22"
-	}
-
-	if uri.User == nil {
-		uri.User = url.User(username)
 	}
 
 	return &Host{

@@ -25,8 +25,6 @@ type filesystem struct {
 	hosts map[string]*Host
 }
 
-var username string
-
 func (fs *filesystem) lazyInit() {
 	if agent, err := GetAgent(); err == nil && agent != nil {
 		fs.agent = agent
@@ -39,10 +37,6 @@ func (fs *filesystem) lazyInit() {
 		if cb, err := knownhosts.New(filename); err == nil {
 			fs.knownhosts = cb
 		}
-	}
-
-	if name, err := user.CurrentUsername(); err == nil {
-		username = name
 	}
 }
 
