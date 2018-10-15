@@ -6,10 +6,10 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func noopOption() (files.Option, error) {
+func noopOption() files.Option {
 	return func(_ files.File) (files.Option, error) {
-		return noopOption()
-	}, nil
+		return noopOption(), nil
+	}
 }
 
 func withAuths(auths []ssh.AuthMethod) files.Option {
@@ -20,7 +20,7 @@ func withAuths(auths []ssh.AuthMethod) files.Option {
 	return func(f files.File) (files.Option, error) {
 		h, ok := f.(authSetter)
 		if !ok {
-			return noopOption()
+			return noopOption(), nil
 		}
 
 		save := h.SetAuths(auths)
@@ -37,7 +37,7 @@ func WithAuth(auth ssh.AuthMethod) files.Option {
 	return func(f files.File) (files.Option, error) {
 		h, ok := f.(authAdder)
 		if !ok {
-			return noopOption()
+			return noopOption(), nil
 		}
 
 		save := h.AddAuth(auth)
@@ -49,15 +49,14 @@ func WithAuth(auth ssh.AuthMethod) files.Option {
 //
 // Setting this to true will override any existing WithHostKey option, unless it is later turned off.
 func IgnoreHostKeys(state bool) files.Option {
-	type ignorer interface {
+	type hostkeyIgnorer interface {
 		IgnoreHostKeys(bool) bool
 	}
 
 	return func(f files.File) (files.Option, error) {
-		h, ok := f.(ignorer)
-
+		h, ok := f.(hostkeyIgnorer)
 		if !ok {
-			return noopOption()
+			return noopOption(), nil
 		}
 
 		save := h.IgnoreHostKeys(state)
@@ -73,7 +72,7 @@ func withHostKeyCallback(cb ssh.HostKeyCallback, algos []string) files.Option {
 	return func(f files.File) (files.Option, error) {
 		h, ok := f.(hostkeySetter)
 		if !ok {
-			return noopOption()
+			return noopOption(), nil
 		}
 
 		saveHK, saveAlgos := h.SetHostKeyCallback(cb, algos)
