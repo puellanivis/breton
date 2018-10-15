@@ -103,7 +103,7 @@ func (h *Host) Close() error {
 	return h.close()
 }
 
-func (h *Host) getClient() *sftp.Client {
+func (h *Host) client() *sftp.Client {
 	if h.cl == nil {
 		return nil
 	}
@@ -125,7 +125,7 @@ func (h *Host) GetClient() *sftp.Client {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	return h.getClient()
+	return h.client()
 }
 
 // Connect either returns the currently connected Client, or makes a new connection based on Host.
@@ -133,7 +133,7 @@ func (h *Host) Connect() (*sftp.Client, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if cl := h.getClient(); cl != nil {
+	if cl := h.client(); cl != nil {
 		return cl, nil
 	}
 
