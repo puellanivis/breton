@@ -99,8 +99,8 @@ func (h *Host) GetClient() *sftp.Client {
 	return h.getClient()
 }
 
-// ConnectClient either returns the currently connected Client, or makes a new connection based on Host.
-func (h *Host) ConnectClient() (*sftp.Client, error) {
+// Connect either returns the currently connected Client, or makes a new connection based on Host.
+func (h *Host) Connect() (*sftp.Client, error) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 

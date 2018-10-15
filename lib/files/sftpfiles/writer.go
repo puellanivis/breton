@@ -113,7 +113,7 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 			return
 		}
 
-		cl, err := h.ConnectClient()
+		cl, err := h.Connect()
 		if err != nil {
 			r.err = &os.PathError{"connect", uri.Host, err}
 			return

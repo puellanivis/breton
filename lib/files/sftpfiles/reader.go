@@ -100,7 +100,7 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 			return
 		}
 
-		cl, err := h.ConnectClient()
+		cl, err := h.Connect()
 		if err != nil {
 			r.err = &os.PathError{"connect", uri.Host, err}
 			return

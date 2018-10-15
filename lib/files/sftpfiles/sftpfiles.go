@@ -79,7 +79,7 @@ func (fs *filesystem) getHost(uri *url.URL) *Host {
 func (fs *filesystem) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	h := fs.getHost(uri)
 
-	cl, err := h.ConnectClient()
+	cl, err := h.Connect()
 	if err != nil {
 		return nil, &os.PathError{"connect", uri.String(), err}
 	}
