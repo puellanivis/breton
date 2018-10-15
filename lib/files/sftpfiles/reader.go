@@ -12,7 +12,7 @@ import (
 
 type reader struct {
 	name string
-	*host
+	*Host
 
 	loading <-chan struct{}
 	f       *sftp.File
@@ -85,7 +85,7 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 
 	r := &reader{
 		name: uri.String(),
-		host: h,
+		Host: h,
 
 		loading: loading,
 	}

@@ -22,7 +22,7 @@ type filesystem struct {
 	knownhosts ssh.HostKeyCallback
 
 	mu    sync.Mutex
-	hosts map[string]*host
+	hosts map[string]*Host
 }
 
 var username string
@@ -48,42 +48,28 @@ func (fs *filesystem) lazyInit() {
 
 func init() {
 	fs := &filesystem{
-		hosts: make(map[string]*host),
+		hosts: make(map[string]*Host),
 	}
 
 	files.RegisterScheme(fs, "sftp", "scp")
 }
 
-func (fs *filesystem) getHost(uri *url.URL) *host {
+func (fs *filesystem) getHost(uri *url.URL) *Host {
 	fs.once.Do(fs.lazyInit)
 
-	uri = &url.URL{
-		Host: uri.Host,
-		User: uri.User,
-	}
-
-	if uri.Port() == "" {
-		uri.Host += ":22"
-	}
-
-	if uri.User == nil {
-		uri.User = url.User(username)
-	}
+	h := NewHost(uri)
 
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
-	key := uri.String()
+	key := h.Name()
 
 	if h := fs.hosts[key]; h != nil {
 		return h
 	}
 
-	h := &host{
-		uri:     uri,
-		auths:   append([]ssh.AuthMethod{}, fs.auths...),
-		hostkey: fs.knownhosts,
-	}
+	_ = h.SetAuths(append([]ssh.AuthMethod{}, fs.auths...))
+	_, _ = h.SetHostKeyCallback(fs.knownhosts, nil)
 
 	fs.hosts[key] = h
 

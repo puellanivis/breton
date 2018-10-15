@@ -12,7 +12,7 @@ import (
 
 type writer struct {
 	name string
-	*host
+	*Host
 
 	loading <-chan struct{}
 	f       *sftp.File
@@ -98,7 +98,7 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 
 	r := &writer{
 		name: uri.String(),
-		host: h,
+		Host: h,
 
 		loading: loading,
 	}
