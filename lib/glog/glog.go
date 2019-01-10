@@ -283,16 +283,16 @@ func (l *loggingT) output(s severity, buf *bytes.Buffer, file string, line int, 
 
 		switch s {
 		case fatalLog:
-			l.file[fatalLog].Write(data)
+			_, _ = l.file[fatalLog].Write(data)
 			fallthrough
 		case errorLog:
-			l.file[errorLog].Write(data)
+			_, _ = l.file[errorLog].Write(data)
 			fallthrough
 		case warningLog:
-			l.file[warningLog].Write(data)
+			_, _ = l.file[warningLog].Write(data)
 			fallthrough
 		case infoLog:
-			l.file[infoLog].Write(data)
+			_, _ = l.file[infoLog].Write(data)
 		}
 	}
 
@@ -318,7 +318,7 @@ func (l *loggingT) output(s severity, buf *bytes.Buffer, file string, line int, 
 
 		for log := fatalLog; log >= infoLog; log-- {
 			if f := l.file[log]; f != nil { // Can be nil if -logtostderr is set.
-				f.Write(trace)
+				_, _ = f.Write(trace)
 			}
 		}
 

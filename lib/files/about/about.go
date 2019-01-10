@@ -24,7 +24,7 @@ func init() {
 }
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
+	return nil, files.PathError("create", uri.String(), os.ErrInvalid)
 }
 
 type fn func() ([]byte, error)
@@ -100,7 +100,7 @@ func about() ([]byte, error) {
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
+		return nil, files.PathError("open", uri.String(), os.ErrInvalid)
 	}
 
 	path := uri.Path
@@ -110,12 +110,12 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 	f, ok := aboutMap[path]
 	if !ok {
-		return nil, &os.PathError{"open", uri.String(), os.ErrNotExist}
+		return nil, files.PathError("open", uri.String(), os.ErrNotExist)
 	}
 
 	data, err := f()
 	if err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	return wrapper.NewReaderFromBytes(data, uri, time.Now()), nil
@@ -123,7 +123,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
+		return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 	}
 
 	path := uri.Path
@@ -132,16 +132,16 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 	}
 
 	if f, ok := aboutMap[path]; !ok {
-		return nil, &os.PathError{"readdir", uri.String(), os.ErrNotExist}
+		return nil, files.PathError("readdir", uri.String(), os.ErrNotExist)
 
 	} else if f != nil {
 		if _, err := f(); err != nil {
-			return nil, &os.PathError{"readdir", uri.String(), err}
+			return nil, files.PathError("readdir", uri.String(), err)
 		}
 	}
 
 	if path != "about" && path != "" {
-		return nil, &os.PathError{"readdir", uri.String(), syscall.ENOTDIR}
+		return nil, files.PathError("readdir", uri.String(), syscall.ENOTDIR)
 	}
 
 	var list []string

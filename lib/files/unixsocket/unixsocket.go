@@ -72,5 +72,5 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
+	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 }

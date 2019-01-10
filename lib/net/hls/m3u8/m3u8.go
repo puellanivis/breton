@@ -10,8 +10,8 @@ type MasterPlaylist struct {
 
 	Media *Media `m3u8:"EXT-X-MEDIA,attribute-list"`
 
-	StreamInf       *StreamInf       `m3u8:"EXT-X-STREAM-INF,attribute-list`
-	IFrameStreamInf *IFrameStreamInf `m3u8:"EXT-X-I-FRAME-STREAM-INF,attribute-list`
+	StreamInf       *StreamInf       `m3u8:"EXT-X-STREAM-INF,attribute-list"`
+	IFrameStreamInf *IFrameStreamInf `m3u8:"EXT-X-I-FRAME-STREAM-INF,attribute-list"`
 
 	SessionData *SessionData `m3u8:"EXT-X-SESSION-DATA,attribute-list"`
 	SessionKey  *Key         `m3u8:"EXT-X-SESSION-KEY,attribute-list"`

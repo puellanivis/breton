@@ -105,20 +105,18 @@ func (s *Scanner) splitter(data []byte, atEOF bool) (advance int, token []byte, 
 		return 0, nil, io.EOF
 	}
 
-	for j := 0; ; advance++ {
-		j = bytes.Index(data[advance:], s.frameDetect)
-		if j < 0 {
-			if atEOF {
-				return len(data), data, nil
-			}
-
-			// need more data
-			return 0, nil, nil
+	j := bytes.Index(data[advance:], s.frameDetect)
+	if j < 0 {
+		if atEOF {
+			return len(data), data, nil
 		}
 
-		advance += j
-		return advance, data[:advance], nil
+		// need more data
+		return 0, nil, nil
 	}
+
+	advance += j
+	return advance, data[:advance], nil
 }
 
 // NewScanner returns a new Scanner, which implements bufio.Scanner.

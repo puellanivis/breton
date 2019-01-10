@@ -19,6 +19,8 @@ func TestCounter(t *testing.T) {
 		//LabelInvalid,
 	}
 
+	_ = LabelInvalid // use label in case it is commented above
+
 	c := Counter("test", "testing counter", WithLabels(labels...))
 
 	c.WithLabels(LabelFoo.WithValue("things")).Inc()
@@ -33,7 +35,10 @@ func TestCounter(t *testing.T) {
 	//c.WithLabels(LabelUndefined.WithValue("undefined!")).Add(math.Phi)
 	//c.WithLabels(LabelUndefined).Add(math.Phi)
 
+	_ = LabelUndefined // use label in case it is commented above
+
 	t.Logf("counter: %#v", c)
 	t.Logf("labels: %#v", c.labels.getList())
 	t.Logf("labelset: %#v", c.labels.set)
+	t.Logf("helpString: %q", c.helpString())
 }

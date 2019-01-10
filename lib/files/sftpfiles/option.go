@@ -86,10 +86,6 @@ func withHostKeyCallback(cb ssh.HostKeyCallback, algos []string) files.Option {
 //
 // If the IgnoreHostKeys option has been set, then this option will be ignored.
 func WithHostKey(hostkey []byte) files.Option {
-	type hostkeySetter interface {
-		SetHostKeyCallback(ssh.HostKeyCallback) ssh.HostKeyCallback
-	}
-
 	key, _, _, _, err := ssh.ParseAuthorizedKey(hostkey)
 	if err != nil {
 		return func(_ files.File) (files.Option, error) {

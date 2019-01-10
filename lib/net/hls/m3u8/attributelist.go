@@ -5,14 +5,11 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
-
-var quotedString = regexp.MustCompile(`^"(?:[^"]+|\\")*"`)
 
 func unmarshalAttributeField(field reflect.Value, f reflect.StructField, val []byte) error {
 	switch field.Interface().(type) {
@@ -332,7 +329,7 @@ func marshalAttributeField(field reflect.Value, f reflect.StructField) (s string
 		s = strconv.FormatFloat(f, 'f', -1, 64)
 
 	case fmt.Stringer:
-		s := v.String()
+		s = v.String()
 		omit = s == ""
 		s = strconv.Quote(s)
 

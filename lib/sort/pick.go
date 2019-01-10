@@ -2,7 +2,7 @@ package sort
 
 type picker func(l, radix, last int) bool
 
-var qsortInstead = qsortSometimes
+var qsortInstead picker = qsortSometimes
 
 func qsortSometimes(l, radix, last int) bool {
 	r := uint(last-radix) + 1

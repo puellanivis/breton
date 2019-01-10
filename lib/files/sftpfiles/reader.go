@@ -75,7 +75,7 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 	if cl := h.GetClient(); cl != nil {
 		f, err := cl.Open(uri.Path)
 		if err != nil {
-			return nil, &os.PathError{"open", uri.String(), err}
+			return nil, files.PathError("open", uri.String(), err)
 		}
 
 		return f, nil
@@ -100,19 +100,19 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = &os.PathError{"connect", h.Name(), ctx.Err()}
+			r.err = files.PathError("connect", h.Name(), ctx.Err())
 			return
 		}
 
 		cl, err := h.Connect()
 		if err != nil {
-			r.err = &os.PathError{"connect", h.Name(), err}
+			r.err = files.PathError("connect", h.Name(), err)
 			return
 		}
 
 		f, err := cl.Open(uri.Path)
 		if err != nil {
-			r.err = &os.PathError{"open", r.Name(), err}
+			r.err = files.PathError("open", r.Name(), err)
 			return
 		}
 

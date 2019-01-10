@@ -107,8 +107,7 @@ func initIntBench(n int) {
 			panic(err)
 		}
 
-		var val int
-		val = int(b[0] & mask)
+		val := int(b[0] & mask)
 
 		for j := 1; j < len(b); j++ {
 			val <<= 8

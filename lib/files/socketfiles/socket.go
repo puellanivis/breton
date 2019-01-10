@@ -90,7 +90,9 @@ func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
 	s.laddr = conn.LocalAddr()
 	s.raddr = conn.RemoteAddr()
 
-	s.throttler.set(q)
+	if err := s.setThrottle(q); err != nil {
+		return err
+	}
 
 	type bufferSizeSetter interface {
 		SetWriteBuffer(int) error

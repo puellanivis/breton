@@ -23,7 +23,7 @@ func init() {
 var b64enc = base64.StdEncoding
 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return nil, &os.PathError{"create", uri.String(), os.ErrInvalid}
+	return nil, files.PathError("create", uri.String(), os.ErrInvalid)
 }
 
 type withHeaders struct {
@@ -37,7 +37,7 @@ func (w *withHeaders) Header() http.Header {
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
+		return nil, files.PathError("open", uri.String(), os.ErrInvalid)
 	}
 
 	path := uri.Path
@@ -50,7 +50,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 	i := strings.IndexByte(path, ',')
 	if i < 0 {
-		return nil, &os.PathError{"open", uri.String(), os.ErrInvalid}
+		return nil, files.PathError("open", uri.String(), os.ErrInvalid)
 	}
 
 	contentType, data := path[:i], []byte(path[i+1:])
@@ -73,7 +73,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 		n, err := b64enc.Decode(b, data)
 		if err != nil {
-			return nil, &os.PathError{"decode", uri.String(), err}
+			return nil, files.PathError("decode", uri.String(), err)
 		}
 
 		data = b[:n]
@@ -86,5 +86,5 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 }
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
+	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 }

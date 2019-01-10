@@ -383,9 +383,7 @@ func (t *traceLocation) Set(value string) error {
 	return nil
 }
 
-func init() {
-	flag.Struct("", &logging.flagT)
-}
+var _ = flag.Struct("", &logging.flagT)
 
 // flagT collects all the flags of the logging setup.
 type flagT struct {

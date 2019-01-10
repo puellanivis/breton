@@ -85,7 +85,7 @@ func (w *tcpWriter) uri() *url.URL {
 
 func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	if uri.Host == "" {
-		return nil, &os.PathError{"create", uri.String(), errInvalidURL}
+		return nil, files.PathError("create", uri.String(), errInvalidURL)
 	}
 
 	w := &tcpWriter{
@@ -94,7 +94,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 	raddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
-		return nil, &os.PathError{"create", uri.String(), err}
+		return nil, files.PathError("create", uri.String(), err)
 	}
 
 	q := uri.Query()
@@ -109,7 +109,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 		laddr.IP, laddr.Port, err = buildAddr(addr, port)
 		if err != nil {
-			return nil, &os.PathError{"create", uri.String(), err}
+			return nil, files.PathError("create", uri.String(), err)
 		}
 	}
 
@@ -122,7 +122,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	}
 
 	if err := withContext(ctx, dail); err != nil {
-		return nil, &os.PathError{"create", uri.String(), err}
+		return nil, files.PathError("create", uri.String(), err)
 	}
 
 	go func() {
@@ -135,7 +135,7 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
 		w.Close()
-		return nil, &os.PathError{"create", uri.String(), err}
+		return nil, files.PathError("create", uri.String(), err)
 	}
 
 	w.updateDelay(1)
@@ -145,5 +145,5 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 }
 
 func (h *tcpHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, &os.PathError{"readdir", uri.String(), os.ErrInvalid}
+	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 }

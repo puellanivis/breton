@@ -46,7 +46,7 @@ func (t *throttler) throttle(scale int) {
 	t.next.Reset(t.delay)
 }
 
-func (t *throttler) set(q url.Values) error {
+func (t *throttler) setThrottle(q url.Values) error {
 	if bitrate, ok, err := getSize(q, FieldMaxBitrate); ok || err != nil {
 		if err != nil {
 			return err

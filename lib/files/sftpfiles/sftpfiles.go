@@ -75,7 +75,7 @@ func (fs *filesystem) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, er
 
 	cl, err := h.Connect()
 	if err != nil {
-		return nil, &os.PathError{"connect", h.Name(), err}
+		return nil, files.PathError("connect", h.Name(), err)
 	}
 
 	fi, err := cl.ReadDir(uri.Path)
@@ -84,7 +84,7 @@ func (fs *filesystem) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, er
 		fixURL.Host = h.uri.Host
 		fixURL.User = h.uri.User
 
-		return nil, &os.PathError{"readdir", fixURL.String(), err}
+		return nil, files.PathError("readdir", fixURL.String(), err)
 	}
 
 	return fi, nil

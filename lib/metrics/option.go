@@ -82,9 +82,9 @@ func WithBuckets(buckets ...float64) Option {
 			panic("metric is not a histogram")
 		}
 
-		save := m.buckets
+		save := m.histogramSettings.buckets
 
-		m.buckets = buckets
+		m.histogramSettings.buckets = buckets
 
 		return WithBuckets(save...)
 	}
@@ -137,9 +137,9 @@ func WithMaxAge(value time.Duration) Option {
 			panic("metric is not a summary")
 		}
 
-		save := m.maxAge
+		save := m.summarySettings.maxAge
 
-		m.maxAge = value
+		m.summarySettings.maxAge = value
 
 		return WithMaxAge(save)
 	}
@@ -157,9 +157,9 @@ func WithAgeBuckets(value uint32) Option {
 			panic("metric is not a summary")
 		}
 
-		save := m.ageBuckets
+		save := m.summarySettings.ageBuckets
 
-		m.ageBuckets = value
+		m.summarySettings.ageBuckets = value
 
 		return WithAgeBuckets(save)
 	}
@@ -177,9 +177,9 @@ func WithBufCap(value uint32) Option {
 			panic("metric is not a summary")
 		}
 
-		save := m.bufCap
+		save := m.summarySettings.bufCap
 
-		m.bufCap = value
+		m.summarySettings.bufCap = value
 
 		return WithBufCap(save)
 	}

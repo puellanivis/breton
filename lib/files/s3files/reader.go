@@ -3,7 +3,6 @@ package s3files
 import (
 	"context"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -21,7 +20,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	req := &s3.GetObjectInput{
@@ -31,7 +30,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 	res, err := cl.GetObjectWithContext(ctx, req)
 	if err != nil {
-		return nil, &os.PathError{"read", uri.String(), err}
+		return nil, files.PathError("read", uri.String(), err)
 	}
 
 	var l int64

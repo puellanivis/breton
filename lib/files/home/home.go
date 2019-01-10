@@ -59,7 +59,7 @@ func Filename(uri *url.URL) (string, error) {
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	filename, err := Filename(uri)
 	if err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	return os.Open(filename)
@@ -68,7 +68,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	filename, err := Filename(uri)
 	if err != nil {
-		return nil, &os.PathError{"create", uri.String(), err}
+		return nil, files.PathError("create", uri.String(), err)
 	}
 
 	return os.Create(filename)
@@ -77,7 +77,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	filename, err := Filename(uri)
 	if err != nil {
-		return nil, &os.PathError{"readdir", uri.String(), err}
+		return nil, files.PathError("readdir", uri.String(), err)
 	}
 
 	return ioutil.ReadDir(filename)

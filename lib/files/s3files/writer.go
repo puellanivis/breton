@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"net/url"
-	"os"
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
@@ -22,7 +21,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	w := wrapper.NewWriter(ctx, uri, func(b []byte) error {
 		cl, err := h.getClient(ctx, bucket)
 		if err != nil {
-			return &os.PathError{"sync", uri.String(), err}
+			return files.PathError("sync", uri.String(), err)
 		}
 
 		req := &s3.PutObjectInput{
@@ -33,7 +32,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 
 		_, err = cl.PutObjectWithContext(ctx, req)
 		if err != nil {
-			return &os.PathError{"sync", uri.String(), err}
+			return files.PathError("sync", uri.String(), err)
 		}
 
 		return nil

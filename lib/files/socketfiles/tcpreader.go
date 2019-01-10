@@ -45,17 +45,17 @@ func (r *tcpReader) Close() error {
 
 func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host == "" {
-		return nil, &os.PathError{"open", uri.String(), errInvalidURL}
+		return nil, files.PathError("open", uri.String(), errInvalidURL)
 	}
 
 	laddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	l, err := net.ListenTCP("tcp", laddr)
 	if err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	// Maybe we asked for an arbitrary port,
@@ -77,13 +77,13 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = &os.PathError{"open", uri.String(), ctx.Err()}
+			r.err = files.PathError("open", uri.String(), ctx.Err())
 			return
 		}
 
 		conn, err := l.AcceptTCP()
 		if err != nil {
-			r.err = &os.PathError{"accept", uri.String(), err}
+			r.err = files.PathError("accept", uri.String(), err)
 			return
 		}
 

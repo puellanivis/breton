@@ -90,7 +90,7 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 	if cl := h.GetClient(); cl != nil {
 		f, err := cl.Create(uri.Path)
 		if err != nil {
-			return nil, &os.PathError{"create", uri.String(), err}
+			return nil, files.PathError("create", uri.String(), err)
 		}
 
 		return noopSync{f}, nil
@@ -115,19 +115,19 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			w.err = &os.PathError{"connect", h.Name(), ctx.Err()}
+			w.err = files.PathError("connect", h.Name(), ctx.Err())
 			return
 		}
 
 		cl, err := h.Connect()
 		if err != nil {
-			w.err = &os.PathError{"connect", h.Name(), err}
+			w.err = files.PathError("connect", h.Name(), err)
 			return
 		}
 
 		f, err := cl.Create(uri.Path)
 		if err != nil {
-			w.err = &os.PathError{"create", w.Name(), err}
+			w.err = files.PathError("create", w.Name(), err)
 			return
 		}
 

@@ -20,7 +20,6 @@ import (
 
 type region struct {
 	region string
-	enc    bool
 
 	sess *session.Session
 	cl   *s3.S3
@@ -107,7 +106,7 @@ func (h *handler) getClient(ctx context.Context, bucket string) (*s3.S3, error) 
 
 func getBucketKey(op string, uri *url.URL) (bucket, key string, err error) {
 	if uri.Host == "" || uri.Path == "" {
-		return "", "", &os.PathError{op, uri.String(), os.ErrInvalid}
+		return "", "", files.PathError(op, uri.String(), os.ErrInvalid)
 	}
 
 	return uri.Host, uri.Path, nil
@@ -115,14 +114,14 @@ func getBucketKey(op string, uri *url.URL) (bucket, key string, err error) {
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host == "" {
-		return nil, &os.PathError{"list", uri.String(), os.ErrInvalid}
+		return nil, files.PathError("list", uri.String(), os.ErrInvalid)
 	}
 
 	bucket, key := uri.Host, strings.TrimPrefix(uri.Path, "/")
 
 	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
-		return nil, &os.PathError{"list", uri.String(), err}
+		return nil, files.PathError("list", uri.String(), err)
 	}
 
 	req := &s3.ListObjectsInput{
@@ -133,7 +132,7 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 
 	res, err := cl.ListObjectsWithContext(ctx, req)
 	if err != nil {
-		return nil, &os.PathError{"list", uri.String(), err}
+		return nil, files.PathError("list", uri.String(), err)
 	}
 
 	var fi []os.FileInfo

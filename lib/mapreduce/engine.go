@@ -97,7 +97,6 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		if stripe < minSize {
 			// We only recalculate mapper count if the stripe size is less than the min stripe size.
 			stripe = minSize
-			extraWork = 0
 
 			// Here, the math is simple, and the code is simple.
 			//

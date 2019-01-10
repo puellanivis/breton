@@ -70,13 +70,13 @@ func Init(cmdname string, versions ...uint) (context.Context, func()) {
 			panic(err)
 		}
 
-		pprof.StartCPUProfile(cpuf)
+		_ = pprof.StartCPUProfile(cpuf)
 
 		AtExit(func() {
 			pprof.StopCPUProfile()
 			cpuf.Close()
 
-			pprof.WriteHeapProfile(memf)
+			_ = pprof.WriteHeapProfile(memf)
 			memf.Close()
 		})
 	}

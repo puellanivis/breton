@@ -6,9 +6,7 @@ func Timestamp(ts uint64) *uint64 {
 }
 
 func decodeTS(b []byte) *uint64 {
-	var ts uint64
-
-	ts = uint64(b[0]>>1) & 0x07
+	ts := uint64(b[0]>>1) & 0x07
 	ts = (ts << 8) | uint64(b[1])
 	ts = (ts << 7) | uint64((b[2]>>1)&0x7F)
 	ts = (ts << 8) | uint64(b[3])

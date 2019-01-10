@@ -5,7 +5,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -13,8 +12,6 @@ import (
 )
 
 type udpReader struct {
-	mu sync.Mutex
-
 	conn *net.UDPConn
 	*wrapper.Info
 	ipSocket
@@ -44,26 +41,26 @@ func (r *udpReader) uri() *url.URL {
 
 func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host == "" {
-		return nil, &os.PathError{"open", uri.String(), errInvalidURL}
+		return nil, files.PathError("open", uri.String(), errInvalidURL)
 	}
 
 	r := new(udpReader)
 
 	laddr, err := net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	q := uri.Query()
 
 	r.conn, err = net.ListenUDP("udp", laddr)
 	if err != nil {
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	if err := r.ipSocket.setForReader(r.conn, q); err != nil {
 		r.conn.Close()
-		return nil, &os.PathError{"open", uri.String(), err}
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
 	r.Info = wrapper.NewInfo(r.uri(), 0, time.Now())

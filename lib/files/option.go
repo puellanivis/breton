@@ -18,17 +18,6 @@ var ErrNotSupported = errors.New("option not supported")
 // after Open() or Create()
 type Option func(File) (Option, error)
 
-// applyOptions is a helper function to apply a range of options on an os.File
-func applyOptions(f File, opts []Option) error {
-	for _, opt := range opts {
-		if _, err := opt(f); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // WithFileMode returns an Option that will set the files.File.Stat().FileMode() to the given os.FileMode.
 func WithFileMode(mode os.FileMode) Option {
 	type chmoder interface {
@@ -63,7 +52,6 @@ type observer interface {
 
 type copyConfig struct {
 	runningTimeout time.Duration
-	bufferSize     int
 	buffer         []byte
 
 	bwScale    float64

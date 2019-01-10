@@ -405,7 +405,9 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 		default:
 			if field.Kind() == reflect.Struct {
-				fs.structVar(name, field)
+				if err := fs.structVar(name, field); err != nil {
+					return err
+				}
 				continue
 			}
 
