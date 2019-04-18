@@ -58,10 +58,10 @@ func HangupChannel() <-chan struct{} {
 func signalHandler(parent context.Context) context.Context {
 	ctx, cancel := context.WithCancel(parent)
 
+	signal.Notify(sigHandler.ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
+
 	go func() {
 		killChan := make(chan struct{}, 3)
-
-		signal.Notify(sigHandler.ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 
 		for sig := range sigHandler.ch {
 			fmt.Fprintln(os.Stderr, "received signal:", sig)
