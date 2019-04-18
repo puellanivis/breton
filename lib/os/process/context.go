@@ -56,6 +56,10 @@ func HangupChannel() <-chan struct{} {
 	return sigHandler.hup.get()
 }
 
+// signalHandler starts a long-lived goroutine, which will run in the background until the process ends.
+// It returns a `context.Context` that will be canceled in the event of a signal being received.
+// It will then continue to listen for more signals,
+// If it receives three signals, then we presume that we are not shutting down properly, and panic with all stacktraces.
 func signalHandler(parent context.Context) context.Context {
 	ctx, cancel := context.WithCancel(parent)
 
