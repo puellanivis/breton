@@ -13,9 +13,10 @@ var atExit struct {
 // AtExit registers a function to be called when `process.Exit` from this package is called.
 //
 // Subsequent calls to AtExit do not overwrite previous calls,
-// and registered functions are executed in stack order, in order to mimic the behavior of `defer`.
+// and registered functions are executed in stack order,
+// in order to mimic the behavior of `defer`.
 //
-// Since AtExit does not hoot into the standard-library `os.Exit`,
+// Since AtExit does not hook into the standard-library `os.Exit`,
 // you must avoid using any function that calls `os.Exit` (most often `Fatal`-type logging methods).
 func AtExit(f func()) {
 	atExit.Lock()
@@ -35,7 +36,8 @@ func runExitFuncs() {
 
 // Exit causes the current program to exit with the given status code.
 //
-// Exit runs the sequence of functions established by `AtExit` and then calls os.Exit with the given status.
+// Exit runs the sequence of functions established by `process.AtExit`,
+// and then calls `os.Exit` with the given status.
 func Exit(status int) {
 	runExitFuncs()
 

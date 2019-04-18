@@ -11,6 +11,7 @@ import (
 	"syscall"
 )
 
+// signaler provides a basic api for channels to support optional signal handling, like for SIGHUP.
 type signaler struct {
 	sync.Once
 	ch chan struct{}
@@ -49,8 +50,8 @@ var sigHandler struct {
 // HangupChannel provides a receiver channel that will notify the caller of when a SIGHUP signal has been received.
 // This signal is often used by daemons to be notified of a request to reload configuration data.
 //
-// Note, that if too many SIGHUPs arrive at once, and the signal handler would block trying to send this notification,
-// then it will treat the signal the same as any other terminating signals.
+// If the signal handler would block trzing to send this notification,
+// then it will treat the signal the same as any other terminating signal.
 func HangupChannel() <-chan struct{} {
 	return sigHandler.hup.get()
 }
@@ -58,11 +59,10 @@ func HangupChannel() <-chan struct{} {
 func signalHandler(parent context.Context) context.Context {
 	ctx, cancel := context.WithCancel(parent)
 
-	signal.Notify(sigHandler.ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
-
 	go func() {
 		killChan := make(chan struct{}, 3)
 
+		signal.Notify(sigHandler.ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGQUIT)
 		for sig := range sigHandler.ch {
 			fmt.Fprintln(os.Stderr, "received signal:", sig)
 
@@ -97,7 +97,7 @@ func signalHandler(parent context.Context) context.Context {
 }
 
 // Context returns a process-level `context.Context`
-// that is cancelled when the program receives any termination signals.
+// that is cancelled when the program receives a termination signal.
 //
 // A process should start a graceful shutdown process once this context is cancelled.
 //
