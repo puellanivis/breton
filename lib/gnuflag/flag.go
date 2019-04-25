@@ -492,9 +492,9 @@ func (f *FlagSet) Args() []string { return f.args }
 // Args returns the non-flag command-line arguments.
 func Args() []string { return CommandLine.args }
 
-func (f *FlagSet) set(flag *Flag, name string) error {
+func (f *FlagSet) set(flag *Flag, name string) {
 	if len(name) < 1 {
-		return nil
+		return
 	}
 
 	if f.formal == nil {
@@ -512,16 +512,15 @@ func (f *FlagSet) set(flag *Flag, name string) error {
 		msg += fmt.Sprintf("longflag redefined: %q", name)
 
 		fmt.Fprintln(f.Output(), msg)
-		return errors.New(msg) // Happens only if flags are declared with identical names
+		panic(msg) // Happens only if flags are declared with identical names
 	}
 
 	f.formal[name] = flag
-	return nil
 }
 
-func (f *FlagSet) setShort(flag *Flag, name rune) error {
+func (f *FlagSet) setShort(flag *Flag, name rune) {
 	if name < 1 {
-		return nil
+		return
 	}
 
 	if f.short == nil {
@@ -539,11 +538,10 @@ func (f *FlagSet) setShort(flag *Flag, name rune) error {
 		msg += fmt.Sprintf("shortflag redefined: %q", string(name))
 
 		fmt.Fprintln(f.Output(), msg)
-		return errors.New(msg) // Happens only if flags are declared with identical names
+		panic(msg) // Happens only if flags are declared with identical names
 	}
 
 	f.short[name] = flag
-	return nil
 }
 
 // Copy copies an existing flag into this FlagSet.
@@ -593,10 +591,9 @@ func (f *FlagSet) Var(value Value, name string, usage string, options ...Option)
 		}
 	}
 
-	if err := f.set(flag, name); err != nil {
-		return err
-	}
-	return f.setShort(flag, flag.Short)
+	f.set(flag, name)
+	f.setShort(flag, flag.Short)
+	return nil
 }
 
 // Var defines a flag with the specified name and usage string. The type and
