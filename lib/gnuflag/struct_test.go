@@ -1,97 +1,244 @@
 package gnuflag
 
 import (
+	"reflect"
 	"testing"
+	"time"
 )
 
-func TestName(t *testing.T) {
-	if got := flagName("", "flag"); got != "flag" {
-		t.Errorf("Name(flag) %q != flag", got)
-	}
-
-	if got := flagName("", "Flag"); got != "flag" {
-		t.Errorf("Name(Flag) %q != flag", got)
-	}
-
-	if got := flagName("", "FlagOne"); got != "flag-one" {
-		t.Errorf("Name(FlagOne) %q != flag-one", got)
-	}
-
-	if got := flagName("", "AReallyLongFlagName"); got != "a-really-long-flag-name" {
-		t.Errorf("Name(ReallyLongFlagName) %q != a-really-long-flag-name", got)
-	}
-
-	if got := flagName("", "BaseURL"); got != "base-url" {
-		t.Errorf("Name(BaseURL) %q != base-url", got)
-	}
-
-	if got := flagName("", "URLAddress"); got != "url-address" {
-		t.Errorf("Name(URLAddress) %q != url-address", got)
-	}
+type mockFlag struct {
+	Value string
 }
 
-type structTest struct {
-	Alpha string `flag:",default=10" desc:"a first element with a default"`
-
-	Beta  string `                desc:"a flag with name from field and no default"`
-	Gamma string `flag:",short=g" desc:"a flag with a short version"`
-	Delta string `flag:",short=Δ" desc:"a flag with a utf8 rune as short version"`
-	Eta   string `flag:"echo"     desc:"a flag that is being renamed"`
+func (m mockFlag) String() string {
+	return m.Value
 }
 
-func TestStruct(t *testing.T) {
-	f := structTest{}
-	fs := NewFlagSet("name", ContinueOnError)
+func (m *mockFlag) Set(s string) error {
+	m.Value = s
+	return nil
+}
 
-	if err := fs.Struct("test", &f); err != nil {
-		t.Fatalf("gnuflag.FlagSet.Struct returned an unexpected error: %v", err)
-	}
+func (m mockFlag) Get() interface{} {
+	return m.Value
+}
 
-	expectFlags := []string{
-		"test-alpha",
-		"test-beta",
-		"test-gamma",
-		"test-delta",
-		"test-echo",
-	}
+var _ Value = &mockFlag{}
 
-	for _, testFor := range expectFlags {
-		if _, ok := fs.formal[testFor]; !ok {
-			t.Errorf("field %s did not appear", testFor)
+func TestStructVar(t *testing.T) {
+	var Flags struct {
+		ignored               bool
+		True                  bool    `flag:"" desc:"a bool value" default:"true"`
+		ZeroValueBool         bool    `flag:"" desc:"a zero value bool"`
+		PiApprox              float64 `flag:",def=3.1415" desc:"a float64 with an approximation for pi"`
+		NegativeFortyTwo      int     `flag:",default=-42" desc:"an int with -42"`
+		SkipEvenThoughBadType uint8   `flag:"-"`
+		NegativeSixtyFour     int64   `desc:"an int64 with -64" default:"-64"`
+		Foo                   string  `desc:"a string with foo" default:"foo"`
+		Renamed               string  `flag:"bar" desc:"a field renamed to bar"`
+		FortyTwo              uint    `desc:"a uint with 42" default:"42"`
+		SixtyFour             uint64  `desc:"a uint64 with 64" default:"64"`
+		ANamedFlagValue       mockFlag
+		AnUnnamedIntType      int
+
+		SubFlags struct {
+			Value   int
+			Pointer *int
 		}
 	}
 
-	expectShorts := []rune{
-		'g',
-		'Δ',
+	var fs FlagSet
+
+	checkedKeys := make(map[string]bool)
+	if err := fs.structVar("", reflect.ValueOf(&Flags).Elem()); err != nil {
+		t.Fatal("unexpected error running structVar:", err)
 	}
 
-	for _, testFor := range expectShorts {
-		if _, ok := fs.short[testFor]; !ok {
-			t.Errorf("short field %c did not appear", testFor)
-		}
+	if len(fs.formal)+len(fs.short) == 0 {
+		t.Fatal("no flags set on FlagSet")
 	}
 
-	if fs.formal["test-gamma"] != fs.short['g'] {
-		t.Errorf("--test-gamma and -g do not point to the same flag")
-	}
+	checkFlag := func(name, value, usage string, val interface{}) {
+		checkedKeys[name] = true
 
-	if fs.formal["test-delta"] != fs.short['Δ'] {
-		t.Errorf("--test-delta and -Δ do not point to the same flag")
-	}
-
-	expectDefaults := map[string]string{
-		"test-alpha": "10",
-	}
-
-	for k, v := range expectDefaults {
-		f, ok := fs.formal[k]
+		f, ok := fs.formal[name]
 		if !ok {
-			t.Fatalf("tried to look up fs.format[%q] which should exist, but didn‘t", k)
+			t.Errorf("expected flag %q to exist", name)
+			return
 		}
+		if f.DefValue != value {
+			t.Errorf("flag %q has value %q, but epected %q", name, f.Value, value)
+		}
+		if f.Usage != usage {
+			t.Errorf("flag %q has usage %q, but expected %q", name, f.Usage, usage)
+		}
+		ptr := reflect.ValueOf(val).Elem().Addr().Pointer()
+		p := reflect.ValueOf(f.Value).Elem().Addr().Pointer()
+		if ptr != p {
+			t.Errorf("flag %q points to %#v, but expected %#v", name, p, ptr)
+		}
+	}
 
-		if f.DefValue != v {
-			t.Errorf("flag --%s did not have the correct default value: expected %q, but got %q", k, v, f.DefValue)
+	checkFlag("true", "true", "a bool value", &(Flags.True))
+	checkFlag("zero-value-bool", "false", "a zero value bool", &(Flags.ZeroValueBool))
+	checkFlag("pi-approx", "3.1415", "a float64 with an approximation for pi", &(Flags.PiApprox))
+	checkFlag("negative-forty-two", "-42", "an int with -42", &(Flags.NegativeFortyTwo))
+	checkFlag("negative-sixty-four", "-64", "an int64 with -64", &(Flags.NegativeSixtyFour))
+	checkFlag("foo", "foo", "a string with foo", &(Flags.Foo))
+	checkFlag("bar", "", "a field renamed to bar", &(Flags.Renamed))
+	checkFlag("forty-two", "42", "a uint with 42", &(Flags.FortyTwo))
+	checkFlag("sixty-four", "64", "a uint64 with 64", &(Flags.SixtyFour))
+	checkFlag("a-named-flag-value", "", "ANamedFlagValue `gnuflag.mockFlag`", &(Flags.ANamedFlagValue))
+	checkFlag("an-unnamed-int-type", "0", "AnUnnamedIntType `int`", &(Flags.AnUnnamedIntType))
+	checkFlag("sub-flags-value", "0", "Value `int`", &(Flags.SubFlags.Value))
+	checkFlag("sub-flags-pointer", "0", "Pointer `*int`", Flags.SubFlags.Pointer)
+
+	for k := range fs.formal {
+		if !checkedKeys[k] {
+			t.Errorf("unexpected key found: %q", k)
 		}
+	}
+}
+
+func TestStructVar_BadInputs(t *testing.T) {
+	type test struct {
+		name string
+		s    interface{}
+	}
+
+	tests := []test{
+		{
+			name: "bad name: contains '='",
+			s: &struct {
+				F int `flag:"="`
+			}{},
+		},
+		{
+			name: "bad name: begins with -",
+			s: &struct {
+				F int `flag:"-flag"`
+			}{},
+		},
+		{
+			name: "unsupported flag type",
+			s: &struct {
+				F chan struct{}
+			}{},
+		},
+		{
+			name: "bad bool default",
+			s: &struct {
+				F bool `default:"foo"`
+			}{},
+		},
+		{
+			name: "bad time.Duration default",
+			s: &struct {
+				F time.Duration `default:"foo"`
+			}{},
+		},
+		{
+			name: "bad float64 default",
+			s: &struct {
+				F float64 `default:"foo"`
+			}{},
+		},
+		{
+			name: "bad int default",
+			s: &struct {
+				F int `default:"foo"`
+			}{},
+		},
+		{
+			name: "bad int64 default",
+			s: &struct {
+				F int64 `default:"foo"`
+			}{},
+		},
+		{
+			name: "bad uint default",
+			s: &struct {
+				F uint `default:"foo"`
+			}{},
+		},
+		{
+			name: "bad uint64 default",
+			s: &struct {
+				F uint64 `default:"foo"`
+			}{},
+		},
+	}
+
+	for _, tt := range tests {
+		var fs FlagSet
+
+		if err := fs.structVar("", reflect.ValueOf(tt.s).Elem()); err == nil {
+			t.Error("expected error running structVar:", err)
+		}
+	}
+
+}
+
+func Test_flagName(t *testing.T) {
+	type test struct {
+		name     string
+		flagName string
+		want     string
+	}
+
+	tests := []test{
+		{
+			name:     "create DSN variable for a country",
+			flagName: "DNS",
+			want:     "dns",
+		},
+		{
+			name:     "create variable lower-casing the first character",
+			flagName: "Name",
+			want:     "name",
+		},
+		{
+			name:     "one letter variable with no prefix",
+			flagName: "N",
+			want:     "n",
+		},
+		{
+			name:     "split flag name depending on cases",
+			flagName: "NaNo",
+			want:     "na-no",
+		},
+		{
+			name:     "split flag name, but acronym together",
+			flagName: "GetMyURLFromString",
+			want:     "get-my-url-from-string",
+		},
+		{
+			name:     "split flag name, but acronym last",
+			flagName: "GetMyURL",
+			want:     "get-my-url",
+		},
+		{
+			name:     "split flag name, but acronym first",
+			flagName: "URLFromString",
+			want:     "url-from-string",
+		},
+		// Legend: a = expected acronym, n = word inital capital, x = rest of non-acronym words
+		{
+			name:     "pathological acronym tests",
+			flagName: "NxNxxANxANxxAANxAANxx",
+			want:     "nx-nxx-a-nx-a-nxx-aa-nx-aa-nxx",
+		},
+		{
+			name:     "pathological acronym tests, with initial one-letter 'acronym'",
+			flagName: "ANxNxxANxANxxAANxAANxx",
+			want:     "a-nx-nxx-a-nx-a-nxx-aa-nx-aa-nxx",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := flagName(tt.flagName); got != tt.want {
+				t.Errorf("flagName() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

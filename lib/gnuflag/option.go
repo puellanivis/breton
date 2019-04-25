@@ -6,17 +6,17 @@ import (
 
 // Option is a function that sets a specified function upon a flag.Flag.
 // It returns an Option that will revert the option set.
-type Option func(*Flag) Option
+type Option func(*Flag) (Option, error)
 
 // WithShort returns an Option that will set the Short Flag of a flag to the
 // specified rune.
 func WithShort(shortFlag rune) Option {
-	return func(f *Flag) Option {
+	return func(f *Flag) (Option, error) {
 		save := f.Short
 
 		f.Short = shortFlag
 
-		return WithShort(save)
+		return WithShort(save), nil
 	}
 }
 
@@ -26,14 +26,14 @@ func WithShort(shortFlag rune) Option {
 // so while it cannot be checked at compile-time, it should result in an
 // immediate panic when running the program.)
 func WithDefault(value interface{}) Option {
-	return func(f *Flag) Option {
+	return func(f *Flag) (Option, error) {
 		save := f.Value.Get()
 		if err := f.Value.Set(fmt.Sprint(value)); err != nil {
-			panic(err)
+			return WithDefault(save), err
 		}
 
 		f.DefValue = f.Value.String()
 
-		return WithDefault(save)
+		return WithDefault(save), nil
 	}
 }

@@ -492,9 +492,9 @@ func (f *FlagSet) Args() []string { return f.args }
 // Args returns the non-flag command-line arguments.
 func Args() []string { return CommandLine.args }
 
-func (f *FlagSet) set(flag *Flag, name string) {
+func (f *FlagSet) set(flag *Flag, name string) error {
 	if len(name) < 1 {
-		return
+		return nil
 	}
 
 	if f.formal == nil {
@@ -512,15 +512,16 @@ func (f *FlagSet) set(flag *Flag, name string) {
 		msg += fmt.Sprintf("longflag redefined: %q", name)
 
 		fmt.Fprintln(f.Output(), msg)
-		panic(msg) // Happens only if flags are declared with identical names
+		return errors.New(msg) // Happens only if flags are declared with identical names
 	}
 
 	f.formal[name] = flag
+	return nil
 }
 
-func (f *FlagSet) setShort(flag *Flag, name rune) {
+func (f *FlagSet) setShort(flag *Flag, name rune) error {
 	if name < 1 {
-		return
+		return nil
 	}
 
 	if f.short == nil {
@@ -538,10 +539,11 @@ func (f *FlagSet) setShort(flag *Flag, name rune) {
 		msg += fmt.Sprintf("shortflag redefined: %q", string(name))
 
 		fmt.Fprintln(f.Output(), msg)
-		panic(msg) // Happens only if flags are declared with identical names
+		return errors.New(msg) // Happens only if flags are declared with identical names
 	}
 
 	f.short[name] = flag
+	return nil
 }
 
 // Copy copies an existing flag into this FlagSet.
@@ -568,7 +570,7 @@ func (f *FlagSet) CopyFrom(from *FlagSet, name string) {
 // caller could create a flag that turns a comma-separated string into a slice
 // of strings by giving the slice the methods of Value; in particular, Set would
 // decompose the comma-separated string into the slice.
-func (f *FlagSet) Var(value Value, name string, usage string, options ...Option) {
+func (f *FlagSet) Var(value Value, name string, usage string, options ...Option) error {
 	// Remember the default value is a string; it won't change.
 	// Well, unless a WithDefault Option is passed…
 	flag := &Flag{
@@ -585,11 +587,16 @@ func (f *FlagSet) Var(value Value, name string, usage string, options ...Option)
 
 	for _, opt := range options {
 		// during initialization we discard all reversing functionality
-		_ = opt(flag)
+		_, err := opt(flag)
+		if err != nil {
+			return err
+		}
 	}
 
-	f.set(flag, name)
-	f.setShort(flag, flag.Short)
+	if err := f.set(flag, name); err != nil {
+		return err
+	}
+	return f.setShort(flag, flag.Short)
 }
 
 // Var defines a flag with the specified name and usage string. The type and
