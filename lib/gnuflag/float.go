@@ -21,7 +21,9 @@ func (f float64Value) String() string { return strconv.FormatFloat(float64(f), '
 // The return value is the address of a float64 variable that stores the value of the flag.
 func (f *FlagSet) Float(name string, usage string, options ...Option) *float64 {
 	p := new(float64)
-	f.Var((*float64Value)(p), name, usage, options...)
+	if err := f.Var((*float64Value)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 

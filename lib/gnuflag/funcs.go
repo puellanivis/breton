@@ -58,7 +58,9 @@ func (f *funcValue) IsBoolFlag() bool {
 // It returns a pointer to the niladic function.
 func (f *FlagSet) BoolFunc(name, usage string, value func(), options ...Option) func() {
 	fn := newBoolFunc(name, value)
-	f.Var(fn, name, usage, options...)
+	if err := f.Var(fn, name, usage, options...); err != nil {
+		panic(err)
+	}
 	return value
 }
 
@@ -66,7 +68,9 @@ func (f *FlagSet) BoolFunc(name, usage string, value func(), options ...Option) 
 // It returns a pointer to the SetterFunc.
 func (f *FlagSet) Func(name, usage string, value func(string) error, options ...Option) func(string) error {
 	fn := newFunc(name, value)
-	f.Var(fn, name, usage, options...)
+	if err := f.Var(fn, name, usage, options...); err != nil {
+		panic(err)
+	}
 	return value
 }
 

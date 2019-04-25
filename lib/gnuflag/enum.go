@@ -109,7 +109,9 @@ func (e *enumValue) Get() interface{} {
 // The return value is the address of an EnumValue variable that stores the value of the flag.
 func (f *FlagSet) Enum(name string, usage string, valid []string, options ...Option) *EnumValue {
 	e := newEnumValue(valid...)
-	f.Var(e, name, usage, options...)
+	if err := f.Var(e, name, usage, options...); err != nil {
+		panic(err)
+	}
 	return (*EnumValue)(e.val)
 }
 

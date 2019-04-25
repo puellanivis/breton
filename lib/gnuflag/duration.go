@@ -22,7 +22,9 @@ func (d durationValue) String() string { return (time.Duration)(d).String() }
 // The flag accepts values acceptable to time.ParseDuration.
 func (f *FlagSet) Duration(name string, usage string, options ...Option) *time.Duration {
 	p := new(time.Duration)
-	f.Var((*durationValue)(p), name, usage, options...)
+	if err := f.Var((*durationValue)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 

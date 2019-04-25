@@ -16,7 +16,9 @@ func (s stringValue) String() string { return string(s) }
 // The return value is the address of a string variable that stores the value of the flag.
 func (f *FlagSet) String(name string, usage string, options ...Option) *string {
 	p := new(string)
-	f.Var((*stringValue)(p), name, usage, options...)
+	if err := f.Var((*stringValue)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 
