@@ -27,7 +27,7 @@ func flagName(name string) string {
 		case unicode.IsUpper(r):
 			if !maybeAcronym && len(word) > 0 {
 				words = append(words, string(word))
-				word = word[:0] // reuse the previous allocated slice.
+				word = word[:0] // reuse previous allocated slice.
 			}
 
 			maybeAcronym = true
@@ -395,6 +395,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 				return nil
 			}))
 
+		// From our code above, we already dereferenced pointers, so this is why not `*url.URL`
 		case url.URL:
 			set := (*url.URL)(ptr)
 
@@ -427,13 +428,14 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 		default:
 			if val.Kind() != reflect.Struct {
-				return fmt.Errorf("gnuflag: unsupported type %s for %s", field.Type, field.Name)
+				return fmt.Errorf("gnuflag: unsupported type %q for %q", field.Type, field.Name)
 			}
 
 			if err := fs.structVar(name, val); err != nil {
 				return err
 			}
 
+			// Do not setup the fs.Var like all the other paths.
 			continue
 		}
 
