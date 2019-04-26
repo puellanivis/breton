@@ -224,7 +224,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			}
 
 			value = newFunc(def, arrayWrap(func(s string) error {
-				u, err := strconv.ParseUint(s, 0, 64)
+				u, err := strconv.ParseUint(s, 0, strconv.IntSize)
 				if err != nil {
 					return err
 				}
@@ -254,9 +254,11 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			}))
 
 		case uint8, uint16, uint32:
+			width := val.Type().Size() * 8
+
 			// here we support a few additional types with generic-ish reflection
 			value = newFunc(fmt.Sprint(field), func(s string) error {
-				u, err := strconv.ParseUint(s, 0, 64)
+				u, err := strconv.ParseUint(s, 0, int(width))
 				if err != nil {
 					return err
 				}
@@ -276,7 +278,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			}
 
 			value = newFunc(def, arrayWrap(func(s string) error {
-				i, err := strconv.ParseInt(s, 0, 64)
+				i, err := strconv.ParseInt(s, 0, strconv.IntSize)
 				if err != nil {
 					return err
 				}
@@ -306,9 +308,11 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			}))
 
 		case int8, int16, int32:
+			width := val.Type().Size() * 8
+
 			// here we support a few additional types with generic-ish reflection
 			value = newFunc(fmt.Sprint(field), func(s string) error {
-				i, err := strconv.ParseInt(s, 0, 64)
+				i, err := strconv.ParseInt(s, 0, int(width))
 				if err != nil {
 					return err
 				}
@@ -340,7 +344,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		case float32:
 			// here we support float32 with generic-ish reflection
 			value = newFunc(fmt.Sprint(field), func(s string) error {
-				f, err := strconv.ParseFloat(s, 64)
+				f, err := strconv.ParseFloat(s, 32)
 				if err != nil {
 					return err
 				}

@@ -167,13 +167,55 @@ func TestStructVar_BadInputs(t *testing.T) {
 				F uint64 `default:"foo"`
 			}{},
 		},
+		{
+			name: "uint8 default too large",
+			s: &struct {
+				F uint8 `default:"256"`
+			}{},
+		},
+		{
+			name: "uint16 default too large",
+			s: &struct {
+				F uint16 `default:"65536"`
+			}{},
+		},
+		{
+			name: "uint32 default too large",
+			s: &struct {
+				F uint32 `default:"4294967296"`
+			}{},
+		},
+		{
+			name: "int8 default too large",
+			s: &struct {
+				F int8 `default:"128"`
+			}{},
+		},
+		{
+			name: "int16 default too large",
+			s: &struct {
+				F int16 `default:"32768"`
+			}{},
+		},
+		{
+			name: "int32 default too large",
+			s: &struct {
+				F int32 `default:"2147483648"`
+			}{},
+		},
+		{
+			name: "float32 default too large",
+			s: &struct {
+				F int32 `default:"1e39"`
+			}{},
+		},
 	}
 
 	for _, tt := range tests {
 		var fs FlagSet
 
 		if err := fs.structVar("", reflect.ValueOf(tt.s).Elem()); err == nil {
-			t.Error("expected error running structVar:", err)
+			t.Error("expected error running structVar, but got none:", tt.name)
 		}
 	}
 
