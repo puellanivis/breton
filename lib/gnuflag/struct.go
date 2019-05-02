@@ -141,22 +141,17 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			}
 
 			if _, ok := val.Interface().(Value); !ok {
-				// If val does not implement Value, dereference it, to work with the direct value.
+				// If val does not implement Value, dereference it,
+				// to work with the direct value.
 				val = val.Elem()
 			}
 		}
-
-		// We set value such that we can generically just use fs.Var to setup the flag,
-		// any other FlagSet.TypeVar will overwrite the value that is stored in that field,
-		// which means we wouldn’t get that value as the default.
-		// But we want the value in the field as default, even if no `flag:",default=val"` is given.
-		var value Value
 
 		// We reference the value directly in order to be able to set its value,
 		// and this is the only way to get that.
 		ptr := unsafe.Pointer(val.UnsafeAddr())
 
-		// We prefer to just use something that implements Value.
+		// We prefer to use something that implements Value.
 		// Here we reference a value if its pointer type implements Value.
 		if val.Kind() != reflect.Ptr {
 			// we should only have a pointer, if it already implements Value.
@@ -171,6 +166,12 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 				}
 			}
 		}
+
+		// We set value such that we can generically just use fs.Var to setup the flag,
+		// any other FlagSet.TypeVar will overwrite the value that is stored in that field,
+		// which means we wouldn’t get that value as the default.
+		// But we want the value in the field as default, even if no `flag:",default=val"` is given.
+		var value Value
 
 		switch v := val.Interface().(type) {
 		case EnumValue: // EnumValues implements Value, so we need to check this first.
