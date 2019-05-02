@@ -1,6 +1,7 @@
 package gnuflag
 
 import (
+	"net/url"
 	"reflect"
 	"testing"
 	"time"
@@ -25,6 +26,8 @@ func (m mockFlag) Get() interface{} {
 
 var _ Value = &mockFlag{}
 
+type badType struct{}
+
 func TestStructVar(t *testing.T) {
 	var Flags struct {
 		ignored               bool
@@ -32,7 +35,7 @@ func TestStructVar(t *testing.T) {
 		ZeroValueBool         bool    `flag:"" desc:"a zero value bool"`
 		PiApprox              float64 `flag:",def=3.1415" desc:"a float64 with an approximation for pi"`
 		NegativeFortyTwo      int     `flag:",default=-42" desc:"an int with -42"`
-		SkipEvenThoughBadType uint8   `flag:"-"`
+		SkipEvenThoughBadType badType `flag:"-"`
 		NegativeSixtyFour     int64   `desc:"an int64 with -64" default:"-64"`
 		Foo                   string  `desc:"a string with foo" default:"foo"`
 		Renamed               string  `flag:"bar" desc:"a field renamed to bar"`
@@ -49,7 +52,6 @@ func TestStructVar(t *testing.T) {
 
 	var fs FlagSet
 
-	checkedKeys := make(map[string]bool)
 	if err := fs.structVar("", reflect.ValueOf(&Flags).Elem()); err != nil {
 		t.Fatal("unexpected error running structVar:", err)
 	}
@@ -58,6 +60,7 @@ func TestStructVar(t *testing.T) {
 		t.Fatal("no flags set on FlagSet")
 	}
 
+	checkedKeys := make(map[string]bool)
 	checkFlag := func(name, value, usage string, val interface{}) {
 		checkedKeys[name] = true
 
@@ -67,11 +70,12 @@ func TestStructVar(t *testing.T) {
 			return
 		}
 		if f.DefValue != value {
-			t.Errorf("flag %q has value %q, but epected %q", name, f.Value, value)
+			t.Errorf("flag %q has default value %q, but epected %q", name, f.Value, value)
 		}
 		if f.Usage != usage {
 			t.Errorf("flag %q has usage %q, but expected %q", name, f.Usage, usage)
 		}
+
 		ptr := reflect.ValueOf(val).Elem().Addr().Pointer()
 		p := reflect.ValueOf(f.Value).Elem().Addr().Pointer()
 		if ptr != p {
@@ -97,6 +101,74 @@ func TestStructVar(t *testing.T) {
 		if !checkedKeys[k] {
 			t.Errorf("unexpected key found: %q", k)
 		}
+	}
+}
+
+func TestSpecialValues(t *testing.T) {
+	var Flags struct {
+		AUint8Alias byte
+		MyURL       *url.URL
+	}
+
+	Flags.AUint8Alias = 42
+	MyURL, err := url.Parse("scheme://hostname:port/path")
+	if err != nil {
+		t.Fatal("unexpected error parsing url:", err)
+	}
+	Flags.MyURL = MyURL
+
+	var fs FlagSet
+
+	if err := fs.structVar("", reflect.ValueOf(&Flags).Elem()); err != nil {
+		t.Fatal("unexpected error running structVar:", err)
+	}
+
+	if len(fs.formal)+len(fs.short) == 0 {
+		t.Fatal("no flags set on FlagSet")
+	}
+
+	checkedKeys := make(map[string]bool)
+	checkFlag := func(name, value, usage string, val, expect interface{}) {
+		checkedKeys[name] = true
+
+		f, ok := fs.formal[name]
+		if !ok {
+			t.Errorf("expected flag %q to exist", name)
+			return
+		}
+		if f.DefValue != value {
+			t.Errorf("flag %q has default value %q, but epected %q", name, f.Value, value)
+		}
+		if f.Usage != usage {
+			t.Errorf("flag %q has usage %q, but expected %q", name, f.Usage, usage)
+		}
+		if !reflect.DeepEqual(val, expect) {
+			t.Errorf("flag %q is %#v, but expected %#v", name, val, expect)
+		}
+	}
+
+	checkFlag("a-uint8-alias", "42", "AUint8Alias `uint8`", Flags.AUint8Alias, byte(42))
+	checkFlag("my-url", "scheme://hostname:port/path", "MyURL `*url.URL`", Flags.MyURL, MyURL)
+
+	for k := range fs.formal {
+		if !checkedKeys[k] {
+			t.Errorf("unexpected key found: %q", k)
+		}
+	}
+
+	fs.Set("a-uint8-alias", "13")
+	if Flags.AUint8Alias != 13 {
+		t.Errorf("expected %q to be set to 13, but got %d", "AUint8Alias", 13)
+	}
+
+	expect := &url.URL{
+		Scheme: "http",
+		Host:   "example.com:80",
+		Path:   "/a/different/path",
+	}
+	fs.Set("my-url", "http://example.com:80/a/different/path")
+	if !reflect.DeepEqual(Flags.MyURL, expect) {
+		t.Errorf("expected %q to be set to %q, but got %q", "MyURL", expect, Flags.MyURL)
 	}
 }
 

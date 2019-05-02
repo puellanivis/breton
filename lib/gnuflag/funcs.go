@@ -1,9 +1,5 @@
 package gnuflag
 
-import (
-	"fmt"
-)
-
 // setterFunc describes a function that takes a string from the command-line and performs some function that returns an error state.
 type setterFunc func(string) error
 
@@ -33,9 +29,9 @@ func newFunc(name string, fn func(string) error) *funcValue {
 	}
 }
 
-// String returns a String representation of this flag.
+// String returns the last value that was `Set()` on this flag.
 func (f *funcValue) String() string {
-	return fmt.Sprintf("%s(%q)", f.name, f.value)
+	return f.value
 }
 
 // Set calls the function of the FuncValue and returns its error.

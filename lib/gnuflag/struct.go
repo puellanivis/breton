@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 	"unsafe"
 )
 
@@ -53,19 +54,6 @@ func flagName(name string) string {
 	}
 
 	return strings.Join(words, "-")
-}
-
-// arrayWrap is used to make array-based flags that will run the setterFunc on every element of a split on ","
-func arrayWrap(fn setterFunc) setterFunc {
-	return func(s string) error {
-		for _, v := range strings.Split(s, ",") {
-			if err := fn(v); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
 }
 
 // structVar is the work-horse, and does the actual reflection and recursive work.
@@ -114,12 +102,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				switch {
 				case strings.HasPrefix(directive, "short="):
-					// This is kind of a “cheat”, ranging over a string uses UTF-8 runes.
-					// so we grab the first rune, and then break. No need to use utf8 package.
-					for _, r := range directive[len("short="):] {
-						short = r
-						break
-					}
+					short, _ = utf8.DecodeRuneInString(strings.TrimPrefix(directive, "short="))
 
 				case strings.HasPrefix(directive, "default="):
 					defval = strings.TrimPrefix(directive, "default=")
@@ -148,24 +131,17 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			return fmt.Errorf("invalid flag name for field %s: %s", field.Name, name)
 		}
 
-		var opts []Option
-		if short != 0 {
-			opts = append(opts, WithShort(short))
-		}
-		if defval != "" {
-			opts = append(opts, WithDefault(defval))
-		}
-
+		// We want to work with direct non-pointer values... unless it implements Value.
 		if val.Kind() == reflect.Ptr {
 			if val.IsNil() {
-				// if the pointer is nil, then allocate the appropriate type
+				// If the pointer is nil, then allocate the appropriate type
 				// and assign it into the pointer.
 				p := reflect.New(val.Type().Elem())
 				val.Set(p)
 			}
 
 			if _, ok := val.Interface().(Value); !ok {
-				// if val does not implement flag.Value, let's work with the element itself.
+				// If val does not implement Value, dereference it, to work with the direct value.
 				val = val.Elem()
 			}
 		}
@@ -176,27 +152,28 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		// But we want the value in the field as default, even if no `flag:",default=val"` is given.
 		var value Value
 
-		// We reference the value in the struct directly in order to properly be able to set its value,
+		// We reference the value directly in order to be able to set its value,
 		// and this is the only way to get that.
 		ptr := unsafe.Pointer(val.UnsafeAddr())
 
+		// We prefer to just use something that implements Value.
+		// Here we reference a value if its pointer type implements Value.
 		if val.Kind() != reflect.Ptr {
-			// if the value is not a pointer:
+			// we should only have a pointer, if it already implements Value.
 
 			if _, ok := val.Interface().(Value); !ok {
-				// and the value itself does not implement flag.Value:
-				pval := val.Addr()
+				// ensure that the value itself does not implement Value.
 
+				pval := val.Addr() // reference the value.
 				if _, ok := pval.Interface().(Value); ok {
-					// but a pointer to the value does implement flag.Value:
-					// then use that value instead.
+					// if the pointer implements Value, then let's use that.
 					val = pval
 				}
 			}
 		}
 
 		switch v := val.Interface().(type) {
-		case EnumValue:
+		case EnumValue: // EnumValues implements Value, so we need to check this first.
 			enum := &enumValue{
 				val: (*int)(ptr),
 			}
@@ -218,12 +195,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		case []uint:
 			slice := (*[]uint)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				u, err := strconv.ParseUint(s, 0, strconv.IntSize)
 				if err != nil {
 					return err
@@ -231,19 +203,14 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				*slice = append(*slice, uint(u))
 				return nil
-			}))
+			})
 
 		case uint64:
 			value = (*uint64Value)(ptr)
 		case []uint64:
 			slice := (*[]uint64)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				u, err := strconv.ParseUint(s, 0, 64)
 				if err != nil {
 					return err
@@ -251,13 +218,20 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				*slice = append(*slice, u)
 				return nil
-			}))
+			})
 
 		case uint8, uint16, uint32:
 			width := val.Type().Size() * 8
 
+			if defval == "" {
+				z := reflect.Zero(val.Type())
+				if z.Interface() != val.Interface() {
+					defval = fmt.Sprint(val)
+				}
+			}
+
 			// here we support a few additional types with generic-ish reflection
-			value = newFunc(fmt.Sprint(field), func(s string) error {
+			value = newFunc(fmt.Sprint(val.Type()), func(s string) error {
 				u, err := strconv.ParseUint(s, 0, int(width))
 				if err != nil {
 					return err
@@ -272,12 +246,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		case []int:
 			slice := (*[]int)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				i, err := strconv.ParseInt(s, 0, strconv.IntSize)
 				if err != nil {
 					return err
@@ -285,19 +254,14 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				*slice = append(*slice, int(i))
 				return nil
-			}))
+			})
 
 		case int64:
 			value = (*int64Value)(ptr)
 		case []int64:
 			slice := (*[]int64)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				i, err := strconv.ParseInt(s, 0, 64)
 				if err != nil {
 					return err
@@ -305,13 +269,20 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				*slice = append(*slice, i)
 				return nil
-			}))
+			})
 
 		case int8, int16, int32:
 			width := val.Type().Size() * 8
 
+			if defval == "" {
+				z := reflect.Zero(val.Type())
+				if z.Interface() != val.Interface() {
+					defval = fmt.Sprint(val)
+				}
+			}
+
 			// here we support a few additional types with generic-ish reflection
-			value = newFunc(fmt.Sprint(field), func(s string) error {
+			value = newFunc(fmt.Sprint(val.Type()), func(s string) error {
 				i, err := strconv.ParseInt(s, 0, int(width))
 				if err != nil {
 					return err
@@ -326,12 +297,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		case []float64:
 			slice := (*[]float64)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				f, err := strconv.ParseFloat(s, 64)
 				if err != nil {
 					return err
@@ -339,11 +305,18 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				*slice = append(*slice, f)
 				return nil
-			}))
+			})
 
 		case float32:
+			if defval == "" {
+				z := reflect.Zero(val.Type())
+				if z.Interface() != val.Interface() {
+					defval = fmt.Sprint(val)
+				}
+			}
+
 			// here we support float32 with generic-ish reflection
-			value = newFunc(fmt.Sprint(field), func(s string) error {
+			value = newFunc("float32", func(s string) error {
 				f, err := strconv.ParseFloat(s, 32)
 				if err != nil {
 					return err
@@ -358,15 +331,10 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		case []string:
 			slice := (*[]string)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				*slice = append(*slice, s)
 				return nil
-			}))
+			})
 
 		case []byte:
 			// just like string, but stored as []byte
@@ -380,12 +348,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		case []time.Duration:
 			slice := (*[]time.Duration)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				d, err := time.ParseDuration(s)
 				if err != nil {
 					return err
@@ -393,11 +356,18 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				*slice = append(*slice, d)
 				return nil
-			}))
+			})
 
 		// From our code above, we already dereferenced pointers, so this is why not `*url.URL`
 		case url.URL:
 			set := (*url.URL)(ptr)
+
+			if defval == "" {
+				z := reflect.Zero(val.Type())
+				if z.Interface() != val.Interface() {
+					defval = set.String()
+				}
+			}
 
 			value = newFunc(fmt.Sprint(field), func(s string) error {
 				uri, err := url.Parse(s)
@@ -411,12 +381,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		case []*url.URL:
 			slice := (*[]*url.URL)(ptr)
 
-			var def string
-			if len(*slice) > 0 {
-				def = fmt.Sprint(*slice)
-			}
-
-			value = newFunc(def, arrayWrap(func(s string) error {
+			value = newSlice(slice, func(s string) error {
 				uri, err := url.Parse(s)
 				if err != nil {
 					return err
@@ -424,7 +389,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 				*slice = append(*slice, uri)
 				return nil
-			}))
+			})
 
 		default:
 			if val.Kind() != reflect.Struct {
@@ -437,6 +402,14 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 			// Do not setup the fs.Var like all the other paths.
 			continue
+		}
+
+		var opts []Option
+		if short != 0 {
+			opts = append(opts, WithShort(short))
+		}
+		if defval != "" {
+			opts = append(opts, WithDefault(defval))
 		}
 
 		if err := fs.Var(value, name, usage, opts...); err != nil {
