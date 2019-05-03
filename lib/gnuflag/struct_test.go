@@ -26,7 +26,7 @@ func (m mockFlag) Get() interface{} {
 
 var _ Value = &mockFlag{}
 
-type badType struct{}
+type badType chan struct{}
 
 func TestStructVar(t *testing.T) {
 	var Flags struct {
@@ -194,7 +194,7 @@ func TestStructVar_BadInputs(t *testing.T) {
 		{
 			name: "unsupported flag type",
 			s: &struct {
-				F chan struct{}
+				F badType
 			}{},
 		},
 		{
@@ -287,7 +287,7 @@ func TestStructVar_BadInputs(t *testing.T) {
 		var fs FlagSet
 
 		if err := fs.structVar("", reflect.ValueOf(tt.s).Elem()); err == nil {
-			t.Error("expected error running structVar, but got none:", tt.name)
+			t.Errorf("%s: expected error running structVar, but got none", tt.name)
 		}
 	}
 
