@@ -30,7 +30,9 @@ type boolFlag interface {
 // The return value is the address of a bool variable that stores the value of the flag.
 func (f *FlagSet) Bool(name string, usage string, options ...Option) *bool {
 	p := new(bool)
-	f.Var((*boolValue)(p), name, usage, options...)
+	if err := f.Var((*boolValue)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 

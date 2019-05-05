@@ -568,7 +568,7 @@ func (f *FlagSet) CopyFrom(from *FlagSet, name string) {
 // caller could create a flag that turns a comma-separated string into a slice
 // of strings by giving the slice the methods of Value; in particular, Set would
 // decompose the comma-separated string into the slice.
-func (f *FlagSet) Var(value Value, name string, usage string, options ...Option) {
+func (f *FlagSet) Var(value Value, name string, usage string, options ...Option) error {
 	// Remember the default value is a string; it won't change.
 	// Well, unless a WithDefault Option is passed…
 	flag := &Flag{
@@ -585,11 +585,15 @@ func (f *FlagSet) Var(value Value, name string, usage string, options ...Option)
 
 	for _, opt := range options {
 		// during initialization we discard all reversing functionality
-		_ = opt(flag)
+		_, err := opt(flag)
+		if err != nil {
+			return err
+		}
 	}
 
 	f.set(flag, name)
 	f.setShort(flag, flag.Short)
+	return nil
 }
 
 // Var defines a flag with the specified name and usage string. The type and
@@ -598,8 +602,8 @@ func (f *FlagSet) Var(value Value, name string, usage string, options ...Option)
 // caller could create a flag that turns a comma-separated string into a slice
 // of strings by giving the slice the methods of Value; in particular, Set would
 // decompose the comma-separated string into the slice.
-func Var(value Value, name string, usage string, options ...Option) {
-	CommandLine.Var(value, name, usage, options...)
+func Var(value Value, name string, usage string, options ...Option) error {
+	return CommandLine.Var(value, name, usage, options...)
 }
 
 // failf prints to standard error a formatted error and usage message and

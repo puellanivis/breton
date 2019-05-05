@@ -21,7 +21,9 @@ func (u uintValue) String() string { return strconv.FormatUint(uint64(u), 10) }
 // The return value is the address of a uint variable that stores the value of the flag.
 func (f *FlagSet) Uint(name string, usage string, options ...Option) *uint {
 	p := new(uint)
-	f.Var((*uintValue)(p), name, usage, options...)
+	if err := f.Var((*uintValue)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 
@@ -48,7 +50,9 @@ func (u uint64Value) String() string { return strconv.FormatUint(uint64(u), 10) 
 // The return value is the address of a uint64 variable that stores the value of the flag.
 func (f *FlagSet) Uint64(name string, usage string, options ...Option) *uint64 {
 	p := new(uint64)
-	f.Var((*uint64Value)(p), name, usage, options...)
+	if err := f.Var((*uint64Value)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 

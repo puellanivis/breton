@@ -1,9 +1,5 @@
 package gnuflag
 
-import (
-	"fmt"
-)
-
 // setterFunc describes a function that takes a string from the command-line and performs some function that returns an error state.
 type setterFunc func(string) error
 
@@ -33,9 +29,9 @@ func newFunc(name string, fn func(string) error) *funcValue {
 	}
 }
 
-// String returns a String representation of this flag.
+// String returns the last value that was `Set()` on this flag.
 func (f *funcValue) String() string {
-	return fmt.Sprintf("%s(%q)", f.name, f.value)
+	return f.value
 }
 
 // Set calls the function of the FuncValue and returns its error.
@@ -58,7 +54,9 @@ func (f *funcValue) IsBoolFlag() bool {
 // It returns a pointer to the niladic function.
 func (f *FlagSet) BoolFunc(name, usage string, value func(), options ...Option) func() {
 	fn := newBoolFunc(name, value)
-	f.Var(fn, name, usage, options...)
+	if err := f.Var(fn, name, usage, options...); err != nil {
+		panic(err)
+	}
 	return value
 }
 
@@ -66,7 +64,9 @@ func (f *FlagSet) BoolFunc(name, usage string, value func(), options ...Option) 
 // It returns a pointer to the SetterFunc.
 func (f *FlagSet) Func(name, usage string, value func(string) error, options ...Option) func(string) error {
 	fn := newFunc(name, value)
-	f.Var(fn, name, usage, options...)
+	if err := f.Var(fn, name, usage, options...); err != nil {
+		panic(err)
+	}
 	return value
 }
 

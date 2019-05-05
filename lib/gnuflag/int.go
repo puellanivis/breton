@@ -21,7 +21,9 @@ func (i intValue) String() string { return strconv.Itoa(int(i)) }
 // The return value is the address of an int variable that stores the value of the flag.
 func (f *FlagSet) Int(name string, usage string, options ...Option) *int {
 	p := new(int)
-	f.Var((*intValue)(p), name, usage, options...)
+	if err := f.Var((*intValue)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 
@@ -48,7 +50,9 @@ func (i int64Value) String() string { return strconv.FormatInt(int64(i), 10) }
 // The return value is the address of an int64 variable that stores the value of the flag.
 func (f *FlagSet) Int64(name string, usage string, options ...Option) *int64 {
 	p := new(int64)
-	f.Var((*int64Value)(p), name, usage, options...)
+	if err := f.Var((*int64Value)(p), name, usage, options...); err != nil {
+		panic(err)
+	}
 	return p
 }
 
