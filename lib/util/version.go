@@ -1,22 +1,11 @@
 package util
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
-	flag "github.com/puellanivis/breton/lib/gnuflag"
+	"github.com/puellanivis/breton/lib/os/process"
 )
-
-var (
-	// Go libraries should not set flags themselves, this is an exception.
-	_ = flag.BoolFunc("version", "display version information", func() {
-		fmt.Println(versionString)
-		Exit(0)
-	})
-)
-
-var versionString string
 
 // BUILD is a value that can be set by the go build command-line
 // in order to provide additional context information for the build,
@@ -25,10 +14,10 @@ var BUILD = "adhoc"
 
 // Version returns the version information populated during util.Init().
 func Version() string {
-	return versionString
+	return process.Version()
 }
 
-func initVersion(cmdname string, versions ...uint) {
+func buildSemver(versions []uint) string {
 	var tmp []string
 
 	if len(versions) < 1 {
@@ -39,5 +28,5 @@ func initVersion(cmdname string, versions ...uint) {
 		tmp = append(tmp, strconv.FormatUint(uint64(ver), 10))
 	}
 
-	versionString = fmt.Sprintf("%s v%s-%s", cmdname, strings.Join(tmp, "."), BUILD)
+	return "v" + strings.Join(tmp, ".")
 }
