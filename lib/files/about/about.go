@@ -13,8 +13,8 @@ import (
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
+	"github.com/puellanivis/breton/lib/os/process"
 	"github.com/puellanivis/breton/lib/sort"
-	"github.com/puellanivis/breton/lib/util"
 )
 
 type handler struct{}
@@ -44,7 +44,7 @@ func unresolvable() ([]byte, error) {
 }
 
 func version() ([]byte, error) {
-	return append([]byte(util.Version()), '\n'), nil
+	return append([]byte(process.Version()), '\n'), nil
 }
 
 var (

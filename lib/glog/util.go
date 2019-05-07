@@ -1,11 +1,11 @@
 package glog
 
 import (
-	"github.com/puellanivis/breton/lib/util"
+	"github.com/puellanivis/breton/lib/os/process"
 )
 
 func init() {
-	util.AtExit(func() {
+	process.AtExit(func() {
 		Flush()
 	})
 }

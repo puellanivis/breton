@@ -2,7 +2,7 @@ package process
 
 var versionString string
 
-// Version returns the version information populated during util.Init().
+// Version returns the version information populated during process.Init().
 func Version() string {
 	return versionString
 }
