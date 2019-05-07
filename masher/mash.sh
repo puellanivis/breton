@@ -180,10 +180,9 @@ fi
 PROJECT="${PWD##*/}"
 if [[ -n $BUILDSTAMP ]]; then
 	DEPS=$( go list -f "{{.Deps}}" | grep -c -e "\<lib/util\>" )
+	GOFLAGS="-ldflags=-X main.VersionBuild=$BUILDSTAMP -X main.Buildstamp=$BUILDSTAMP"
 	if [[ $DEPS -ne 0 ]]; then
-		GOFLAGS=-ldflags="-X github.com/puellanivis/breton/lib/util.BUILD=$BUILDSTAMP"
-	else
-		GOFLAGS=-ldflags="-X main.VersionBuild=$BUILDSTAMP"
+		GOFLAGS="$GOFLAGS -X github.com/puellanivis/breton/lib/util.BUILD=$BUILDSTAMP"
 	fi
 fi
 
