@@ -62,6 +62,11 @@ func (a sliceValue) Get() interface{} {
 func (a sliceValue) String() string {
 	var elems []string
 
+	if a.value == nil {
+		// zero value
+		return ""
+	}
+
 	val := reflect.ValueOf(a.value).Elem()
 
 	for i := 0; i < val.Len(); i++ {
