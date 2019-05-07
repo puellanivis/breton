@@ -43,11 +43,11 @@ func elideDefaultPort(uri *url.URL) *url.URL {
 
 func getErr(resp *http.Response) error {
 	switch resp.StatusCode {
-	case 200, 204:
+	case http.StatusOK, http.StatusNoContent:
 		return nil
-	case 401, 403:
+	case http.StatusUnauthorized, http.StatusForbidden:
 		return os.ErrPermission
-	case 404:
+	case http.StatusNotFound:
 		return os.ErrNotExist
 	}
 
