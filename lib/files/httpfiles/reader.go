@@ -163,6 +163,13 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 		r.info = wrapper.NewInfo(uri, int(resp.ContentLength), t)
 
+		if err := getErr(resp); err != nil {
+			resp.Body.Close()
+
+			r.err = files.PathError("open", uri.String(), err)
+			return
+		}
+
 		if resp.ContentLength < 0 {
 			r.r = resp.Body
 			return
@@ -173,11 +180,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 			r.err = files.PathError("read", uri.String(), err)
 			return
 		}
-
-		if err := getErr(resp); err != nil {
-			r.err = files.PathError("open", uri.String(), err)
-			return
-		}
+		resp.Body.Close()
 
 		r.r = bytes.NewReader(b)
 	}()
