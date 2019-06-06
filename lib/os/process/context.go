@@ -9,6 +9,8 @@ import (
 	"runtime/debug"
 	"sync"
 	"syscall"
+
+	"github.com/puellanivis/breton/lib/sync/edge"
 )
 
 // signaler provides a basic api for channels to support optional signal handling, like for SIGHUP.
@@ -43,6 +45,7 @@ var sigHandler struct {
 	sync.Once
 	ctx context.Context
 	ch  chan os.Signal
+	e   edge.Edge
 
 	hup signaler
 }
@@ -80,6 +83,9 @@ func signalHandler(parent context.Context) context.Context {
 					continue
 				}
 			}
+
+			// Prospectively transition the edge, so we can maybe avoid injecting an unnecessary SIGTERM.
+			sigHandler.e.Up()
 
 			cancel()
 
@@ -122,10 +128,16 @@ func Context() context.Context {
 // Shutdown works by injecting a `syscall.SIGTERM` directly to the signal handler,
 // which will cancel the `process.Context()` the same as a real SIGTERM.
 //
-// Shutdown returns an error if it is unable to send the signal.
+// Shutdown returns an error only if it is unable to send the signal.
+// Notably, it is not an error to call Shutdown if we have already triggered a graceful shutdown.
 //
 // Shutdown does not wait for anything to finish before returning.
 func Shutdown() error {
+	if !sigHandler.e.Up() {
+		// We have already triggered a graceful shutdown, so nothing to do.
+		return nil
+	}
+
 	select {
 	case sigHandler.ch <- syscall.SIGTERM:
 		return nil
