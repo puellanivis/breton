@@ -6,10 +6,8 @@ import (
 	"path/filepath"
 )
 
-type key int
-
-const (
-	rootKey key = iota
+type (
+	rootKey struct{}
 )
 
 // WithRootURL attaches a url.URL to a Context
@@ -31,7 +29,7 @@ func WithRootURL(ctx context.Context, uri *url.URL) context.Context {
 		uri = uriCopy
 	}
 
-	return context.WithValue(ctx, rootKey, uri)
+	return context.WithValue(ctx, rootKey{}, uri)
 }
 
 // WithRoot stores either a URL or a local path to use as a root point when resolving filenames.
@@ -50,7 +48,7 @@ func WithRoot(ctx context.Context, path string) (context.Context, error) {
 }
 
 func getRoot(ctx context.Context) (*url.URL, bool) {
-	root, ok := ctx.Value(rootKey).(*url.URL)
+	root, ok := ctx.Value(rootKey{}).(*url.URL)
 	return root, ok
 }
 
