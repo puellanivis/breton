@@ -131,8 +131,8 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			return fmt.Errorf("invalid flag name for field %s: %s", field.Name, name)
 		}
 
-		// We want to work with direct non-pointer values... unless it implements Value.
-		if val.Kind() == reflect.Ptr {
+		switch val.Kind() {
+		case reflect.Ptr:
 			if val.IsNil() {
 				// If the pointer is nil, then allocate the appropriate type
 				// and assign it into the pointer.
@@ -140,22 +140,19 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 				val.Set(p)
 			}
 
+			// We prefer to work with direct non-pointer values... unless it implements Value.
+
 			if _, ok := val.Interface().(Value); !ok {
 				// If val does not implement Value, dereference it,
 				// to work with the direct value.
 				val = val.Elem()
 			}
-		}
 
-		// We reference the value directly in order to be able to set its value,
-		// and this is the only way to get that.
-		ptr := unsafe.Pointer(val.UnsafeAddr())
-
-		// We prefer to use something that implements Value.
-		// Here we reference a value if its pointer type implements Value.
-		if val.Kind() != reflect.Ptr {
-			// we should only have a pointer, if it already implements Value.
-
+		default:
+			// We prefer to use something that implements Value.
+			// So, here we reference the value, if:
+			// * the value does not implement Value,
+			// * the value’s pointer type does implement Value.
 			if _, ok := val.Interface().(Value); !ok {
 				// ensure that the value itself does not implement Value.
 
@@ -176,7 +173,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 		switch v := val.Interface().(type) {
 		case EnumValue: // EnumValues implements Value, so we need to check this first.
 			enum := &enumValue{
-				val: (*int)(ptr),
+				val: (*int)(unsafe.Pointer(val.UnsafeAddr())),
 			}
 			value = enum
 
@@ -189,12 +186,12 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			value = v
 
 		case bool:
-			value = (*boolValue)(ptr)
+			value = (*boolValue)(unsafe.Pointer(val.UnsafeAddr()))
 
 		case uint:
-			value = (*uintValue)(ptr)
+			value = (*uintValue)(unsafe.Pointer(val.UnsafeAddr()))
 		case []uint:
-			slice := (*[]uint)(ptr)
+			slice := (*[]uint)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				u, err := strconv.ParseUint(s, 0, strconv.IntSize)
@@ -207,9 +204,9 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			})
 
 		case uint64:
-			value = (*uint64Value)(ptr)
+			value = (*uint64Value)(unsafe.Pointer(val.UnsafeAddr()))
 		case []uint64:
-			slice := (*[]uint64)(ptr)
+			slice := (*[]uint64)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				u, err := strconv.ParseUint(s, 0, 64)
@@ -243,9 +240,9 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			})
 
 		case int:
-			value = (*intValue)(ptr)
+			value = (*intValue)(unsafe.Pointer(val.UnsafeAddr()))
 		case []int:
-			slice := (*[]int)(ptr)
+			slice := (*[]int)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				i, err := strconv.ParseInt(s, 0, strconv.IntSize)
@@ -258,9 +255,9 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			})
 
 		case int64:
-			value = (*int64Value)(ptr)
+			value = (*int64Value)(unsafe.Pointer(val.UnsafeAddr()))
 		case []int64:
-			slice := (*[]int64)(ptr)
+			slice := (*[]int64)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				i, err := strconv.ParseInt(s, 0, 64)
@@ -294,9 +291,9 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			})
 
 		case float64:
-			value = (*float64Value)(ptr)
+			value = (*float64Value)(unsafe.Pointer(val.UnsafeAddr()))
 		case []float64:
-			slice := (*[]float64)(ptr)
+			slice := (*[]float64)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				f, err := strconv.ParseFloat(s, 64)
@@ -328,9 +325,9 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			})
 
 		case string:
-			value = (*stringValue)(ptr)
+			value = (*stringValue)(unsafe.Pointer(val.UnsafeAddr()))
 		case []string:
-			slice := (*[]string)(ptr)
+			slice := (*[]string)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				*slice = append(*slice, s)
@@ -345,9 +342,9 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 			})
 
 		case time.Duration:
-			value = (*durationValue)(ptr)
+			value = (*durationValue)(unsafe.Pointer(val.UnsafeAddr()))
 		case []time.Duration:
-			slice := (*[]time.Duration)(ptr)
+			slice := (*[]time.Duration)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				d, err := time.ParseDuration(s)
@@ -361,7 +358,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 
 		// From our code above, we already dereferenced pointers, so this is why not `*url.URL`
 		case url.URL:
-			set := (*url.URL)(ptr)
+			set := (*url.URL)(unsafe.Pointer(val.UnsafeAddr()))
 
 			if defval == "" {
 				z := reflect.Zero(val.Type())
@@ -380,7 +377,7 @@ func (fs *FlagSet) structVar(prefix string, v reflect.Value) error {
 				return nil
 			})
 		case []*url.URL:
-			slice := (*[]*url.URL)(ptr)
+			slice := (*[]*url.URL)(unsafe.Pointer(val.UnsafeAddr()))
 
 			value = newSlice(slice, func(s string) error {
 				uri, err := url.Parse(s)
