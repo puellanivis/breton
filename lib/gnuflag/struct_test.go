@@ -111,7 +111,7 @@ func TestSpecialValues(t *testing.T) {
 	}
 
 	Flags.AUint8Alias = 42
-	MyURL, err := url.Parse("scheme://hostname:port/path")
+	MyURL, err := url.Parse("scheme://hostname:12345/path")
 	if err != nil {
 		t.Fatal("unexpected error parsing url:", err)
 	}
@@ -148,7 +148,7 @@ func TestSpecialValues(t *testing.T) {
 	}
 
 	checkFlag("a-uint8-alias", "42", "AUint8Alias `uint8`", Flags.AUint8Alias, byte(42))
-	checkFlag("my-url", "scheme://hostname:port/path", "MyURL `*url.URL`", Flags.MyURL, MyURL)
+	checkFlag("my-url", "scheme://hostname:12345/path", "MyURL `*url.URL`", Flags.MyURL, MyURL)
 
 	for k := range fs.formal {
 		if !checkedKeys[k] {

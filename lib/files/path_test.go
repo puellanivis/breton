@@ -52,7 +52,7 @@ func TestPathPOSIX(t *testing.T) {
 }
 
 func TestPathURL(t *testing.T) {
-	p, err := url.Parse("scheme://username:password@hostname:port/path/?query#fragment")
+	p, err := url.Parse("scheme://username:password@hostname:12345/path/?query#fragment")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestPathURL(t *testing.T) {
 	ctx := WithRootURL(context.Background(), p)
 
 	filename := makePath("filename")
-	if path := resolveFilename(ctx, filename); path.String() != "scheme://username:password@hostname:port/path/filename" {
+	if path := resolveFilename(ctx, filename); path.String() != "scheme://username:password@hostname:12345/path/filename" {
 		t.Errorf("resolveFilename with %q and %q gave %#v instead", filename, p, path)
 	}
 
