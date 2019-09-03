@@ -6,19 +6,6 @@ import (
 	"strings"
 )
 
-// arrayWrap is used to make array-based flags that will run the setterFunc on every element of a split on ","
-func arrayWrap(fn setterFunc) setterFunc {
-	return func(s string) error {
-		for _, v := range strings.Split(s, ",") {
-			if err := fn(v); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
-}
-
 type sliceValue struct {
 	value interface{} // this must be a pointer to the slice!
 	fn    func(s string) error
