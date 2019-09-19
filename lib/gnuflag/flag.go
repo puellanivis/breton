@@ -751,7 +751,10 @@ func (f *FlagSet) parseShort(name, value string, hasValue bool) (bool, error) {
 		if fv, ok := flag.Value.(boolFlag); ok && fv.IsBoolFlag() {
 			// hasValue == true to be extra sure about preventing
 			//  accidentally pulling the next argument in as the value.
-			return f.doFlag(flag, string(n), "true", true)
+			if _, err := f.doFlag(flag, string(n), "true", true); err != nil {
+				return false, err
+			}
+			continue
 		}
 
 		// not allowed: -…n…=value, if flag requires a value
@@ -763,7 +766,7 @@ func (f *FlagSet) parseShort(name, value string, hasValue bool) (bool, error) {
 		return f.doFlag(flag, string(n), string(r[i+1:]), true)
 	}
 
-	panic("unreachable code reached")
+	return true, nil
 }
 
 func (f *FlagSet) doFlag(flag *Flag, name string, value string, hasValue bool) (bool, error) {
