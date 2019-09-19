@@ -127,8 +127,18 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 
 		f, err := cl.Create(uri.Path)
 		if err != nil {
-			w.err = files.PathError("create", w.Name(), err)
-			return
+			statusErr, ok := err.(*sftp.StatusError)
+			if !ok || statusErr.Code != sftp.ErrSshFxOpUnsupported {
+				w.err = files.PathError("create", w.Name(), err)
+				return
+			}
+
+			// Assume we cannot open in O_RDWR mode, try with OpenFile O_WRONLY.
+			f, err = cl.OpenFile(uri.Path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
+			if err != nil {
+				w.err = files.PathError("openfile", w.Name(), err)
+				return
+			}
 		}
 
 		w.f = f
