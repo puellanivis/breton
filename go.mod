@@ -5,7 +5,7 @@ require (
 	github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 // indirect
 	github.com/davecgh/go-spew v1.1.0 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
-	github.com/golang/protobuf v1.1.0
+	github.com/golang/protobuf v1.3.1
 	github.com/gopherjs/gopherjs v0.0.0-20180628210949-0892b62f0d9f // indirect
 	github.com/jtolds/gls v4.2.1+incompatible // indirect
 	github.com/kr/fs v0.1.0 // indirect
@@ -20,11 +20,10 @@ require (
 	github.com/smartystreets/assertions v0.0.0-20180803164922-886ec427f6b9 // indirect
 	github.com/smartystreets/goconvey v0.0.0-20180222194500-ef6db91d284a // indirect
 	github.com/stretchr/testify v1.2.2 // indirect
-	golang.org/x/crypto v0.0.0-20181001203147-e3636079e1a4
-	golang.org/x/net v0.0.0-20180719180050-a680a1efc54d
-	golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f // indirect
-	golang.org/x/sys v0.0.0-20181005133103-4497e2df6f9e // indirect
-	golang.org/x/text v0.3.0
+	golang.org/x/crypto v0.0.0-20190605123033-f99c8df09eb5
+	golang.org/x/net v0.0.0-20190603091049-60506f45cf65
+	golang.org/x/sys v0.0.0-20190606165138-5da285871e9c // indirect
+	golang.org/x/text v0.3.2
 	google.golang.org/genproto v0.0.0-20180722052100-02b4e9547331 // indirect
 	google.golang.org/grpc v1.13.0
 )
