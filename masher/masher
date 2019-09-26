@@ -169,6 +169,7 @@ if [[ $? -eq 0 ]]; then
 		HASHID=$(git rev-parse --short HEAD)
 		HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
 		BRANCH=$(basename ${HEAD})
+		BUILD_VERSION=$(git describe --tag --abbrev=2 2> /dev/null)
 	;;
 	esac
 else
@@ -246,6 +247,10 @@ echo "PRJPATH='$PRJPATH'"
 echo "PROJECT='$PROJECT'"
 echo "BRANCH='$BRANCH'"
 echo "HASHID='$HASHID'"
+if [[ -n "$BUILD_VERSION" ]]; then
+	echo "BUILD_VERSION='$BUILD_VERSION'"
+	BUILD_VERSION="--buildver=$BUILD_VERSION"
+fi
 if [[ -n "$GOPRIVATE" ]]; then
 	echo "PRIVATE='$GOPRIVATE'"
 	PRIVATE="--private=$GOPRIVATE"
@@ -254,7 +259,7 @@ fi
 TIMESTAMP=$(date -u +"%Y%m%d.%H%M%S")
 
 echo Using image: $IMAGE
-echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE --timestamp=$TIMESTAMP --id=$HASHID $@
+echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE $BUILD_VERSION --timestamp=$TIMESTAMP --id=$HASHID $@
 
 DOCKER_VERSION="$(docker --version)"
 DOCKER_VERSION=${DOCKER_VERSION%%,*}
@@ -354,7 +359,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
 	${IMAGE} \
-	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE --timestamp=$TIMESTAMP --id=$HASHID "$@" || exit 1
+	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE $BUILD_VERSION --timestamp=$TIMESTAMP --id=$HASHID "$@" || exit 1
 
 if [[ $PROD == "true" ]]; then
 	make push || exit 1
