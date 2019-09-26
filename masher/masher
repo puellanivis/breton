@@ -143,6 +143,8 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
+[[ -n "${GOPRIVATE}" ]] && PRIVATE="--private=${GOPRIVATE}"
+
 if [[ -n ${PROD} ]]; then
 	LINUXFLAG="--linux"
 	DARWINFLAG="--darwin"
@@ -246,11 +248,12 @@ echo "PRJPATH='$PRJPATH'"
 echo "PROJECT='$PROJECT'"
 echo "BRANCH='$BRANCH'"
 echo "HASHID='$HASHID'"
+[[ -n "$PRIVATE" ]] && echo "PRIVATE='$PRIVATE'"
 
 TIMESTAMP=$(date -u +"%Y%m%d.%H%M%S")
 
 echo Using image: $IMAGE
-echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE --timestamp=$TIMESTAMP --id=$HASHID $@
+echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE --timestamp=$TIMESTAMP --id=$HASHID $@
 
 DOCKER_VERSION="$(docker --version)"
 DOCKER_VERSION=${DOCKER_VERSION%%,*}
@@ -348,7 +351,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
 	${IMAGE} \
-	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE --timestamp=$TIMESTAMP --id=$HASHID "$@" || exit 1
+	/bin/mash.sh $ESCAPE $DARWIN $LINUX $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE --timestamp=$TIMESTAMP --id=$HASHID "$@" || exit 1
 
 if [[ $PROD == "true" ]]; then
 	make push || exit 1
