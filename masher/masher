@@ -287,8 +287,9 @@ LIBS=""
 [[ -d "${BASE}/.mash/cache" ]] || mkdir -p "${BASE}/.mash/cache"
 CACHE="--cache=${SRCROOT}/.mash/cache"
 
-# vgo
+# go modules
 [[ -d "${BASE}/.mash/mod" ]] || mkdir -p "${BASE}/.mash/mod"
+[[ -d "${BASE}/.mash/sumdb" ]] || mkdir -p "${BASE}/.mash/sumdb"
 
 # godep stuff
 DEP_CACHE=""
@@ -347,6 +348,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	--user "${RUNAS}" \
 	--volume "${BASE}:${SRCROOT}:rw" \
 	--volume "${BASE}/.mash/mod:/go/pkg/mod:rw" \
+	--volume "${BASE}/.mash/sumdb:/go/pkg/sumdb:rw" \
 	$DEP_CACHE \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
