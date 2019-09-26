@@ -143,8 +143,6 @@ while [[ $# -gt 0 ]]; do
 	shift
 done
 
-[[ -n "${GOPRIVATE}" ]] && PRIVATE="--private=${GOPRIVATE}"
-
 if [[ -n ${PROD} ]]; then
 	LINUXFLAG="--linux"
 	DARWINFLAG="--darwin"
@@ -248,7 +246,10 @@ echo "PRJPATH='$PRJPATH'"
 echo "PROJECT='$PROJECT'"
 echo "BRANCH='$BRANCH'"
 echo "HASHID='$HASHID'"
-[[ -n "$PRIVATE" ]] && echo "PRIVATE='$PRIVATE'"
+if [[ -n "$GOPRIVATE" ]]; then
+	echo "PRIVATE='$GOPRIVATE'"
+	PRIVATE="--private=$GOPRIVATE"
+fi
 
 TIMESTAMP=$(date -u +"%Y%m%d.%H%M%S")
 
