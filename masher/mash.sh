@@ -68,6 +68,11 @@ while [[ "$#" -gt 0 ]]; do
 	shift
 done
 
+if [[ -d ./vendor ]]; then
+	export GOFLAGS="-mod=vendor"
+	VENDOR="true"
+fi
+
 if [[ $ESCAPE == "true" ]]; then
 	exec /bin/bash "$@"
 	exit 1
@@ -162,7 +167,7 @@ if [[ $NOCOMPILE != "true" ]]; then
 		fi
 
 		dep ensure $DEP_UP
-	else
+	elif [[ $VENDOR != "true" ]]; then
 		go get -v -d || exit 1
 	fi
 fi
