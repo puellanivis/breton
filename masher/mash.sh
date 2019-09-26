@@ -14,6 +14,9 @@ while [[ "$#" -gt 0 ]]; do
 		--id=*)
 			ID="$val"
 		;;
+		--private=*)
+			export GOPRIVATE="$val"
+		;;
 
 		--linux)
 			LINUX="true"
