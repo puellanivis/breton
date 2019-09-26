@@ -161,7 +161,7 @@ if [[ $PACKAGE != "main" ]]; then
 	exit 0
 fi
 
-if [[ $NOCOMPILE != "true" ]]; then
+if [[ $VENDOR != "true" && $NOCOMPILE != "true" ]]; then
 	echo getting dependencies...
 	if [[ -r Gopkg.toml ]]; then
 		DEP_UP=""
@@ -170,7 +170,7 @@ if [[ $NOCOMPILE != "true" ]]; then
 		fi
 
 		dep ensure $DEP_UP
-	elif [[ $VENDOR != "true" ]]; then
+	else
 		go get -v -d || exit 1
 	fi
 fi
