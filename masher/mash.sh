@@ -180,9 +180,9 @@ fi
 PROJECT="${PWD##*/}"
 if [[ -n $BUILDSTAMP ]]; then
 	DEPS=$( go list -f "{{.Deps}}" | grep -c -e "\<lib/util\>" )
-	GOFLAGS="-ldflags=-X main.VersionBuild=$BUILDSTAMP -X main.Buildstamp=$BUILDSTAMP"
+	LDFLAGS="-ldflags=-X main.VersionBuild=$BUILDSTAMP -X main.Buildstamp=$BUILDSTAMP"
 	if [[ $DEPS -ne 0 ]]; then
-		GOFLAGS="$GOFLAGS -X github.com/puellanivis/breton/lib/util.BUILD=$BUILDSTAMP"
+		LDFLAGS="$LDFLAGS -X github.com/puellanivis/breton/lib/util.BUILD=$BUILDSTAMP"
 	fi
 fi
 
@@ -196,7 +196,7 @@ if [[ $LINUX == "true" ]]; then
 	OUT="bin/linux.x86_64"
 	echo Compiling ${OUT}/${PROJECT}
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
-	GOOS=linux GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${GOFLAGS}" || exit 1
+	GOOS=linux GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 
 	[[ "$DEB" != "false" ]] && DEB="true"
 fi
@@ -205,14 +205,14 @@ if [[ $DARWIN == "true" ]]; then
 	OUT="bin/darwin.x86_64"
 	echo Compiling ${OUT}/${PROJECT}
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
-	GOOS=darwin GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${GOFLAGS}" || exit 1
+	GOOS=darwin GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 fi
 
 if [[ $WINDOWS == "true" ]]; then
 	OUT="bin/windows.x86_64"
 	echo Compiling ${OUT}/${PROJECT}.exe
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
-	GOOS=windows GOARCH=amd64 go build -o "${OUT}/${PROJECT}.exe" "${GOFLAGS}" || exit 1
+	GOOS=windows GOARCH=amd64 go build -o "${OUT}/${PROJECT}.exe" "${LDFLAGS}" || exit 1
 fi
 
 if [[ ( $DEB == "true" ) && ( -r debian/control ) && ( -x bin/linux.x86_64/${PROJECT} ) ]]; then
