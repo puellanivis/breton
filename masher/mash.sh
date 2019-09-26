@@ -8,6 +8,9 @@ while [[ "$#" -gt 0 ]]; do
 		--cache=*)
 			export GOCACHE="$val"
 		;;
+		--buildver=*)
+			VERSION="$val"
+		;;
 		--timestamp=*)
 			TIMESTAMP="$val"
 		;;
@@ -189,6 +192,9 @@ PROJECT="${PWD##*/}"
 if [[ -n $BUILDSTAMP ]]; then
 	DEPS=$( go list -f "{{.Deps}}" | grep -c -e "\<lib/util\>" )
 	LDFLAGS="-ldflags=-X main.VersionBuild=$BUILDSTAMP -X main.Buildstamp=$BUILDSTAMP"
+	if [[ $VERSION != "" ]]; then
+		LDFLAGS="$LDFLAGS -X main.Version=$VERSION"
+	fi
 	if [[ $DEPS -ne 0 ]]; then
 		LDFLAGS="$LDFLAGS -X github.com/puellanivis/breton/lib/util.BUILD=$BUILDSTAMP"
 	fi
