@@ -40,6 +40,7 @@ RUN mkdir -p /usr/bin && \
 RUN go get -v -u \
 	github.com/golang/protobuf/protoc-gen-go \
 	golang.org/x/tools/cmd/goimports \
+	golang.org/x/tools/cmd/godoc \
 	golang.org/x/lint/golint # new intentionally last
 
 # This script is violitile, and rebuilding/retrieving every/any libraries anytime it changes is not a good idea.
