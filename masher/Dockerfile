@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # However, I don’t think it makes sense to use older version, better to be able to advance as it releases outselves.
 RUN mkdir -p /usr/bin && \
 	cd /usr && \
-	curl -sS -L https://github.com/google/protobuf/releases/download/v3.9.2/protoc-3.9.2-linux-x86_64.zip | \
+	curl -sS -L https://github.com/google/protobuf/releases/download/v3.11.2/protoc-3.11.2-linux-x86_64.zip | \
 		bsdtar -xvf- --exclude=readme.txt && \
 	chmod 755 /usr/bin/protoc
 
