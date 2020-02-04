@@ -177,7 +177,7 @@ else
 fi
 
 if [[ -z $IMAGE ]]; then
-	IMAGE="${USER}/masher"
+	IMAGE="$(echo "${USER}" | tr '[:upper:]' '[:lower:]')/masher"
 
 	IMAGE="${IMAGE}:latest"
 fi
