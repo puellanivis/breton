@@ -16,9 +16,10 @@ func newExecChain(ordered bool) *execChain {
 }
 
 func (c *execChain) next() (ready <-chan struct{}, next chan struct{}) {
-	ready, next = c.ch, make(chan struct{})
+	ready = c.ch
 
 	if c.ordered {
+		next = make(chan struct{})
 		c.ch = next
 	}
 

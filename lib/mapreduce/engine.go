@@ -140,7 +140,9 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		go func() {
 			defer func() {
 				wg.Done()
-				close(next)
+				if next != nil {
+					close(next)
+				}
 			}()
 
 			rng := Range{
