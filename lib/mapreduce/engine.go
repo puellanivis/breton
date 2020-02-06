@@ -92,7 +92,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 	case e.conf.stripeSize < 0:
 		minSize := -e.conf.stripeSize
 
-		// strip is already the smallest work size.
+		// stripe is already the smallest work size.
 
 		if stripe < minSize {
 			// We only recalculate mapper count if the stripe size is less than the min stripe size.
@@ -188,7 +188,6 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 
 			if err := e.r.Reduce(ctx, out); err != nil {
 				errch <- err
-				return
 			}
 		}()
 	}
