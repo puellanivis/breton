@@ -1,12 +1,12 @@
 .PHONY: all clean install container push
-TIMESTAMP=$(shell date +"%Y%m%d.%H%M")
+TIMESTAMP:=$(shell date +"%Y%m%d.%H%M")
 ifneq "$(DOCKER_REGISTRY)" ""
-#REGISTRY=$(DOCKER_REGISTRY)/
+#REGISTRY:=$(DOCKER_REGISTRY)/
 endif
-PROJECT=$(shell basename "${PWD}")
-USER=$(shell whoami | tr '[:upper:]' '[:lower:]')
-REPO=${REGISTRY}${USER}/${PROJECT}
-BUILDNO=$(shell docker images ${REPO} | grep -c ${TIMESTAMP})
+PROJECT:=$(shell basename "${PWD}")
+USER   :=$(shell id -un | tr '[:upper:]' '[:lower:]')
+REPO   :=${REGISTRY}${USER}/${PROJECT}
+BUILDNO:=$(shell docker images ${REPO} | grep -c ${TIMESTAMP})
 
 all: container
 
