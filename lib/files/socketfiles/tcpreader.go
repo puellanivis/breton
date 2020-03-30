@@ -12,11 +12,12 @@ import (
 )
 
 type tcpReader struct {
-	conn *net.TCPConn
 	*wrapper.Info
 
-	err     error
 	loading <-chan struct{}
+
+	err  error
+	conn *net.TCPConn
 }
 
 func (r *tcpReader) Read(b []byte) (n int, err error) {
@@ -59,21 +60,22 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 	}
 
 	// Maybe we asked for an arbitrary port,
-	// so, we build our own copy of the URL, and use that.
-	lurl := &url.URL{
-		Scheme: "tcp",
-		Host:   l.Addr().String(),
+	// so, refresh our address to the one we’re actually listening on.
+	laddr = l.Addr().(*net.TCPAddr)
+
+	uri = &url.URL{
+		Scheme: laddr.Network(),
+		Host:   laddr.String(),
 	}
 
 	loading := make(chan struct{})
 	r := &tcpReader{
 		loading: loading,
-		Info:    wrapper.NewInfo(lurl, 0, time.Now()),
+		Info:    wrapper.NewInfo(uri, 0, time.Now()),
 	}
 
 	go func() {
 		defer close(loading)
-		defer l.Close()
 
 		select {
 		case loading <- struct{}{}:
@@ -88,6 +90,11 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 			return
 		}
 
+		// We can close the listener now that we have accepted one,
+		// this will not close the accepted connection.
+		l.Close()
+
+		// TODO: make the a configurable option?
 		/* if err := conn.CloseWrite(); err != nil {
 			conn.Close()
 			r.err = err
