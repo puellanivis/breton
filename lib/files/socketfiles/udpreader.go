@@ -13,20 +13,13 @@ import (
 
 type udpReader struct {
 	*wrapper.Info
-	conn *net.UDPConn
 	sock *ipSocket
-}
 
-func (r *udpReader) Read(b []byte) (n int, err error) {
-	return r.conn.Read(b)
+	*net.UDPConn
 }
 
 func (r *udpReader) Seek(offset int64, whence int) (int64, error) {
 	return 0, os.ErrInvalid
-}
-
-func (r *udpReader) Close() error {
-	return r.conn.Close()
 }
 
 func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
@@ -58,7 +51,8 @@ func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 
 	return &udpReader{
 		Info: wrapper.NewInfo(uri, 0, time.Now()),
-		conn: conn,
 		sock: sock,
+
+		UDPConn: conn,
 	}, nil
 }
