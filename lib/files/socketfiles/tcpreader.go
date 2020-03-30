@@ -84,8 +84,16 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 			return
 		}
 
-		conn, err := l.AcceptTCP()
-		if err != nil {
+		var conn *net.TCPConn
+		accept := func() error {
+			var err error
+
+			conn, err = l.AcceptTCP()
+
+			return err
+		}
+
+		if err := do(ctx, accept); err != nil {
 			r.err = files.PathError("accept", uri.String(), err)
 			return
 		}
