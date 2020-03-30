@@ -76,6 +76,7 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 
 	go func() {
 		defer close(loading)
+		defer l.Close()
 
 		select {
 		case loading <- struct{}{}:
@@ -97,10 +98,6 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 			r.err = files.PathError("accept", uri.String(), err)
 			return
 		}
-
-		// We can close the listener now that we have accepted one,
-		// this will not close the accepted connection.
-		l.Close()
 
 		// TODO: make the a configurable option?
 		/* if err := conn.CloseWrite(); err != nil {
