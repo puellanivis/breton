@@ -32,21 +32,46 @@ type ipSocket struct {
 	laddr, raddr net.Addr
 
 	bufferSize int
+	packetSize int
 
 	tos, ttl int
 
 	throttler
 }
 
+func (s *ipSocket) uri() *url.URL {
+	q := s.uriQuery()
+
+	switch laddr := s.laddr.(type) {
+	case *net.TCPAddr:
+		q.Set(FieldLocalAddress, laddr.IP.String())
+		q.Set(FieldLocalPort, strconv.Itoa(laddr.Port))
+
+	case *net.UDPAddr:
+		q.Set(FieldLocalAddress, laddr.IP.String())
+		q.Set(FieldLocalPort, strconv.Itoa(laddr.Port))
+	}
+
+	return &url.URL{
+		Scheme:   s.raddr.Network(),
+		Host:     s.raddr.String(),
+		RawQuery: q.Encode(),
+	}
+}
+
 func (s *ipSocket) uriQuery() url.Values {
 	q := make(url.Values)
 
 	if s.bitrate > 0 {
-		setInt(q, FieldMaxBitrate, s.bitrate)
+		q.Set(FieldMaxBitrate, strconv.Itoa(s.bitrate))
 	}
 
 	if s.bufferSize > 0 {
-		setInt(q, FieldBufferSize, s.bufferSize)
+		q.Set(FieldBufferSize, strconv.Itoa(s.bufferSize))
+	}
+
+	if s.packetSize > 0 {
+		q.Set(FieldPacketSize, strconv.Itoa(s.packetSize))
 	}
 
 	if s.tos > 0 {
@@ -54,105 +79,124 @@ func (s *ipSocket) uriQuery() url.Values {
 	}
 
 	if s.ttl > 0 {
-		setInt(q, FieldTTL, s.ttl)
+		q.Set(FieldTTL, strconv.Itoa(s.ttl))
 	}
 
 	return q
 }
 
-func (s *ipSocket) setForReader(conn net.Conn, q url.Values) error {
-	s.laddr = conn.LocalAddr()
-
-	type bufferSizeSetter interface {
-		SetReadBuffer(int) error
+func ipReader(conn net.Conn, q url.Values) (*ipSocket, error) {
+	bufferSize, err := getSize(q, FieldBufferSize)
+	if err != nil {
+		return nil, err
 	}
-	if bufferSize, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
-		if err != nil {
-			return err
+
+	if bufferSize > 0 {
+		type readBufferSetter interface {
+			SetReadBuffer(int) error
 		}
 
-		conn, ok := conn.(bufferSizeSetter)
+		conn, ok := conn.(readBufferSetter)
 		if !ok {
-			return syscall.EINVAL
+			return nil, syscall.EINVAL
 		}
 
 		if err := conn.SetReadBuffer(bufferSize); err != nil {
-			return err
+			return nil, err
 		}
-
-		s.bufferSize = bufferSize
 	}
 
-	return nil
+	return &ipSocket{
+		laddr: conn.LocalAddr(),
+
+		bufferSize: bufferSize,
+	}, nil
 }
 
-func (s *ipSocket) setForWriter(conn net.Conn, q url.Values) error {
-	s.laddr = conn.LocalAddr()
-	s.raddr = conn.RemoteAddr()
-
-	if err := s.setThrottle(q); err != nil {
-		return err
+func ipWriter(conn net.Conn, q url.Values) (*ipSocket, error) {
+	bufferSize, err := getSize(q, FieldBufferSize)
+	if err != nil {
+		return nil, err
 	}
 
-	type bufferSizeSetter interface {
-		SetWriteBuffer(int) error
-	}
-	if bufferSize, ok, err := getSize(q, FieldBufferSize); ok || err != nil {
-		if err != nil {
-			return err
+	if bufferSize > 0 {
+		type writeBufferSetter interface {
+			SetWriteBuffer(int) error
 		}
 
-		conn, ok := conn.(bufferSizeSetter)
+		conn, ok := conn.(writeBufferSetter)
 		if !ok {
-			return syscall.EINVAL
+			return nil, syscall.EINVAL
 		}
 
 		if err := conn.SetWriteBuffer(bufferSize); err != nil {
-			return err
+			return nil, err
 		}
+	}
 
-		s.bufferSize = bufferSize
+	packetSize, err := getSize(q, FieldPacketSize)
+	if err != nil {
+		return nil, err
+	}
+
+	bitrate, err := getSize(q, FieldMaxBitrate)
+	if err != nil {
+		return nil, err
+	}
+
+	var t throttler
+	if bitrate > 0 {
+		t.setBitrate(bitrate, packetSize)
 	}
 
 	var p *ipv4.Conn
 
-	if tos, ok, err := getInt(q, FieldTOS); ok || err != nil {
-		if err != nil {
-			return err
-		}
+	tos, err := getInt(q, FieldTOS)
+	if err != nil {
+		return nil, err
+	}
 
+	if tos > 0 {
 		if p == nil {
 			p = ipv4.NewConn(conn)
 		}
 
 		if err := p.SetTOS(tos); err != nil {
-			return err
+			return nil, err
 		}
 
-		s.tos, _ = p.TOS()
+		tos, _ = p.TOS()
 	}
 
-	if ttl, ok, err := getInt(q, FieldTTL); ok || err != nil {
-		if err != nil {
-			return err
-		}
+	ttl, err := getInt(q, FieldTTL)
+	if err != nil {
+		return nil, err
+	}
 
+	if ttl > 0 {
 		if p == nil {
 			p = ipv4.NewConn(conn)
 		}
 
 		if err := p.SetTTL(ttl); err != nil {
-			return err
+			return nil, err
 		}
 
-		s.ttl, _ = p.TTL()
+		ttl, _ = p.TTL()
 	}
 
-	return nil
-}
+	return &ipSocket{
+		laddr: conn.LocalAddr(),
+		raddr: conn.RemoteAddr(),
 
-func setInt(q url.Values, field string, val int) {
-	q.Set(field, strconv.Itoa(val))
+		bufferSize: bufferSize,
+		packetSize: packetSize,
+
+		tos: tos,
+		ttl: ttl,
+
+		throttler: t,
+	}, nil
 }
 
 var scales = map[byte]int{
@@ -164,40 +208,40 @@ var scales = map[byte]int{
 	'k': 1000,
 }
 
-func getSize(q url.Values, field string) (val int, specified bool, err error) {
-	s := q.Get(field)
-	if s == "" {
-		return 0, false, nil
+func getSize(q url.Values, field string) (val int, err error) {
+	value := q.Get(field)
+	if value == "" {
+		return 0, nil
 	}
 
-	suffix := s[len(s)-1]
+	suffix := value[len(value)-1]
 
 	scale := 1
-	if val, ok := scales[suffix]; ok {
-		scale = val
-		s = s[:len(s)-1]
+	if s := scales[suffix]; s > 0 {
+		scale = s
+		value = value[:len(value)-1]
 	}
 
-	i, err := strconv.ParseInt(s, 0, strconv.IntSize)
+	i, err := strconv.ParseInt(value, 0, strconv.IntSize)
 	if err != nil {
-		return 0, true, err
+		return 0, err
 	}
 
-	return int(i) * scale, true, nil
+	return int(i) * scale, nil
 }
 
-func getInt(q url.Values, field string) (val int, specified bool, err error) {
-	s := q.Get(field)
-	if s == "" {
-		return 0, false, nil
+func getInt(q url.Values, field string) (val int, err error) {
+	value := q.Get(field)
+	if value == "" {
+		return 0, nil
 	}
 
-	i, err := strconv.ParseInt(s, 0, strconv.IntSize)
+	i, err := strconv.ParseInt(value, 0, strconv.IntSize)
 	if err != nil {
-		return 0, true, err
+		return 0, err
 	}
 
-	return int(i), true, nil
+	return int(i), nil
 }
 
 func buildAddr(addr, portString string) (ip net.IP, port int, err error) {
@@ -220,9 +264,10 @@ func buildAddr(addr, portString string) (ip net.IP, port int, err error) {
 	return ip, port, nil
 }
 
-func withContext(ctx context.Context, fn func() error) (err error) {
+func do(ctx context.Context, fn func() error) error {
 	done := make(chan struct{})
 
+	var err error
 	go func() {
 		defer close(done)
 

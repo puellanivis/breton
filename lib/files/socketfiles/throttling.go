@@ -1,7 +1,6 @@
 package socketfiles
 
 import (
-	"net/url"
 	"time"
 )
 
@@ -12,16 +11,33 @@ type throttler struct {
 	next  *time.Timer
 }
 
+func (t *throttler) drain() {
+	if t.next == nil {
+		return
+	}
+
+	if !t.next.Stop() {
+		<-t.next.C
+	}
+}
+
 func (t *throttler) updateDelay(prescale int) {
 	if t.bitrate <= 0 {
 		t.delay = 0
+		t.drain()
 		t.next = nil
 		return
 	}
 
+	if t.next != nil {
+		t.drain()
+		t.next.Reset(0)
+	} else {
+		t.next = time.NewTimer(0)
+	}
+
 	// delay = nanoseconds per byte
 	t.delay = (8 * time.Second) / time.Duration(t.bitrate)
-	t.next = time.NewTimer(0)
 
 	// recalculate to the actual expected maximum bitrate
 	t.bitrate = int(8 * time.Second / t.delay)
@@ -46,14 +62,11 @@ func (t *throttler) throttle(scale int) {
 	t.next.Reset(t.delay)
 }
 
-func (t *throttler) setThrottle(q url.Values) error {
-	if bitrate, ok, err := getSize(q, FieldMaxBitrate); ok || err != nil {
-		if err != nil {
-			return err
-		}
+func (t *throttler) setBitrate(bitrate, prescale int) int {
+	prev := t.bitrate
 
-		t.bitrate = bitrate
-	}
+	t.bitrate = bitrate
+	t.updateDelay(prescale)
 
-	return nil
+	return prev
 }

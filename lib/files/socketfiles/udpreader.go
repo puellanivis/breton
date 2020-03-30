@@ -12,9 +12,9 @@ import (
 )
 
 type udpReader struct {
-	conn *net.UDPConn
 	*wrapper.Info
-	ipSocket
+	conn *net.UDPConn
+	sock *ipSocket
 }
 
 func (r *udpReader) Read(b []byte) (n int, err error) {
@@ -29,41 +29,36 @@ func (r *udpReader) Close() error {
 	return r.conn.Close()
 }
 
-func (r *udpReader) uri() *url.URL {
-	q := r.ipSocket.uriQuery()
-
-	return &url.URL{
-		Scheme:   "udp",
-		Host:     r.laddr.String(),
-		RawQuery: q.Encode(),
-	}
-}
-
 func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host == "" {
 		return nil, files.PathError("open", uri.String(), errInvalidURL)
 	}
-
-	r := new(udpReader)
 
 	laddr, err := net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
 		return nil, files.PathError("open", uri.String(), err)
 	}
 
-	q := uri.Query()
-
-	r.conn, err = net.ListenUDP("udp", laddr)
+	conn, err := net.ListenUDP("udp", laddr)
 	if err != nil {
 		return nil, files.PathError("open", uri.String(), err)
 	}
 
-	if err := r.ipSocket.setForReader(r.conn, q); err != nil {
-		r.conn.Close()
+	sock, err := ipReader(conn, uri.Query())
+	if err != nil {
+		conn.Close()
 		return nil, files.PathError("open", uri.String(), err)
 	}
 
-	r.Info = wrapper.NewInfo(r.uri(), 0, time.Now())
+	uri = &url.URL{
+		Scheme:   laddr.Network(),
+		Host:     laddr.String(),
+		RawQuery: sock.uriQuery().Encode(),
+	}
 
-	return r, nil
+	return &udpReader{
+		Info: wrapper.NewInfo(uri, 0, time.Now()),
+		conn: conn,
+		sock: sock,
+	}, nil
 }

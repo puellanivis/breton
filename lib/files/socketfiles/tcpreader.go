@@ -61,7 +61,8 @@ func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 	// Maybe we asked for an arbitrary port,
 	// so, we build our own copy of the URL, and use that.
 	lurl := &url.URL{
-		Host: l.Addr().String(),
+		Scheme: "tcp",
+		Host:   l.Addr().String(),
 	}
 
 	loading := make(chan struct{})

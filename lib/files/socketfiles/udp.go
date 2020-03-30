@@ -20,13 +20,14 @@ func init() {
 }
 
 type udpWriter struct {
+	*wrapper.Info
+	conn *net.UDPConn
+
 	mu sync.Mutex
 
 	closed chan struct{}
 
-	conn *net.UDPConn
-	*wrapper.Info
-	ipSocket
+	sock *ipSocket
 
 	noerrs bool
 
@@ -59,12 +60,23 @@ func (w *udpWriter) SetPacketSize(size int) int {
 
 	prev := len(w.buf)
 
-	w.buf = nil
-	if size > 0 {
-		w.buf = make([]byte, size)
+	switch {
+	case size <= 0:
+		w.buf = nil
+
+	case size <= len(w.buf):
+		w.buf = w.buf[:size]
+
+	default:
+		w.buf = append(w.buf, make([]byte, size-len(w.buf))...)
 	}
 
-	w.updateDelay(len(w.buf))
+	if w.off > len(w.buf) {
+		w.off = len(w.buf)
+	}
+
+	w.sock.packetSize = len(w.buf)
+	w.sock.updateDelay(len(w.buf))
 
 	return prev
 }
@@ -73,12 +85,7 @@ func (w *udpWriter) SetBitrate(bitrate int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	prev := w.bitrate
-
-	w.bitrate = bitrate
-	w.updateDelay(len(w.buf))
-
-	return prev
+	return w.sock.setBitrate(bitrate, len(w.buf))
 }
 
 func (w *udpWriter) Sync() error {
@@ -98,14 +105,18 @@ func (w *udpWriter) sync() error {
 		w.buf[i] = 0
 	}
 
-	w.off = 0
-	_, err := w.mustWrite(w.buf)
+	_, err := w.writeBuffer()
 	return err
 }
 
-func (w *udpWriter) mustWrite(b []byte) (n int, err error) {
+func (w *udpWriter) writeBuffer() (n int, err error) {
+	w.off = 0
+	return w.write(w.buf)
+}
+
+func (w *udpWriter) write(b []byte) (n int, err error) {
 	// We should have already prescaled the delay, so scale=1 here.
-	w.throttle(1)
+	w.sock.throttle(1)
 
 	n, err = w.conn.Write(b)
 	if n != len(b) {
@@ -121,13 +132,13 @@ func (w *udpWriter) Close() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	err := w.sync()
-
 	select {
 	case <-w.closed:
 	default:
 		close(w.closed)
 	}
+
+	err := w.sync()
 
 	if err2 := w.conn.Close(); err == nil {
 		err = err2
@@ -141,7 +152,7 @@ func (w *udpWriter) Write(b []byte) (n int, err error) {
 	defer w.mu.Unlock()
 
 	if len(w.buf) < 1 {
-		w.throttle(len(b))
+		w.sock.throttle(len(b))
 
 		n, err = w.conn.Write(b)
 		return n, w.err(err)
@@ -158,28 +169,24 @@ func (w *udpWriter) Write(b []byte) (n int, err error) {
 			return n, nil
 		}
 
-		w.off = 0
-		b = b[n:]
-
-		n2, err2 := w.mustWrite(w.buf)
+		n2, err2 := w.writeBuffer()
 		if err = w.err(err2); err != nil {
 			if n2 > 0 {
+				// Should we?
+				// This could cause loss of packet-alignment from writers?
 				w.off = copy(w.buf, w.buf[n2:])
 			}
 
-			/*n -= len(w.buf) - n2
-			if n < 0 {
-				n = 0
-			} */
-
 			return n, err
 		}
+
+		b = b[n:]
 	}
 
 	sz := len(w.buf)
 
 	for len(b) >= sz {
-		n2, err2 := w.mustWrite(b[:sz])
+		n2, err2 := w.write(b[:sz])
 		n += n2
 
 		if err = w.err(err2); err != nil {
@@ -191,42 +198,20 @@ func (w *udpWriter) Write(b []byte) (n int, err error) {
 	}
 
 	if len(b) > 0 {
-		n2 := copy(w.buf, b)
-		w.off += n2
-		n += n2
+		w.off = copy(w.buf, b)
+		n += w.off
 	}
 
 	return n, nil
 }
 
 func (w *udpWriter) uri() *url.URL {
-	q := w.ipSocket.uriQuery()
-
-	if w.laddr != nil {
-		laddr := w.laddr.(*net.UDPAddr)
-
-		q.Set(FieldLocalAddress, laddr.IP.String())
-		setInt(q, FieldLocalPort, laddr.Port)
-	}
-
-	if len(w.buf) > 0 {
-		setInt(q, FieldPacketSize, len(w.buf))
-	}
-
-	return &url.URL{
-		Scheme:   "udp",
-		Host:     w.raddr.String(),
-		RawQuery: q.Encode(),
-	}
+	return w.sock.uri()
 }
 
 func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	if uri.Host == "" {
 		return nil, files.PathError("create", uri.String(), errInvalidURL)
-	}
-
-	w := &udpWriter{
-		closed: make(chan struct{}),
 	}
 
 	raddr, err := net.ResolveUDPAddr("udp", uri.Host)
@@ -236,30 +221,49 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 	q := uri.Query()
 
-	port := q.Get(FieldLocalPort)
-	addr := q.Get(FieldLocalAddress)
-
 	var laddr *net.UDPAddr
 
-	if port != "" || addr != "" {
-		laddr = new(net.UDPAddr)
-
-		laddr.IP, laddr.Port, err = buildAddr(addr, port)
+	host := q.Get(FieldLocalAddress)
+	port := q.Get(FieldLocalPort)
+	if host != "" || port != "" {
+		laddr, err = net.ResolveUDPAddr("udp", net.JoinHostPort(host, port))
 		if err != nil {
 			return nil, files.PathError("create", uri.String(), err)
 		}
 	}
 
-	dail := func() error {
+	var conn *net.UDPConn
+	dial := func() error {
 		var err error
 
-		w.conn, err = net.DialUDP("udp", laddr, raddr)
+		conn, err = net.DialUDP("udp", laddr, raddr)
 
 		return err
 	}
 
-	if err := withContext(ctx, dail); err != nil {
+	if err := do(ctx, dial); err != nil {
 		return nil, files.PathError("create", uri.String(), err)
+	}
+
+	sock, err := ipWriter(conn, q)
+	if err != nil {
+		conn.Close()
+		return nil, files.PathError("create", uri.String(), err)
+	}
+
+	var buf []byte
+	if sock.packetSize > 0 {
+		buf = make([]byte, sock.packetSize)
+	}
+
+	w := &udpWriter{
+		Info: wrapper.NewInfo(sock.uri(), 0, time.Now()),
+		conn: conn,
+
+		closed: make(chan struct{}),
+		sock:   sock,
+
+		buf: buf,
 	}
 
 	go func() {
@@ -269,23 +273,6 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 			w.Close()
 		}
 	}()
-
-	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
-		w.Close()
-		return nil, files.PathError("create", uri.String(), err)
-	}
-
-	if pktSize, ok, err := getSize(q, FieldPacketSize); ok || err != nil {
-		if err != nil {
-			w.Close()
-			return nil, files.PathError("create", uri.String(), err)
-		}
-
-		w.buf = make([]byte, pktSize)
-	}
-
-	w.updateDelay(len(w.buf))
-	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
 
 	return w, nil
 }
