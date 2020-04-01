@@ -113,7 +113,7 @@ func ipReader(conn net.Conn, q url.Values) (*ipSocket, error) {
 	}, nil
 }
 
-func ipWriter(conn net.Conn, q url.Values) (*ipSocket, error) {
+func ipWriter(conn net.Conn, showLocalAddr bool, q url.Values) (*ipSocket, error) {
 	bufferSize, err := getSize(q, FieldBufferSize)
 	if err != nil {
 		return nil, err
@@ -185,8 +185,13 @@ func ipWriter(conn net.Conn, q url.Values) (*ipSocket, error) {
 		ttl, _ = p.TTL()
 	}
 
+	var laddr net.Addr
+	if showLocalAddr {
+		laddr = conn.LocalAddr()
+	}
+
 	return &ipSocket{
-		laddr: conn.LocalAddr(),
+		laddr: laddr,
 		raddr: conn.RemoteAddr(),
 
 		bufferSize: bufferSize,

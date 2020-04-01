@@ -245,7 +245,7 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 		return nil, files.PathError("create", uri.String(), err)
 	}
 
-	sock, err := ipWriter(conn, q)
+	sock, err := ipWriter(conn, laddr != nil, q)
 	if err != nil {
 		conn.Close()
 		return nil, files.PathError("create", uri.String(), err)
