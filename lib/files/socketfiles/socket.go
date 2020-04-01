@@ -28,8 +28,10 @@ const (
 	FieldTTL          = "ttl"
 )
 
-type ipSocket struct {
-	laddr, raddr net.Addr
+type socket struct {
+	conn net.Conn
+
+	addr, qaddr net.Addr
 
 	bufferSize int
 	packetSize int
@@ -39,27 +41,38 @@ type ipSocket struct {
 	throttler
 }
 
-func (s *ipSocket) uri() *url.URL {
+func (s *socket) uri() *url.URL {
 	q := s.uriQuery()
 
-	switch laddr := s.laddr.(type) {
+	switch qaddr := s.qaddr.(type) {
 	case *net.TCPAddr:
-		q.Set(FieldLocalAddress, laddr.IP.String())
-		q.Set(FieldLocalPort, strconv.Itoa(laddr.Port))
+		q.Set(FieldLocalAddress, qaddr.IP.String())
+		q.Set(FieldLocalPort, strconv.Itoa(qaddr.Port))
 
 	case *net.UDPAddr:
-		q.Set(FieldLocalAddress, laddr.IP.String())
-		q.Set(FieldLocalPort, strconv.Itoa(laddr.Port))
+		q.Set(FieldLocalAddress, qaddr.IP.String())
+		q.Set(FieldLocalPort, strconv.Itoa(qaddr.Port))
+
+	case *net.UnixAddr:
+		q.Set(FieldLocalAddress, qaddr.String())
+	}
+
+	host, path := s.addr.String(), ""
+
+	switch s.addr.Network() {
+	case "unix", "unixgram", "unixpacket":
+		host, path = "", host
 	}
 
 	return &url.URL{
-		Scheme:   s.raddr.Network(),
-		Host:     s.raddr.String(),
+		Scheme:   s.addr.Network(),
+		Host:     host,
+		Path:     path,
 		RawQuery: q.Encode(),
 	}
 }
 
-func (s *ipSocket) uriQuery() url.Values {
+func (s *socket) uriQuery() url.Values {
 	q := make(url.Values)
 
 	if s.bitrate > 0 {
@@ -70,22 +83,30 @@ func (s *ipSocket) uriQuery() url.Values {
 		q.Set(FieldBufferSize, strconv.Itoa(s.bufferSize))
 	}
 
-	if s.packetSize > 0 {
-		q.Set(FieldPacketSize, strconv.Itoa(s.packetSize))
+	network := s.addr.Network()
+
+	switch network {
+	case "udp", "udp4", "udp6", "unixgram", "unixpacket":
+		if s.packetSize > 0 {
+			q.Set(FieldPacketSize, strconv.Itoa(s.packetSize))
+		}
 	}
 
-	if s.tos > 0 {
-		q.Set(FieldTOS, "0x"+strconv.FormatInt(int64(s.tos), 16))
-	}
+	switch network {
+	case "udp", "udp4", "tcp", "tcp4":
+		if s.tos > 0 {
+			q.Set(FieldTOS, "0x"+strconv.FormatInt(int64(s.tos), 16))
+		}
 
-	if s.ttl > 0 {
-		q.Set(FieldTTL, strconv.Itoa(s.ttl))
+		if s.ttl > 0 {
+			q.Set(FieldTTL, strconv.Itoa(s.ttl))
+		}
 	}
 
 	return q
 }
 
-func ipReader(conn net.Conn, q url.Values) (*ipSocket, error) {
+func sockReader(conn net.Conn, q url.Values) (*socket, error) {
 	bufferSize, err := getSize(q, FieldBufferSize)
 	if err != nil {
 		return nil, err
@@ -106,14 +127,18 @@ func ipReader(conn net.Conn, q url.Values) (*ipSocket, error) {
 		}
 	}
 
-	return &ipSocket{
-		laddr: conn.LocalAddr(),
+	return &socket{
+		conn: conn,
+
+		addr: conn.LocalAddr(),
 
 		bufferSize: bufferSize,
 	}, nil
 }
 
-func ipWriter(conn net.Conn, showLocalAddr bool, q url.Values) (*ipSocket, error) {
+func sockWriter(conn net.Conn, showLocalAddr bool, q url.Values) (*socket, error) {
+	raddr := conn.RemoteAddr()
+
 	bufferSize, err := getSize(q, FieldBufferSize)
 	if err != nil {
 		return nil, err
@@ -134,9 +159,13 @@ func ipWriter(conn net.Conn, showLocalAddr bool, q url.Values) (*ipSocket, error
 		}
 	}
 
-	packetSize, err := getSize(q, FieldPacketSize)
-	if err != nil {
-		return nil, err
+	var packetSize int
+	switch raddr.Network() {
+	case "udp", "udp4", "udp6", "unixgram", "unixpacket":
+		packetSize, err = getSize(q, FieldPacketSize)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	bitrate, err := getSize(q, FieldMaxBitrate)
@@ -149,40 +178,45 @@ func ipWriter(conn net.Conn, showLocalAddr bool, q url.Values) (*ipSocket, error
 		t.setBitrate(bitrate, packetSize)
 	}
 
-	var p *ipv4.Conn
+	var tos, ttl int
 
-	tos, err := getInt(q, FieldTOS)
-	if err != nil {
-		return nil, err
-	}
+	switch raddr.Network() {
+	case "udp", "udp4", "tcp", "tcp4":
+		var p *ipv4.Conn
 
-	if tos > 0 {
-		if p == nil {
-			p = ipv4.NewConn(conn)
-		}
-
-		if err := p.SetTOS(tos); err != nil {
+		tos, err = getInt(q, FieldTOS)
+		if err != nil {
 			return nil, err
 		}
 
-		tos, _ = p.TOS()
-	}
+		if tos > 0 {
+			if p == nil {
+				p = ipv4.NewConn(conn)
+			}
 
-	ttl, err := getInt(q, FieldTTL)
-	if err != nil {
-		return nil, err
-	}
+			if err := p.SetTOS(tos); err != nil {
+				return nil, err
+			}
 
-	if ttl > 0 {
-		if p == nil {
-			p = ipv4.NewConn(conn)
+			tos, _ = p.TOS()
 		}
 
-		if err := p.SetTTL(ttl); err != nil {
+		ttl, err = getInt(q, FieldTTL)
+		if err != nil {
 			return nil, err
 		}
 
-		ttl, _ = p.TTL()
+		if ttl > 0 {
+			if p == nil {
+				p = ipv4.NewConn(conn)
+			}
+
+			if err := p.SetTTL(ttl); err != nil {
+				return nil, err
+			}
+
+			ttl, _ = p.TTL()
+		}
 	}
 
 	var laddr net.Addr
@@ -190,9 +224,11 @@ func ipWriter(conn net.Conn, showLocalAddr bool, q url.Values) (*ipSocket, error
 		laddr = conn.LocalAddr()
 	}
 
-	return &ipSocket{
-		laddr: laddr,
-		raddr: conn.RemoteAddr(),
+	return &socket{
+		conn: conn,
+
+		addr:  raddr,
+		qaddr: laddr,
 
 		bufferSize: bufferSize,
 		packetSize: packetSize,

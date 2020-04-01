@@ -9,63 +9,60 @@ import (
 )
 
 func TestTCPName(t *testing.T) {
-	w := &tcpWriter{
-		sock: &ipSocket{
-			laddr: &net.TCPAddr{
-				IP:   []byte{127, 0, 0, 1},
-				Port: 65535,
-			},
-			raddr: &net.TCPAddr{
-				IP:   []byte{127, 0, 0, 2},
-				Port: 80,
-			},
-			bufferSize: 1024,
-			ttl:        100,
-			tos:        0x80,
+	sock := &socket{
+		qaddr: &net.TCPAddr{
+			IP:   []byte{127, 0, 0, 1},
+			Port: 65535,
+		},
+		addr: &net.TCPAddr{
+			IP:   []byte{127, 0, 0, 2},
+			Port: 80,
+		},
 
-			throttler: throttler{
-				bitrate: 2048,
-			},
+		packetSize: 188, // should not show up
+		bufferSize: 1024,
+
+		ttl: 100,
+		tos: 0x80,
+
+		throttler: throttler{
+			bitrate: 2048,
 		},
 	}
 
-	uri := w.uri()
+	uri := sock.uri()
 	expected := "tcp://127.0.0.2:80?buffer_size=1024&localaddr=127.0.0.1&localport=65535&max_bitrate=2048&tos=0x80&ttl=100"
 
 	if s := uri.String(); s != expected {
 		t.Errorf("got a bad URI, was expecting, but got:\n\t%v\n\t%v", expected, s)
 	}
 
-	w = &tcpWriter{
-		sock: &ipSocket{
-			laddr: &net.TCPAddr{
-				IP:   []byte{127, 0, 0, 1},
-				Port: 65534,
-			},
-			raddr: &net.TCPAddr{
-				IP:   []byte{127, 0, 0, 2},
-				Port: 443,
-			},
+	sock = &socket{
+		qaddr: &net.TCPAddr{
+			IP:   []byte{127, 0, 0, 1},
+			Port: 65534,
+		},
+		addr: &net.TCPAddr{
+			IP:   []byte{127, 0, 0, 2},
+			Port: 443,
 		},
 	}
 
-	uri = w.uri()
+	uri = sock.uri()
 	expected = "tcp://127.0.0.2:443?localaddr=127.0.0.1&localport=65534"
 
 	if s := uri.String(); s != expected {
 		t.Errorf("got a bad URI, was expecting, but got:\n\t%v\n\t%v", expected, s)
 	}
 
-	w = &tcpWriter{
-		sock: &ipSocket{
-			raddr: &net.TCPAddr{
-				IP:   []byte{127, 0, 0, 2},
-				Port: 8080,
-			},
+	sock = &socket{
+		addr: &net.TCPAddr{
+			IP:   []byte{127, 0, 0, 2},
+			Port: 8080,
 		},
 	}
 
-	uri = w.uri()
+	uri = sock.uri()
 	expected = "tcp://127.0.0.2:8080"
 
 	if s := uri.String(); s != expected {
