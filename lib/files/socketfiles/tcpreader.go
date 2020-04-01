@@ -39,6 +39,11 @@ func (r *tcpReader) Close() error {
 	for range r.loading {
 	}
 
+	// Never connected, so just return nil.
+	if r.conn == nil {
+		return nil
+	}
+
 	// Ignore the r.err, as it is a request-scope error, and not relevant to closing.
 
 	return r.conn.Close()
