@@ -19,8 +19,8 @@ func init() {
 }
 
 type writer struct {
-	*net.UnixConn
 	*wrapper.Info
+	*net.UnixConn
 }
 
 func (w *writer) Sync() error { return nil }
@@ -41,11 +41,6 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		return nil, err
 	}
 
-	fixURL := &url.URL{
-		Scheme: "unix",
-		Opaque: raddr.String(),
-	}
-
 	var laddr *net.UnixAddr
 
 	q := uri.Query()
@@ -54,18 +49,35 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		if err != nil {
 			return nil, err
 		}
-		q.Set(FieldLocalAddress, laddr.String())
-		fixURL.RawQuery = q.Encode()
 	}
 
-	conn, err := net.DialUnix("unix", laddr, raddr)
-	if err != nil {
-		return nil, err
+	var conn *net.UnixConn
+	dial := func() error {
+		var err error
+
+		conn, err = net.DialUnix("unix", laddr, raddr)
+
+		return err
+	}
+
+	if err := do(ctx, dial); err != nil {
+		return nil, files.PathError("create", uri.String(), err)
+	}
+
+	q = make(url.Values)
+	if laddr != nil {
+		q.Set(FieldLocalAddress, laddr.String())
+	}
+
+	uri = &url.URL{
+		Scheme:   raddr.Network(),
+		Path:     raddr.String(),
+		RawQuery: q.Encode(),
 	}
 
 	w := &writer{
+		Info:     wrapper.NewInfo(uri, 0, time.Now()),
 		UnixConn: conn,
-		Info:     wrapper.NewInfo(fixURL, 0, time.Now()),
 	}
 
 	return w, nil
@@ -73,4 +85,23 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 
 func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
+}
+
+func do(ctx context.Context, fn func() error) error {
+	done := make(chan struct{})
+
+	var err error
+	go func() {
+		defer close(done)
+
+		err = fn()
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return err
 }
