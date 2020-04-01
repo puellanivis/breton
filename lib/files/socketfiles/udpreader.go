@@ -37,6 +37,10 @@ func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 		return nil, files.PathError("open", uri.String(), err)
 	}
 
+	// Maybe we asked for an arbitrary port,
+	// so, refresh our address to the one we’re actually listening on.
+	laddr = conn.LocalAddr().(*net.UDPAddr)
+
 	sock, err := ipReader(conn, uri.Query())
 	if err != nil {
 		conn.Close()
