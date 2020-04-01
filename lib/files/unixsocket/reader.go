@@ -12,11 +12,12 @@ import (
 )
 
 type reader struct {
-	conn *net.UnixConn
 	*wrapper.Info
 
-	err     error
 	loading <-chan struct{}
+
+	err  error
+	conn *net.UnixConn
 }
 
 func (r *reader) Read(b []byte) (n int, err error) {
@@ -38,6 +39,11 @@ func (r *reader) Close() error {
 	for range r.loading {
 	}
 
+	// Never connected, so just return nil.
+	if r.conn == nil {
+		return nil
+	}
+
 	// Ignore the r.err, as it is a request-scope error, and not relevant to closing.
 
 	return r.conn.Close()
@@ -54,20 +60,23 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, err
 	}
 
-	fixURL := &url.URL{
-		Scheme: "unix",
-		Opaque: laddr.String(),
-	}
-
 	l, err := net.ListenUnix("unix", laddr)
 	if err != nil {
 		return nil, err
 	}
 
+	// Make sure we are setting our file name to the actual address we’re listening on.
+	laddr = l.Addr().(*net.UnixAddr)
+
+	uri = &url.URL{
+		Scheme: laddr.Network(),
+		Path:   laddr.String(),
+	}
+
 	loading := make(chan struct{})
 	r := &reader{
 		loading: loading,
-		Info:    wrapper.NewInfo(fixURL, 0, time.Now()),
+		Info:    wrapper.NewInfo(uri, 0, time.Now()),
 	}
 
 	go func() {
@@ -77,15 +86,24 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = ctx.Err()
+			r.err = files.PathError("open", uri.String(), ctx.Err())
 			return
 		}
 
-		conn, err := l.AcceptUnix()
-		if err != nil {
-			r.err = err
+		var conn *net.UnixConn
+		accept := func() error {
+			var err error
+
+			conn, err = l.AcceptUnix()
+
+			return err
+		}
+
+		if err := do(ctx, accept); err != nil {
+			r.err = files.PathError("accept", uri.String(), err)
 			return
 		}
+
 		r.conn = conn
 	}()
 
