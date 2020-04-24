@@ -43,7 +43,7 @@ func (h *unixHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 
 		return newDatagramReader(ctx, sock), nil
 
-	case "unix", "unixpacket":
+	case "unix":
 		l, err := net.ListenUnix(network, laddr)
 		if err != nil {
 			return nil, files.PathError("open", uri.String(), err)
