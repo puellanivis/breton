@@ -15,15 +15,13 @@ type datagramWriter struct {
 	*wrapper.Info
 
 	mu sync.Mutex
-
 	closed chan struct{}
 
-	sock *socket
-
 	noerrs bool
-
 	off int
 	buf []byte
+
+	sock *socket
 }
 
 func (w *datagramWriter) IgnoreErrors(state bool) bool {
@@ -83,24 +81,21 @@ func (w *datagramWriter) Sync() error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	return w.err(w.sync())
+	_, err := w.sync()
+	return w.err(err)
 }
 
-func (w *datagramWriter) sync() error {
+func (w *datagramWriter) sync() (n int, err error) {
 	if w.off < 1 {
-		return nil
+		return 0, nil
 	}
 
 	// zero out the end of the buffer.
-	for i := w.off; i < len(w.buf); i++ {
-		w.buf[i] = 0
+	b := w.buf[w.off:]
+	for i := range b {
+		b[i] = 0
 	}
 
-	_, err := w.writeBuffer()
-	return err
-}
-
-func (w *datagramWriter) writeBuffer() (n int, err error) {
 	w.off = 0
 	return w.write(w.buf)
 }
@@ -129,7 +124,7 @@ func (w *datagramWriter) Close() error {
 		close(w.closed)
 	}
 
-	err := w.sync()
+	_, err := w.sync()
 
 	if err2 := w.sock.conn.Close(); err == nil {
 		err = err2
@@ -160,14 +155,8 @@ func (w *datagramWriter) Write(b []byte) (n int, err error) {
 			return n, nil
 		}
 
-		n2, err2 := w.writeBuffer()
+		_, err2 := w.sync()
 		if err = w.err(err2); err != nil {
-			if n2 > 0 {
-				// Should we?
-				// This could cause loss of packet-alignment from writers?
-				w.off = copy(w.buf, w.buf[n2:])
-			}
-
 			return n, err
 		}
 
@@ -175,7 +164,6 @@ func (w *datagramWriter) Write(b []byte) (n int, err error) {
 	}
 
 	sz := len(w.buf)
-
 	for len(b) >= sz {
 		n2, err2 := w.write(b[:sz])
 		n += n2
@@ -184,7 +172,7 @@ func (w *datagramWriter) Write(b []byte) (n int, err error) {
 			return n, err
 		}
 
-		// skip the whole packet size, even on a short write.
+		// skip the whole packet size, even if n2 < sz
 		b = b[sz:]
 	}
 
@@ -204,11 +192,10 @@ func newDatagramWriter(ctx context.Context, sock *socket) *datagramWriter {
 
 	w := &datagramWriter{
 		Info: wrapper.NewInfo(sock.uri(), 0, time.Now()),
+		sock: sock,
 
 		closed: make(chan struct{}),
-		sock:   sock,
-
-		buf: buf,
+		buf:    buf,
 	}
 
 	go func() {
@@ -224,8 +211,6 @@ func newDatagramWriter(ctx context.Context, sock *socket) *datagramWriter {
 
 type datagramReader struct {
 	*wrapper.Info
-	sock *socket
-
 	net.Conn
 }
 
@@ -236,8 +221,6 @@ func (r *datagramReader) Seek(offset int64, whence int) (int64, error) {
 func newDatagramReader(ctx context.Context, sock *socket) *datagramReader {
 	return &datagramReader{
 		Info: wrapper.NewInfo(sock.uri(), 0, time.Now()),
-		sock: sock,
-
 		Conn: sock.conn,
 	}
 }
