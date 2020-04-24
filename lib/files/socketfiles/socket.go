@@ -285,26 +285,6 @@ func getInt(q url.Values, field string) (val int, err error) {
 	return int(i), nil
 }
 
-func buildAddr(addr, portString string) (ip net.IP, port int, err error) {
-	if addr != "" {
-		ip = net.ParseIP(addr)
-		if ip == nil {
-			return nil, 0, errInvalidIP
-		}
-	}
-
-	if portString != "" {
-		p, err := strconv.ParseInt(portString, 10, strconv.IntSize)
-		if err != nil {
-			return nil, 0, err
-		}
-
-		port = int(p)
-	}
-
-	return ip, port, nil
-}
-
 func do(ctx context.Context, fn func() error) error {
 	done := make(chan struct{})
 
