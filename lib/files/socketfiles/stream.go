@@ -16,7 +16,6 @@ type streamWriter struct {
 	*wrapper.Info
 
 	mu sync.Mutex
-
 	closed chan struct{}
 
 	sock *socket
@@ -62,9 +61,9 @@ func (w *streamWriter) uri() *url.URL {
 func newStreamWriter(ctx context.Context, sock *socket) *streamWriter {
 	w := &streamWriter{
 		Info: wrapper.NewInfo(sock.uri(), 0, time.Now()),
+		sock: sock,
 
 		closed: make(chan struct{}),
-		sock:   sock,
 	}
 
 	go func() {
@@ -135,8 +134,9 @@ func newStreamReader(ctx context.Context, l net.Listener) (*streamReader, error)
 
 	loading := make(chan struct{})
 	r := &streamReader{
+		Info: wrapper.NewInfo(uri, 0, time.Now()),
+
 		loading: loading,
-		Info:    wrapper.NewInfo(uri, 0, time.Now()),
 	}
 
 	go func() {
