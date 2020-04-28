@@ -5,11 +5,8 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"sync"
-	"time"
 
 	"github.com/puellanivis/breton/lib/files"
-	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
 type tcpHandler struct{}
@@ -18,78 +15,27 @@ func init() {
 	files.RegisterScheme(&tcpHandler{}, "tcp")
 }
 
-type tcpWriter struct {
-	mu sync.Mutex
-
-	closed chan struct{}
-
-	conn *net.TCPConn
-	*wrapper.Info
-	ipSocket
-}
-
-func (w *tcpWriter) SetBitrate(bitrate int) int {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	prev := w.bitrate
-
-	w.bitrate = bitrate
-	w.updateDelay(1)
-
-	return prev
-}
-
-func (w *tcpWriter) Sync() error {
-	return nil
-}
-
-func (w *tcpWriter) Close() error {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	select {
-	case <-w.closed:
-	default:
-		close(w.closed)
+func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+	if uri.Host == "" {
+		return nil, files.PathError("open", uri.String(), errInvalidURL)
 	}
 
-	return w.conn.Close()
-}
-
-func (w *tcpWriter) Write(b []byte) (n int, err error) {
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
-	w.throttle(len(b))
-
-	return w.conn.Write(b)
-}
-
-func (w *tcpWriter) uri() *url.URL {
-	q := w.ipSocket.uriQuery()
-
-	if w.laddr != nil {
-		laddr := w.laddr.(*net.TCPAddr)
-
-		q.Set(FieldLocalAddress, laddr.IP.String())
-		setInt(q, FieldLocalPort, laddr.Port)
+	laddr, err := net.ResolveTCPAddr("tcp", uri.Host)
+	if err != nil {
+		return nil, files.PathError("open", uri.String(), err)
 	}
 
-	return &url.URL{
-		Scheme:   "tcp",
-		Host:     w.raddr.String(),
-		RawQuery: q.Encode(),
+	l, err := net.ListenTCP("tcp", laddr)
+	if err != nil {
+		return nil, files.PathError("open", uri.String(), err)
 	}
+
+	return newStreamReader(ctx, l)
 }
 
 func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	if uri.Host == "" {
 		return nil, files.PathError("create", uri.String(), errInvalidURL)
-	}
-
-	w := &tcpWriter{
-		closed: make(chan struct{}),
 	}
 
 	raddr, err := net.ResolveTCPAddr("tcp", uri.Host)
@@ -99,49 +45,37 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 
 	q := uri.Query()
 
-	port := q.Get(FieldLocalPort)
-	addr := q.Get(FieldLocalAddress)
-
 	var laddr *net.TCPAddr
 
-	if port != "" || addr != "" {
-		laddr = new(net.TCPAddr)
-
-		laddr.IP, laddr.Port, err = buildAddr(addr, port)
+	host := q.Get(FieldLocalAddress)
+	port := q.Get(FieldLocalPort)
+	if host != "" || port != "" {
+		laddr, err = net.ResolveTCPAddr("tcp", net.JoinHostPort(host, port))
 		if err != nil {
 			return nil, files.PathError("create", uri.String(), err)
 		}
 	}
 
-	dail := func() error {
+	var conn *net.TCPConn
+	dial := func() error {
 		var err error
 
-		w.conn, err = net.DialTCP("tcp", laddr, raddr)
+		conn, err = net.DialTCP("tcp", laddr, raddr)
 
 		return err
 	}
 
-	if err := withContext(ctx, dail); err != nil {
+	if err := do(ctx, dial); err != nil {
 		return nil, files.PathError("create", uri.String(), err)
 	}
 
-	go func() {
-		select {
-		case <-w.closed:
-		case <-ctx.Done():
-			w.Close()
-		}
-	}()
-
-	if err := w.ipSocket.setForWriter(w.conn, q); err != nil {
-		w.Close()
+	sock, err := sockWriter(conn, laddr != nil, q)
+	if err != nil {
+		conn.Close()
 		return nil, files.PathError("create", uri.String(), err)
 	}
 
-	w.updateDelay(1)
-	w.Info = wrapper.NewInfo(w.uri(), 0, time.Now())
-
-	return w, nil
+	return newStreamWriter(ctx, sock), nil
 }
 
 func (h *tcpHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
