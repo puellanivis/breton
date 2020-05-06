@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const defaultBufferSize = 32 * 1024
+const defaultBufferSize = 64 * 1024
 
 // Copy is a context aware version of io.Copy.
 // Do not use to Discard a reader, as a canceled context would stop the read, and it would not be fully discarded.
