@@ -51,6 +51,19 @@ func (fi *Info) fixName() string {
 	return fi.name
 }
 
+// SetName sets a new URI as the filename.
+func (fi *Info) SetName(uri *url.URL) {
+	if fi == nil {
+		return
+	}
+
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
+
+	fi.name = ""
+	fi.uri = uri
+}
+
 // Name returns the filename of the Info, if name == "" and there is a url,
 // then it renders the url, and returns that as the name.
 func (fi *Info) Name() string {
