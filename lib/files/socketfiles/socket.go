@@ -19,13 +19,14 @@ var (
 
 // URL query field keys.
 const (
-	FieldBufferSize   = "buffer_size"
-	FieldLocalAddress = "localaddr"
-	FieldLocalPort    = "localport"
-	FieldMaxBitrate   = "max_bitrate"
-	FieldPacketSize   = "pkt_size"
-	FieldTOS          = "tos"
-	FieldTTL          = "ttl"
+	FieldBufferSize    = "buffer_size"
+	FieldLocalAddress  = "localaddr"
+	FieldLocalPort     = "localport"
+	FieldMaxBitrate    = "max_bitrate"
+	FieldMaxPacketSize = "max_pkt_size"
+	FieldPacketSize    = "pkt_size"
+	FieldTOS           = "tos"
+	FieldTTL           = "ttl"
 )
 
 type socket struct {
@@ -33,8 +34,9 @@ type socket struct {
 
 	addr, qaddr net.Addr
 
-	bufferSize int
-	packetSize int
+	bufferSize    int
+	packetSize    int
+	maxPacketSize int
 
 	tos, ttl int
 
@@ -90,6 +92,9 @@ func (s *socket) uriQuery() url.Values {
 		if s.packetSize > 0 {
 			q.Set(FieldPacketSize, strconv.Itoa(s.packetSize))
 		}
+		if s.maxPacketSize > 0 {
+			q.Set(FieldMaxPacketSize, strconv.Itoa(s.maxPacketSize))
+		}
 	}
 
 	switch network {
@@ -127,12 +132,24 @@ func sockReader(conn net.Conn, q url.Values) (*socket, error) {
 		}
 	}
 
+	laddr := conn.LocalAddr()
+
+	var maxPacketSize int
+	switch laddr.Network() {
+	case "udp", "udp4", "udp6", "unixgram", "unixpacket":
+		maxPacketSize, err = getSize(q, FieldMaxPacketSize)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &socket{
 		conn: conn,
 
 		addr: conn.LocalAddr(),
 
-		bufferSize: bufferSize,
+		bufferSize:    bufferSize,
+		maxPacketSize: maxPacketSize,
 	}, nil
 }
 

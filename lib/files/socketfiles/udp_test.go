@@ -19,8 +19,9 @@ func TestUDPName(t *testing.T) {
 			Port: 80,
 		},
 
-		packetSize: 188,
-		bufferSize: 1024,
+		packetSize:    188,
+		bufferSize:    1024,
+		maxPacketSize: 1316,
 
 		ttl: 100,
 		tos: 0x80,
@@ -31,7 +32,7 @@ func TestUDPName(t *testing.T) {
 	}
 
 	uri := sock.uri()
-	expected := "udp://127.0.0.2:80?buffer_size=1024&localaddr=127.0.0.1&localport=65535&max_bitrate=2048&pkt_size=188&tos=0x80&ttl=100"
+	expected := "udp://127.0.0.2:80?buffer_size=1024&localaddr=127.0.0.1&localport=65535&max_bitrate=2048&max_pkt_size=1316&pkt_size=188&tos=0x80&ttl=100"
 
 	if s := uri.String(); s != expected {
 		t.Errorf("got a bad URI, was expecting, but got:\n\t%v\n\t%v", expected, s)

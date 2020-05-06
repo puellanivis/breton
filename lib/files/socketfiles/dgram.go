@@ -3,7 +3,6 @@ package socketfiles
 import (
 	"context"
 	"io"
-	"net"
 	"os"
 	"sync"
 	"time"
@@ -14,12 +13,13 @@ import (
 type datagramWriter struct {
 	*wrapper.Info
 
-	mu sync.Mutex
+	mu     sync.Mutex
 	closed chan struct{}
 
 	noerrs bool
-	off int
+
 	buf []byte
+	off int
 
 	sock *socket
 }
@@ -67,6 +67,9 @@ func (w *datagramWriter) SetPacketSize(size int) int {
 	w.sock.packetSize = len(w.buf)
 	w.sock.updateDelay(len(w.buf))
 
+	// Update filename.
+	w.Info.SetName(w.sock.uri())
+
 	return prev
 }
 
@@ -74,7 +77,12 @@ func (w *datagramWriter) SetBitrate(bitrate int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	return w.sock.setBitrate(bitrate, len(w.buf))
+	prev := w.sock.setBitrate(bitrate, len(w.buf))
+
+	// Update filename.
+	w.Info.SetName(w.sock.uri())
+
+	return prev
 }
 
 func (w *datagramWriter) Sync() error {
@@ -185,18 +193,14 @@ func (w *datagramWriter) Write(b []byte) (n int, err error) {
 }
 
 func newDatagramWriter(ctx context.Context, sock *socket) *datagramWriter {
-	var buf []byte
-	if sock.packetSize > 0 {
-		buf = make([]byte, sock.packetSize)
-	}
-
 	w := &datagramWriter{
 		Info: wrapper.NewInfo(sock.uri(), 0, time.Now()),
 		sock: sock,
 
 		closed: make(chan struct{}),
-		buf:    buf,
 	}
+
+	w.SetPacketSize(sock.packetSize)
 
 	go func() {
 		select {
@@ -211,16 +215,103 @@ func newDatagramWriter(ctx context.Context, sock *socket) *datagramWriter {
 
 type datagramReader struct {
 	*wrapper.Info
-	net.Conn
+	sock *socket
+
+	mu sync.Mutex
+
+	buf []byte
+	cnt int
+}
+
+// defaultMaxPacketSize is the maximum size of an IPv4 payload, and non-Jumbogram IPv6 payload.
+// This is an overly safe default.
+const defaultMaxPacketSize = 64 * 1024
+
+func (r *datagramReader) SetPacketSize(size int) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	prev := len(r.buf)
+
+	if size <= 0 {
+		size = defaultMaxPacketSize
+	}
+
+	switch {
+	case size <= len(r.buf):
+		r.buf = r.buf[:size]
+
+	default:
+		r.buf = append(r.buf, make([]byte, size-len(r.buf))...)
+	}
+
+	if r.cnt > len(r.buf) {
+		r.cnt = len(r.buf)
+	}
+
+	r.sock.maxPacketSize = len(r.buf)
+
+	// Update filename.
+	r.Info.SetName(r.sock.uri())
+
+	return prev
 }
 
 func (r *datagramReader) Seek(offset int64, whence int) (int64, error) {
 	return 0, os.ErrInvalid
 }
 
-func newDatagramReader(ctx context.Context, sock *socket) *datagramReader {
-	return &datagramReader{
-		Info: wrapper.NewInfo(sock.uri(), 0, time.Now()),
-		Conn: sock.conn,
+func (r *datagramReader) Close() error {
+	// Do not attempt to acquire the Mutex.
+	// Doing so will deadlock with a concurrent blocking Read(),
+	// and prevent read cancellation.
+	return r.sock.conn.Close()
+}
+
+// ReadPacket reads a single packet from a data source.
+// It is up to the caller to ensure that the given buffer is sufficient to read a full packet.
+func (r *datagramReader) ReadPacket(b []byte) (n int, err error) {
+	return r.sock.conn.Read(b)
+}
+
+// Read performs reads from a datagram source into a continuous stream.
+//
+// It does this by ensuring that each read on the datagram socket is to a sufficiently sized buffer.
+// If the given buffer is too small, it will read to an internal buffer with length set from max_pkt_size,
+// and following reads will read from that buffer until it is empty.
+//
+// Properly, a datagram source should know it is reading packets,
+// and ensure each given buffer is large enough to read the maximum packet size expected.
+// Unfortunately, some APIs in Go can expect Read()s to operate as a continuous stream instead of packets,
+// and that a short read buffer, will just leave the rest of the unread data ready to read, not dropped on the floor.
+func (r *datagramReader) Read(b []byte) (n int, err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.cnt <= 0 {
+		// Nothing is buffered.
+
+		if len(b) >= len(r.buf) {
+			// The read can be done directly.
+			return r.ReadPacket(b)
+		}
+
+		// Given buffer is too small, use internal buffer.
+		r.cnt, err = r.ReadPacket(r.buf)
 	}
+
+	n = copy(b, r.buf[:r.cnt])
+	r.cnt = copy(r.buf, r.buf[n:r.cnt])
+	return n, nil
+}
+
+func newDatagramReader(ctx context.Context, sock *socket) *datagramReader {
+	r := &datagramReader{
+		Info: wrapper.NewInfo(sock.uri(), 0, time.Now()),
+		sock: sock,
+	}
+
+	r.SetPacketSize(sock.maxPacketSize)
+
+	return r
 }
