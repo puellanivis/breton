@@ -304,7 +304,7 @@ func (r *datagramReader) Read(b []byte) (n int, err error) {
 
 	n = copy(b, r.buf[r.read:r.cnt])
 	r.read += n
-	return n, nil
+	return n, err
 }
 
 func newDatagramReader(ctx context.Context, sock *socket) *datagramReader {
