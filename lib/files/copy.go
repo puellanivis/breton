@@ -80,7 +80,7 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 		w:   dst,
 	}
 
-	r := &io.LimitedReader{
+	r := &fuzzyLimitedReader{
 		R: src,
 		N: buflen,
 	}
