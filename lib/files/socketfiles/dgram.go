@@ -219,8 +219,9 @@ type datagramReader struct {
 
 	mu sync.Mutex
 
-	buf []byte
-	cnt int
+	buf  []byte
+	cnt  int
+	read int
 }
 
 // defaultMaxPacketSize is the maximum size of an IPv4 payload, and non-Jumbogram IPv6 payload.
@@ -288,7 +289,7 @@ func (r *datagramReader) Read(b []byte) (n int, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if r.cnt <= 0 {
+	if r.read >= r.cnt {
 		// Nothing is buffered.
 
 		if len(b) >= len(r.buf) {
@@ -297,11 +298,12 @@ func (r *datagramReader) Read(b []byte) (n int, err error) {
 		}
 
 		// Given buffer is too small, use internal buffer.
+		r.read = 0 // reset read start buffer.
 		r.cnt, err = r.ReadPacket(r.buf)
 	}
 
-	n = copy(b, r.buf[:r.cnt])
-	r.cnt = copy(r.buf, r.buf[n:r.cnt])
+	n = copy(b, r.buf[r.read:r.cnt])
+	r.read += n
 	return n, nil
 }
 
