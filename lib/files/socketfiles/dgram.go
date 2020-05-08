@@ -246,6 +246,9 @@ func (r *datagramReader) SetPacketSize(size int) int {
 		r.buf = append(r.buf, make([]byte, size-len(r.buf))...)
 	}
 
+	if r.read > len(r.buf) {
+		r.read = len(r.buf)
+	}
 	if r.cnt > len(r.buf) {
 		r.cnt = len(r.buf)
 	}
