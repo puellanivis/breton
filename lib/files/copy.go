@@ -7,7 +7,16 @@ import (
 	"time"
 )
 
-const defaultBufferSize = 32 * 1024
+const defaultBufferSize = 64 * 1024
+
+// ErrWatchdogExpired is returned by files.Copy, if the watchdog time expires during a read.
+var ErrWatchdogExpired error = watchdogExpiredError{}
+
+type watchdogExpiredError struct{}
+
+func (watchdogExpiredError) Error() string   { return "watchdog expired" }
+func (watchdogExpiredError) Timeout() bool   { return true }
+func (watchdogExpiredError) Temporary() bool { return true }
 
 // Copy is a context aware version of io.Copy.
 // Do not use to Discard a reader, as a canceled context would stop the read, and it would not be fully discarded.
@@ -27,7 +36,7 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 		// we allocate a buffer to use as a temporary buffer, rather than alloc new every time.
 		c.buffer = make([]byte, defaultBufferSize)
 	}
-	l := int64(len(c.buffer))
+	buflen := int64(len(c.buffer))
 
 	var keepingMetrics bool
 
@@ -62,6 +71,27 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 		bwWindow = make([]bwSnippet, c.bwCount)
 	}
 
+	// Prevent an accidental write outside of returning from this function.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	w := &deadlineWriter{
+		ctx: ctx,
+		w:   dst,
+	}
+
+	r := &fuzzyLimitedReader{
+		R: src,
+		N: buflen,
+	}
+
+	t := time.NewTimer(c.runningTimeout)
+	if c.runningTimeout <= 0 {
+		if !t.Stop() {
+			<-t.C
+		}
+	}
+
 	start := time.Now()
 
 	var bwAccum int64
@@ -69,39 +99,34 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 	next := last.Add(c.bwInterval)
 
 	for {
-		done := make(chan struct{})
-
-		ctx := ctx          // shadow context intentionally, we might set a timeout later
-		cancel := func() {} // noop cancel
+		r.N = buflen // reset fuzzyLimitedReader
 
 		if c.runningTimeout > 0 {
-			ctx, cancel = context.WithTimeout(ctx, c.runningTimeout)
+			if !t.Stop() {
+				<-t.C
+			}
+			t.Reset(c.runningTimeout)
 		}
-
-		w := &deadlineWriter{
-			ctx: ctx,
-			w:   dst,
-		}
-		r := io.LimitReader(src, l)
 
 		var n int64
-
+		done := make(chan struct{})
 		go func() {
 			defer close(done)
 
 			n, err = io.CopyBuffer(w, r, c.buffer)
 
-			if n < l && err == nil {
+			if n < buflen && err == nil {
 				err = io.EOF
 			}
 		}()
 
 		select {
 		case <-done:
-			cancel()
+
+		case <-t.C:
+			return written, ErrWatchdogExpired
 
 		case <-ctx.Done():
-			cancel()
 			return written, ctx.Err()
 		}
 

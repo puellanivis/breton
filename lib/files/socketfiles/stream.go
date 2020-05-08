@@ -15,7 +15,7 @@ import (
 type streamWriter struct {
 	*wrapper.Info
 
-	mu sync.Mutex
+	mu     sync.Mutex
 	closed chan struct{}
 
 	sock *socket
@@ -25,7 +25,12 @@ func (w *streamWriter) SetBitrate(bitrate int) int {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
-	return w.sock.setBitrate(bitrate, 1)
+	prev := w.sock.setBitrate(bitrate, 1)
+
+	// Update filename.
+	w.Info.SetNameFromURL(w.sock.uri())
+
+	return prev
 }
 
 func (w *streamWriter) Sync() error {

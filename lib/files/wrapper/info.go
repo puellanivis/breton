@@ -30,10 +30,33 @@ func NewInfo(uri *url.URL, size int, t time.Time) *Info {
 	}
 }
 
-func (fi *Info) fixName() string {
+// SetName sets a new string as the filename.
+func (fi *Info) SetName(name string) {
+	if fi == nil {
+		return
+	}
+
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
+	fi.name = name
+	fi.uri = nil
+}
+
+// SetNameFromURL sets a new URL as the filename.
+func (fi *Info) SetNameFromURL(uri *url.URL) {
+	if fi == nil {
+		return
+	}
+
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
+
+	fi.uri = uri
+	fi.name = ""
+}
+
+func (fi *Info) fixName() string {
 	if fi.name != "" || fi.uri == nil {
 		// Nothing to fix.
 		// Likely, someone else already fixed the name while we were waiting on the mutex.
@@ -59,16 +82,17 @@ func (fi *Info) Name() string {
 	}
 
 	fi.mu.RLock()
+	name, uri := fi.name, fi.uri
+	fi.mu.RUnlock()
 
-	if fi.name == "" && fi.uri != nil {
-		fi.mu.RUnlock()
+	if name == "" && uri != nil {
+		fi.mu.Lock()
+		defer fi.mu.Unlock()
 
 		return fi.fixName()
 	}
 
-	defer fi.mu.RUnlock()
-
-	return fi.name
+	return name
 }
 
 // Size returns the size declared in the Info.
@@ -83,14 +107,14 @@ func (fi *Info) Size() int64 {
 	return fi.sz
 }
 
-// SetSize sets a new size in the Info, and also updates the ModTime to time.Now()
+// SetSize sets a new size in the Info.
 func (fi *Info) SetSize(size int) {
 	if fi == nil {
 		return
 	}
 
-	fi.mu.RLock()
-	defer fi.mu.RUnlock()
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
 
 	fi.sz = int64(size)
 }
