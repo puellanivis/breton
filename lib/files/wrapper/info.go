@@ -107,14 +107,14 @@ func (fi *Info) Size() int64 {
 	return fi.sz
 }
 
-// SetSize sets a new size in the Info, and also updates the ModTime to time.Now()
+// SetSize sets a new size in the Info.
 func (fi *Info) SetSize(size int) {
 	if fi == nil {
 		return
 	}
 
-	fi.mu.RLock()
-	defer fi.mu.RUnlock()
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
 
 	fi.sz = int64(size)
 }
