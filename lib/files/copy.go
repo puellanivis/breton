@@ -99,7 +99,7 @@ func Copy(ctx context.Context, dst io.Writer, src io.Reader, opts ...CopyOption)
 	next := last.Add(c.bwInterval)
 
 	for {
-		r.N = buflen // reset io.LimitedReader
+		r.N = buflen // reset fuzzyLimitedReader
 
 		if c.runningTimeout > 0 {
 			if !t.Stop() {
