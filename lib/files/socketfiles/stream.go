@@ -28,7 +28,7 @@ func (w *streamWriter) SetBitrate(bitrate int) int {
 	prev := w.sock.setBitrate(bitrate, 1)
 
 	// Update filename.
-	w.Info.SetName(w.sock.uri())
+	w.Info.SetNameFromURL(w.sock.uri())
 
 	return prev
 }

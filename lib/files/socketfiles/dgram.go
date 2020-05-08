@@ -68,7 +68,7 @@ func (w *datagramWriter) SetPacketSize(size int) int {
 	w.sock.updateDelay(len(w.buf))
 
 	// Update filename.
-	w.Info.SetName(w.sock.uri())
+	w.Info.SetNameFromURL(w.sock.uri())
 
 	return prev
 }
@@ -80,7 +80,7 @@ func (w *datagramWriter) SetBitrate(bitrate int) int {
 	prev := w.sock.setBitrate(bitrate, len(w.buf))
 
 	// Update filename.
-	w.Info.SetName(w.sock.uri())
+	w.Info.SetNameFromURL(w.sock.uri())
 
 	return prev
 }
@@ -256,7 +256,7 @@ func (r *datagramReader) SetPacketSize(size int) int {
 	r.sock.maxPacketSize = len(r.buf)
 
 	// Update filename.
-	r.Info.SetName(r.sock.uri())
+	r.Info.SetNameFromURL(r.sock.uri())
 
 	return prev
 }
