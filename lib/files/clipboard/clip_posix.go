@@ -1,3 +1,5 @@
+// +build dragonflybsd freebsd linux netbsd openbsd solaris
+
 package clipboard
 
 import (
