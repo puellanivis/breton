@@ -27,6 +27,9 @@ while [[ "$#" -gt 0 ]]; do
 		--darwin)
 			DARWIN="true"
 		;;
+		--openbsd)
+			OPENBSD="true"
+		;;
 		--windows)
 			WINDOWS="true"
 		;;
@@ -84,7 +87,7 @@ if [[ $ESCAPE == "true" ]]; then
 	exit 1
 fi
 
-case "${LINUX}${DARWIN}${WINDOWS}" in
+case "${LINUX}${DARWIN}${OPENBSD}${WINDOWS}" in
 	"")
 		[[ $DEB == "" ]] && LINUX="true"
 	;;
@@ -92,7 +95,7 @@ case "${LINUX}${DARWIN}${WINDOWS}" in
 		TESTING="true"
 esac
 
-[[ "${LINUX}${DARWIN}${WINDOWS}" == "" ]] && NOCOMPILE="true"
+[[ "${LINUX}${DARWIN}${OPENBSD}${WINDOWS}" == "" ]] && NOCOMPILE="true"
 
 if which go > /dev/null 2>&1 ; then
         GO_VERSION="$(go version)"
@@ -220,6 +223,13 @@ if [[ $DARWIN == "true" ]]; then
 	echo Compiling ${OUT}/${PROJECT}
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
 	GOOS=darwin GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
+fi
+
+if [[ $OPENBSD == "true" ]]; then
+	OUT="bin/openbsd.x86_64"
+	echo Compiling ${OUT}/${PROJECT}
+	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
+	GOOS=openbsd GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 fi
 
 if [[ $WINDOWS == "true" ]]; then
