@@ -153,10 +153,8 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		}
 
 		go func() {
-			defer func() {
-				link.done()
-				wg.Done()
-			}()
+			defer wg.Done()
+			defer link.done()
 
 			out, err := doMap(ctx)
 			if err != nil {
