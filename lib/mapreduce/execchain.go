@@ -4,6 +4,10 @@ import (
 	"context"
 )
 
+type chain interface{
+	next() waiter
+}
+
 type waiter interface{
 	wait(ctx context.Context) error
 	done()
@@ -36,10 +40,6 @@ func (l *link) wait(ctx context.Context) error {
 func (l *link) done() {
 	<-l.prev
 	close(l.next)
-}
-
-type chain interface{
-	next() waiter
 }
 
 type orderedChain struct {
