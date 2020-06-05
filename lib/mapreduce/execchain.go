@@ -1,27 +1,80 @@
 package mapreduce
 
-type execChain struct {
-	ch      chan struct{}
-	ordered bool
+import (
+	"context"
+)
+
+type waiter interface{
+	wait(ctx context.Context) error
+	done()
 }
 
-func newExecChain(ordered bool) *execChain {
-	ch := make(chan struct{})
-	close(ch)
+type link struct{
+	prev <-chan struct{}
+	next chan struct{}
+}
 
-	return &execChain{
-		ch:      ch,
-		ordered: ordered,
+func (l *link) wait(ctx context.Context) error {
+	select {
+	case <-l.prev:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	// If both select cases were ready,
+	// Go will complete one at random,
+	// so, we have to check for possible context completion again.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+
+	return nil
+}
+
+func (l *link) done() {
+	close(l.next)
+}
+
+type chain interface{
+	next() waiter
+}
+
+type orderedChain struct {
+	ch chan struct{}
+}
+
+func (c *orderedChain) next() waiter {
+	prev, next := c.ch, make(chan struct{})
+	c.ch = next
+
+	return &link{
+		prev: prev,
+		next: next,
 	}
 }
 
-func (c *execChain) next() (ready <-chan struct{}, next chan struct{}) {
-	ready = c.ch
+type unorderedChain struct{
+	sem *semaphore
+}
 
-	if c.ordered {
-		next = make(chan struct{})
-		c.ch = next
+func (c *unorderedChain) next() waiter {
+	return c.sem.get()
+}
+
+func newExecChain(ordered bool) chain {
+	if ordered {
+		// setup for an ordered chain of chan struct{}s
+		ch := make(chan struct{})
+		close(ch)
+
+		return &orderedChain{
+			ch: ch,
+		}
 	}
 
-	return ready, next
+	return &unorderedChain{
+		sem: newSemaphore(1),
+	}
 }
