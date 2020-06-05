@@ -34,6 +34,7 @@ func (l *link) wait(ctx context.Context) error {
 }
 
 func (l *link) done() {
+	<-l.prev
 	close(l.next)
 }
 
