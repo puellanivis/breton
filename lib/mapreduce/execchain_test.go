@@ -41,11 +41,13 @@ func TestExecChainOrdered(t *testing.T) {
 
 	wg.Wait()
 
+	if got := len(accum); got != count {
+		t.Fatalf("unexpected accumulator count: got %d, expected %d", got, count)
+	}
+
 	for i, n := range accum {
 		if expected := i; n != expected {
 			t.Errorf("got %d, expected %d", n, expected)
-		} else {
-			t.Logf("got %d", n)
 		}
 	}
 }
@@ -107,11 +109,13 @@ func TestExecChainOrdered_OddsFailFast(t *testing.T) {
 		t.Error(err)
 	}
 
+	if got, expected := len(accum), count/2; got != expected {
+		t.Fatalf("unexpected accumulator count: got %d, expected %d", got, expected)
+	}
+
 	for i, n := range accum {
 		if expected := i*2; n != expected {
 			t.Errorf("got %d, expected %d", n, expected)
-		} else {
-			t.Logf("got %d", n)
 		}
 	}
 }
@@ -186,11 +190,13 @@ func TestExecChainUnordered(t *testing.T) {
 
 	sort.Ints(accum)
 
+	if got := len(accum); got != count {
+		t.Fatalf("unexpected accumulator count: got %d, expected %d", got, count)
+	}
+
 	for i, n := range accum {
 		if expected := i; n != expected {
 			t.Errorf("got %d, expected %d", n, expected)
-		} else {
-			t.Logf("got %d", n)
 		}
 	}
 }
@@ -254,11 +260,13 @@ func TestExecChainUnordered_OddsFailFast(t *testing.T) {
 
 	sort.Ints(accum)
 
+	if got, expected := len(accum), count/2; got != expected {
+		t.Fatalf("unexpected accumulator count: got %d, expected %d", got, expected)
+	}
+
 	for i, n := range accum {
 		if expected := i*2; n != expected {
 			t.Errorf("got %d, expected %d", n, expected)
-		} else {
-			t.Logf("got %d", n)
 		}
 	}
 }
