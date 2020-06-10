@@ -53,7 +53,7 @@ func TestExecChainOrdered(t *testing.T) {
 }
 
 func TestExecChainOrdered_OddsFailFast(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	chain := newExecChain(true)
@@ -202,7 +202,7 @@ func TestExecChainUnordered(t *testing.T) {
 }
 
 func TestExecChainUnordered_OddsFailFast(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	chain := newExecChain(false)
