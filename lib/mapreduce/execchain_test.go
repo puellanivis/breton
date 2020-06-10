@@ -109,7 +109,7 @@ func TestExecChainOrdered_OddsFailFast(t *testing.T) {
 		t.Error(err)
 	}
 
-	if got, expected := len(accum), count/2; got != expected {
+	if got, expected := len(accum), count/2+count&1; got != expected {
 		t.Fatalf("unexpected accumulator count: got %d, expected %d", got, expected)
 	}
 
@@ -260,7 +260,7 @@ func TestExecChainUnordered_OddsFailFast(t *testing.T) {
 
 	sort.Ints(accum)
 
-	if got, expected := len(accum), count/2; got != expected {
+	if got, expected := len(accum), count/2+count&1; got != expected {
 		t.Fatalf("unexpected accumulator count: got %d, expected %d", got, expected)
 	}
 
