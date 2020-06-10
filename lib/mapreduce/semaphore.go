@@ -27,7 +27,7 @@ func (s *semaphore) get() *localSem {
 }
 
 // localSem will only unlock, if it obtained its lock.
-type localSem struct{
+type localSem struct {
 	ch chan struct{}
 
 	locked bool
@@ -56,7 +56,7 @@ func (s *localSem) done() {
 		return
 	}
 
-	select{
+	select {
 	case s.ch <- struct{}{}:
 	default:
 		panic("too many semaphore unlocks")

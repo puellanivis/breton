@@ -63,7 +63,7 @@ func TestExecChainOrdered_OddsFailFast(t *testing.T) {
 
 	var accum []int
 	var wg sync.WaitGroup
-	var e  edge.Edge
+	var e edge.Edge
 
 	wg.Add(count)
 	for i := 0; i < count; i++ {
@@ -74,7 +74,7 @@ func TestExecChainOrdered_OddsFailFast(t *testing.T) {
 			defer wg.Done()
 			defer link.done()
 
-			if me & 1 == 1 {
+			if me&1 == 1 {
 				// If we are odd, return early
 				// the evens should still complete in order.
 				return
@@ -114,7 +114,7 @@ func TestExecChainOrdered_OddsFailFast(t *testing.T) {
 	}
 
 	for i, n := range accum {
-		if expected := i*2; n != expected {
+		if expected := i * 2; n != expected {
 			t.Errorf("got %d, expected %d", n, expected)
 		}
 	}
@@ -223,7 +223,7 @@ func TestExecChainUnordered_OddsFailFast(t *testing.T) {
 			defer wg.Done()
 			defer link.done()
 
-			if me & 1 == 1 {
+			if me&1 == 1 {
 				// If we are odd, return early
 				// the evens should still complete.
 				return
@@ -265,7 +265,7 @@ func TestExecChainUnordered_OddsFailFast(t *testing.T) {
 	}
 
 	for i, n := range accum {
-		if expected := i*2; n != expected {
+		if expected := i * 2; n != expected {
 			t.Errorf("got %d, expected %d", n, expected)
 		}
 	}

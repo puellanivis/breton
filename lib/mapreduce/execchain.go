@@ -4,16 +4,16 @@ import (
 	"context"
 )
 
-type chain interface{
+type chain interface {
 	next() waiter
 }
 
-type waiter interface{
+type waiter interface {
 	wait(ctx context.Context) error
 	done()
 }
 
-type link struct{
+type link struct {
 	prev <-chan struct{}
 	next chan struct{}
 }
@@ -56,7 +56,7 @@ func (c *orderedChain) next() waiter {
 	}
 }
 
-type unorderedChain struct{
+type unorderedChain struct {
 	sem *semaphore
 }
 
