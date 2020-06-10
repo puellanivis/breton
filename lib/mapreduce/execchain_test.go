@@ -14,7 +14,7 @@ import (
 const count = 42
 
 func TestExecChainOrdered(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	chain := newExecChain(true)
@@ -161,7 +161,7 @@ func TestExecChainOrderedStall(t *testing.T) {
 }
 
 func TestExecChainUnordered(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	chain := newExecChain(false)
