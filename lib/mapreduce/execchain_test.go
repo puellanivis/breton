@@ -2,11 +2,16 @@ package mapreduce
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/puellanivis/breton/lib/sync/edge"
 )
+
+const count = 42
 
 func TestExecChainOrdered(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
@@ -15,11 +20,10 @@ func TestExecChainOrdered(t *testing.T) {
 	chain := newExecChain(true)
 
 	var accum []int
-
 	var wg sync.WaitGroup
 
-	wg.Add(42)
-	for i := 0; i < 42; i++ {
+	wg.Add(count)
+	for i := 0; i < count; i++ {
 		me := i
 		link := chain.next()
 
@@ -38,8 +42,76 @@ func TestExecChainOrdered(t *testing.T) {
 	wg.Wait()
 
 	for i, n := range accum {
-		if i != n {
-			t.Error(i, "!=", n)
+		if expected := i; n != expected {
+			t.Errorf("got %d, expected %d", n, expected)
+		} else {
+			t.Logf("got %d", n)
+		}
+	}
+}
+
+func TestExecChainOrdered_OddsFailFast(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	chain := newExecChain(true)
+
+	errch := make(chan error, count)
+	wait := make(chan struct{})
+
+	var accum []int
+	var wg sync.WaitGroup
+	var e  edge.Edge
+
+	wg.Add(count)
+	for i := 0; i < count; i++ {
+		me := i
+		link := chain.next()
+
+		go func() {
+			defer wg.Done()
+			defer link.done()
+
+			if me & 1 == 1 {
+				// If we are odd, return early
+				// the evens should still complete in order.
+				return
+			}
+
+			if err := link.wait(ctx); err != nil {
+				return
+			}
+
+			if !e.Up() {
+				errch <- fmt.Errorf("duplicate execution: edge already up: goroutine %d", me)
+			}
+
+			<-wait
+			accum = append(accum, me)
+
+			if !e.Down() {
+				errch <- fmt.Errorf("duplicate execution: edge already down: goroutine %d", me)
+			}
+		}()
+	}
+
+	go func() {
+		time.Sleep(1 * time.Millisecond)
+		close(wait)
+
+		wg.Wait()
+		close(errch)
+	}()
+
+	for err := range errch {
+		t.Error(err)
+	}
+
+	for i, n := range accum {
+		if expected := i*2; n != expected {
+			t.Errorf("got %d, expected %d", n, expected)
+		} else {
+			t.Logf("got %d", n)
 		}
 	}
 }
@@ -50,11 +122,13 @@ func TestExecChainOrderedStall(t *testing.T) {
 
 	chain := newExecChain(true)
 
+	wait := make(chan struct{})
+
 	var wg sync.WaitGroup
 	var ran int
 
-	wg.Add(42)
-	for i := 0; i < 42; i++ {
+	wg.Add(count)
+	for i := 0; i < count; i++ {
 		link := chain.next()
 
 		go func() {
@@ -67,9 +141,13 @@ func TestExecChainOrderedStall(t *testing.T) {
 
 			ran++
 
+			close(wait)
 			<-ctx.Done()
 		}()
 	}
+
+	<-wait
+	cancel()
 
 	wg.Wait()
 
@@ -84,12 +162,11 @@ func TestExecChainUnordered(t *testing.T) {
 
 	chain := newExecChain(false)
 
-	ran := make(map[int]bool)
-
+	var accum []int
 	var wg sync.WaitGroup
 
-	wg.Add(42)
-	for i := 0; i < 42; i++ {
+	wg.Add(count)
+	for i := 0; i < count; i++ {
 		me := i
 		link := chain.next()
 
@@ -101,21 +178,87 @@ func TestExecChainUnordered(t *testing.T) {
 				return
 			}
 
-			ran[me] = true
+			accum = append(accum, me)
 		}()
 	}
 
 	wg.Wait()
 
-	var accum []int
-	for n := range ran {
-		accum = append(accum, n)
-	}
 	sort.Ints(accum)
 
 	for i, n := range accum {
-		if i != n {
-			t.Error(i, "!=", n)
+		if expected := i; n != expected {
+			t.Errorf("got %d, expected %d", n, expected)
+		} else {
+			t.Logf("got %d", n)
+		}
+	}
+}
+
+func TestExecChainUnordered_OddsFailFast(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	chain := newExecChain(false)
+
+	errch := make(chan error, count)
+	wait := make(chan struct{})
+
+	var accum []int
+	var wg sync.WaitGroup
+	var e edge.Edge
+
+	wg.Add(count)
+	for i := 0; i < count; i++ {
+		me := i
+		link := chain.next()
+
+		go func() {
+			defer wg.Done()
+			defer link.done()
+
+			if me & 1 == 1 {
+				// If we are odd, return early
+				// the evens should still complete.
+				return
+			}
+
+			if err := link.wait(ctx); err != nil {
+				return
+			}
+
+			if !e.Up() {
+				errch <- fmt.Errorf("duplicate execution: edge already up: goroutine %d", me)
+			}
+
+			<-wait
+			accum = append(accum, me)
+
+			if !e.Down() {
+				errch <- fmt.Errorf("duplicate execution: edge already down: goroutine %d", me)
+			}
+		}()
+	}
+
+	go func() {
+		time.Sleep(1 * time.Millisecond)
+		close(wait)
+
+		wg.Wait()
+		close(errch)
+	}()
+
+	for err := range errch {
+		t.Error(err)
+	}
+
+	sort.Ints(accum)
+
+	for i, n := range accum {
+		if expected := i*2; n != expected {
+			t.Errorf("got %d, expected %d", n, expected)
+		} else {
+			t.Logf("got %d", n)
 		}
 	}
 }
@@ -126,12 +269,13 @@ func TestExecChainUnorderedStall(t *testing.T) {
 
 	chain := newExecChain(false)
 
-	var wg sync.WaitGroup
+	wait := make(chan struct{})
 
+	var wg sync.WaitGroup
 	var ran int
 
-	wg.Add(42)
-	for i := 0; i < 42; i++ {
+	wg.Add(count)
+	for i := 0; i < count; i++ {
 		link := chain.next()
 
 		go func() {
@@ -144,9 +288,13 @@ func TestExecChainUnorderedStall(t *testing.T) {
 
 			ran++
 
+			close(wait)
 			<-ctx.Done()
 		}()
 	}
+
+	<-wait
+	cancel()
 
 	wg.Wait()
 
