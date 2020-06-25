@@ -2,8 +2,6 @@
 
 package clipboard
 
-import ()
-
 var (
 	pasteCmd []string
 	copyCmd  []string
