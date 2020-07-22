@@ -5,7 +5,6 @@ import (
 	"context"
 	"net/url"
 	"os"
-	"syscall"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -44,7 +43,7 @@ func getClip(uri *url.URL) (clipboard, error) {
 	return clip, nil
 }
 
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	clip, err := getClip(uri)
 	if err != nil {
 		return nil, files.PathError("open", uri.String(), err)
@@ -58,7 +57,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	return wrapper.NewReaderFromBytes(b, uri, time.Now()), nil
 }
 
-func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+func (handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	clip, err := getClip(uri)
 	if err != nil {
 		return nil, files.PathError("create", uri.String(), err)
@@ -69,9 +68,13 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	}), nil
 }
 
-func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  os.ErrInvalid,
+		}
 	}
 
 	path := uri.Path
@@ -81,22 +84,42 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 
 	clip := clipboards[path]
 	if clip == nil {
-		return nil, files.PathError("readdir", uri.String(), os.ErrNotExist)
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  os.ErrNotExist,
+		}
 	}
 
 	if path != "" {
-		return nil, files.PathError("readdir", uri.String(), syscall.ENOTDIR)
-	}
-
-	if len(clipboards) < 1 {
-		return nil, files.PathError("readdir", uri.String(), os.ErrNotExist)
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  files.ErrNotDirectory,
+		}
 	}
 
 	var ret []os.FileInfo
 
 	for _, clip := range clipboards {
-		if fi, err := clip.Stat(); err == nil {
-			ret = append(ret, fi)
+		if info, err := clip.Stat(); err == nil {
+			if fi, ok := info.(interface{ URL() *url.URL }); ok {
+				u := fi.URL()
+				u.Scheme = ""
+
+				switch fi := fi.(type) {
+				case interface{ SetNameFromURL(*url.URL) }:
+					fi.SetNameFromURL(u)
+
+				case interface{ SetName(string) }:
+					fi.SetName(u.String())
+
+				default:
+					info = wrapper.NewInfo(u, int(info.Size()), info.ModTime())
+				}
+			}
+
+			ret = append(ret, info)
 		}
 	}
 
