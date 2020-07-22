@@ -95,6 +95,35 @@ func (fi *Info) Name() string {
 	return name
 }
 
+// URL returns the URL of the Info, if there is no URL yet,
+// then it will set the URL to be `&url.URL{ Path: name }`.
+func (fi *Info) URL() *url.URL {
+	if fi == nil {
+		return &url.URL{}
+	}
+
+	fi.mu.RLock()
+	uri := fi.uri
+	fi.mu.RUnlock()
+
+	if uri != nil {
+		u := *uri
+		return &u
+	}
+
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
+
+	if fi.uri == nil {
+		fi.uri = &url.URL{
+			Path: fi.name,
+		}
+	}
+
+	u := *fi.uri
+	return &u
+}
+
 // Size returns the size declared in the Info.
 func (fi *Info) Size() int64 {
 	if fi == nil {
