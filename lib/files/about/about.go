@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -41,6 +40,7 @@ func (f stringFunc) ReadAll() ([]byte, error) {
 var (
 	blank   stringFunc = func() string { return "" }
 	version stringFunc = func() string { return process.Version() }
+	now     stringFunc = func() string { return time.Now().Truncate(0).String() }
 )
 
 type errorURL struct {
@@ -73,6 +73,7 @@ var (
 		"invalid":       notfound,
 		"html-kind":     unresolvable,
 		"legacy-compat": unresolvable,
+		"now":           now,
 		"plugins":       plugins,
 		"srcdoc":        unresolvable,
 		"version":       version,
@@ -264,6 +265,6 @@ func (h handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, erro
 	return nil, &os.PathError{
 		Op:   "readdir",
 		Path: uri.String(),
-		Err:  syscall.ENOTDIR,
+		Err:  files.ErrNotDirectory,
 	}
 }

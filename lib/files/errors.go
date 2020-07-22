@@ -3,6 +3,7 @@ package files
 import (
 	"errors"
 	"os"
+	"syscall"
 )
 
 // PathError returns an *os.PathError with appropriate fields set. DO NOT USE.
@@ -17,5 +18,10 @@ func PathError(op, path string, err error) error {
 	}
 }
 
-// ErrNotSupported should be returned, if a particular feature or option is not supported.
-var ErrNotSupported = errors.New("not supported")
+var (
+	// ErrNotSupported should be returned, if a particular feature or option is not supported.
+	ErrNotSupported = errors.New("not supported")
+
+	// ErrNotDirectory should be returned, if a request is made to ReadDir a non-directory.
+	ErrNotDirectory = syscall.ENOTDIR
+)
