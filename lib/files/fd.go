@@ -10,28 +10,33 @@ import (
 type descriptorHandler struct{}
 
 func init() {
-	RegisterScheme(&descriptorHandler{}, "fd")
+	RegisterScheme(descriptorHandler{}, "fd")
 }
 
-func (h *descriptorHandler) open(uri *url.URL) (*os.File, error) {
-	fd, err := strconv.ParseUint(filename(uri), 0, 64)
+func openFD(uri *url.URL, op string) (*os.File, error) {
+	fd, err := strconv.ParseUint(filename(uri), 0, strconv.IntSize)
 	if err != nil {
+		return nil, &os.PathError{
+			Op:   op,
+			Path: uri.String(),
+			Err:  err,
+		}
 		return nil, err
 	}
 
 	return os.NewFile(uintptr(fd), uri.String()), nil
 }
 
-func (h *descriptorHandler) Open(ctx context.Context, uri *url.URL) (Reader, error) {
-	return h.open(uri)
+func (descriptorHandler) Open(ctx context.Context, uri *url.URL) (Reader, error) {
+	return openFD(uri, "open")
 }
 
-func (h *descriptorHandler) Create(ctx context.Context, uri *url.URL) (Writer, error) {
-	return h.open(uri)
+func (descriptorHandler) Create(ctx context.Context, uri *url.URL) (Writer, error) {
+	return openFD(uri, "create")
 }
 
-func (h *descriptorHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	f, err := h.open(uri)
+func (descriptorHandler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+	f, err := openFD(uri, "open")
 	if err != nil {
 		return nil, err
 	}
