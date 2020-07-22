@@ -2,6 +2,7 @@ package files
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -9,33 +10,33 @@ import (
 
 type localFS struct{}
 
-// Local implements a wrapper from the os functions Open, Create, and Readdir, to the files.FileStore implementation.
-var Local FileStore = &localFS{}
+// Local implements a wrapper from os.Open, os.Create, and os.Readdir, to the files.FS implementation.
+var Local FS = localFS{}
 
 func init() {
 	RegisterScheme(Local, "file")
 }
 
 func filename(uri *url.URL) string {
-	fname := uri.Path
-	if fname == "" {
-		fname = uri.Opaque
+	if uri.Path != "" {
+		return uri.Path
 	}
 
-	return fname
+	return uri.Opaque
 }
 
 // Open opens up a local filesystem file specified in the uri.Path for reading.
-func (h *localFS) Open(ctx context.Context, uri *url.URL) (Reader, error) {
+func (localFS) Open(ctx context.Context, uri *url.URL) (Reader, error) {
+	fmt.Println("os.Open:", filename(uri))
 	return os.Open(filename(uri))
 }
 
 // Create opens up a local filesystem file specified in the uri.Path for writing. It will create a new one if it does not exist.
-func (h *localFS) Create(ctx context.Context, uri *url.URL) (Writer, error) {
+func (localFS) Create(ctx context.Context, uri *url.URL) (Writer, error) {
 	return os.Create(filename(uri))
 }
 
 // List returns the whole slice of os.FileInfos for a specific local filesystem at uri.Path.
-func (h *localFS) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (localFS) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	return ioutil.ReadDir(filename(uri))
 }
