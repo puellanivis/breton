@@ -1,6 +1,7 @@
 package files
 
 import (
+	"errors"
 	"os"
 )
 
@@ -15,3 +16,6 @@ func PathError(op, path string, err error) error {
 		Err:  err,
 	}
 }
+
+// ErrNotSupported should be returned, if a particular feature or option is not supported.
+var ErrNotSupported = errors.New("not supported")
