@@ -17,7 +17,7 @@ func TestHandlerFulfillsReadDirFS(t *testing.T) {
 func TestHandlerFulfillsCreateFS(t *testing.T) {
 	var h files.FS = &FS{}
 
-	if _, ok := h.(files.ReadDirFS); !ok {
-		t.Fatal("handler does not implement files.ReadDirFS")
+	if _, ok := h.(files.CreateFS); !ok {
+		t.Fatal("handler does not implement files.CreateFS")
 	}
 }

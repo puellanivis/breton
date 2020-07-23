@@ -45,7 +45,7 @@ func create(ctx context.Context, filename string) (Writer, error) {
 	fsys, ok := getFS(uri)
 	if !ok {
 		return nil, &os.PathError{
-			Op:   "readdir",
+			Op:   "create",
 			Path: uri.String(),
 			Err:  ErrNotSupported,
 		}
@@ -59,7 +59,7 @@ func create(ctx context.Context, filename string) (Writer, error) {
 	}
 
 	return nil, &os.PathError{
-		Op:   "readdir",
+		Op:   "create",
 		Path: filename,
 		Err:  ErrNotSupported,
 	}
