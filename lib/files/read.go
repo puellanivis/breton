@@ -6,23 +6,31 @@ import (
 	"io/ioutil"
 )
 
-// ReadFrom reads the entire content of an io.ReadCloser and returns the content as a byte slice.
-// It will also Close the reader.
-func ReadFrom(r io.ReadCloser) ([]byte, error) {
+// ReadFrom reads the entire content of a io.Reader and returns the content as a byte slice.
+// If the reader also implements io.Closer, it will also Close it.
+func ReadFrom(r io.Reader) ([]byte, error) {
 	b, err := ioutil.ReadAll(r)
-	if err1 := r.Close(); err == nil {
-		err = err1
+
+	if c, ok := r.(io.Closer); ok {
+		if err2 := c.Close(); err == nil {
+			err = err2
+		}
 	}
+
 	return b, err
 }
 
-// Discard throws away the entire content of an io.ReadCloser and then closes the reader.
+// Discard throws away the entire content of an io.Reader.
+// If the reader also implements io.Closer, it will also Close it.
+//
 // This is specifically not context aware, it is intended to always run to completion.
-func Discard(r io.ReadCloser) error {
+func Discard(r io.Reader) error {
 	_, err := io.Copy(ioutil.Discard, r)
 
-	if err2 := r.Close(); err == nil {
-		err = err2
+	if c, ok := r.(io.Closer); ok {
+		if err2 := c.Close(); err == nil {
+			err = err2
+		}
 	}
 
 	return err
