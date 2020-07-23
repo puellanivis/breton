@@ -2,7 +2,6 @@
 package httpfiles
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -25,17 +24,20 @@ func init() {
 		schemeList = append(schemeList, scheme)
 	}
 
-	files.RegisterScheme(&handler{}, schemeList...)
+	files.RegisterScheme(handler{}, schemeList...)
 }
 
 func elideDefaultPort(uri *url.URL) *url.URL {
 	port := uri.Port()
+	if port == "" {
+		return uri
+	}
 
 	/* elide default ports  */
-	if defport, ok := schemes[uri.Scheme]; ok && defport == port {
-		newuri := *uri
-		newuri.Host = uri.Hostname()
-		return &newuri
+	if defport := schemes[uri.Scheme]; defport == port {
+		u := *uri
+		u.Host = uri.Hostname()
+		return &u
 	}
 
 	return uri
@@ -52,8 +54,4 @@ func getErr(resp *http.Response) error {
 	}
 
 	return errors.New(resp.Status)
-}
-
-func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 }

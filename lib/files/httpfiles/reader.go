@@ -67,16 +67,11 @@ func (r *reader) Seek(offset int64, whence int) (int64, error) {
 		return 0, r.err
 	}
 
-	if r.s == nil {
-		switch s := r.r.(type) {
-		case io.Seeker:
-			r.s = s
-		default:
-			return 0, os.ErrInvalid
-		}
+	if s, ok := r.r.(io.Seeker); ok {
+		return s.Seek(offset, whence)
 	}
 
-	return r.s.Seek(offset, whence)
+	return 0, files.ErrNotSupported
 }
 
 func (r *reader) Close() error {
@@ -92,7 +87,7 @@ func (r *reader) Close() error {
 	return nil
 }
 
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	uri = elideDefaultPort(uri)
 
 	cl, ok := getClient(ctx)
@@ -100,8 +95,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		cl = http.DefaultClient
 	}
 
-	req := newHTTPRequest(http.MethodGet, uri)
-	req = req.WithContext(ctx)
+	req := httpNewRequestWithContext(ctx, http.MethodGet, uri)
 
 	if ua, ok := getUserAgent(ctx); ok {
 		req.Header.Set("User-Agent", ua)
@@ -133,9 +127,15 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = files.PathError("open", r.name, ctx.Err())
+			r.err = &os.PathError{
+				Op:   "open",
+				Path: r.name,
+				Err:  ctx.Err(),
+			}
 			return
 		}
+
+		r.markSent()
 
 		// So, we will not arrive here until someone is ranging over the loading channel.
 		//
@@ -147,7 +147,11 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 		resp, err := cl.Do(req)
 		if err != nil {
-			r.err = files.PathError("open", r.name, err)
+			r.err = &os.PathError{
+				Op:   "open",
+				Path: r.name,
+				Err:  err,
+			}
 			return
 		}
 
@@ -166,7 +170,11 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		if err := getErr(resp); err != nil {
 			resp.Body.Close()
 
-			r.err = files.PathError("open", uri.String(), err)
+			r.err = &os.PathError{
+				Op:   "open",
+				Path: uri.String(),
+				Err:  err,
+			}
 			return
 		}
 
@@ -177,10 +185,14 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 		b, err := files.ReadFrom(resp.Body)
 		if err != nil {
-			r.err = files.PathError("read", uri.String(), err)
+			r.err = &os.PathError{
+				Op:   "read",
+				Path: uri.String(),
+				Err:  err,
+			}
 			return
 		}
-		resp.Body.Close()
+		// files.ReadFrom will close the body.
 
 		r.r = bytes.NewReader(b)
 	}()

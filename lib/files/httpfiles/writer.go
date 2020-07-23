@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
@@ -22,7 +23,7 @@ func (w *writer) Header() (http.Header, error) {
 	return w.request.req.Header, nil
 }
 
-func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+func (handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	uri = elideDefaultPort(uri)
 
 	cl, ok := getClient(ctx)
@@ -30,8 +31,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		cl = http.DefaultClient
 	}
 
-	req := newHTTPRequest(http.MethodPost, uri)
-	req = req.WithContext(ctx)
+	req := httpNewRequestWithContext(ctx, http.MethodPost, uri)
 
 	if ua, ok := getUserAgent(ctx); ok {
 		req.Header.Set("User-Agent", ua)
@@ -45,22 +45,41 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	// The http.Writer does not actually perform the http.Request until wrapper.Sync is called,
 	// So there is no need for complex synchronization like the httpfiles.Reader needs.
 	w := wrapper.NewWriter(ctx, uri, func(b []byte) error {
-		if r.req.Header.Get("Content-Type") == "" {
-			r.req.Header.Set("Content-Type", http.DetectContentType(b))
-		}
-		_ = r.SetBody(b)
-
-		resp, err := cl.Do(r.req)
+		_, err := r.SetBody(b)
 		if err != nil {
-			return files.PathError("write", r.name, err)
-		}
-
-		if err := files.Discard(resp.Body); err != nil {
 			return err
 		}
 
+		r.mu.Lock()
+		defer r.mu.Unlock()
+
+		// Unlike on the reader side, we never want to call r.markSent()
+		// Because, we perform a brand new request, every Sync() or Close().
+		// So, we can continuously update headers, and bodies, and methods.
+
+		resp, err := cl.Do(r.req)
+		if err != nil {
+			return &os.PathError{
+				Op:   "write",
+				Path: r.name,
+				Err:  err,
+			}
+		}
+
+		if err := files.Discard(resp.Body); err != nil {
+			return &os.PathError{
+				Op:   "discard",
+				Path: r.name,
+				Err:  err,
+			}
+		}
+
 		if err := getErr(resp); err != nil {
-			return files.PathError("write", r.name, err)
+			return &os.PathError{
+				Op:   "write",
+				Path: r.name,
+				Err:  err,
+			}
 		}
 
 		return nil
