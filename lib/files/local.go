@@ -16,25 +16,44 @@ func init() {
 	RegisterScheme(Local, "file")
 }
 
-func filename(uri *url.URL) string {
-	if uri.Path != "" {
-		return uri.Path
-	}
-
-	return uri.Opaque
-}
-
 // Open opens up a local filesystem file specified in the uri.Path for reading.
 func (localFS) Open(ctx context.Context, uri *url.URL) (Reader, error) {
-	return os.Open(filename(uri))
+	name, err := resolveFileURL(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
+
+	return os.Open(name)
 }
 
 // Create opens up a local filesystem file specified in the uri.Path for writing. It will create a new one if it does not exist.
 func (localFS) Create(ctx context.Context, uri *url.URL) (Writer, error) {
-	return os.Create(filename(uri))
+	name, err := resolveFileURL(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
+
+	return os.Create(name)
 }
 
 // List returns the whole slice of os.FileInfos for a specific local filesystem at uri.Path.
 func (localFS) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return ioutil.ReadDir(filename(uri))
+	name, err := resolveFileURL(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
+
+	return ioutil.ReadDir(name)
 }
