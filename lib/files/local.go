@@ -2,7 +2,6 @@ package files
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -27,7 +26,6 @@ func filename(uri *url.URL) string {
 
 // Open opens up a local filesystem file specified in the uri.Path for reading.
 func (localFS) Open(ctx context.Context, uri *url.URL) (Reader, error) {
-	fmt.Println("os.Open:", filename(uri))
 	return os.Open(filename(uri))
 }
 

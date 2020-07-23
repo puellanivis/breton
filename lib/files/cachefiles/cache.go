@@ -4,7 +4,6 @@ package cachefiles
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"net/url"
 	"os"
 	"sync"
@@ -70,8 +69,6 @@ func (h *FS) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 		// Continuing will deadlock, so we won’t even try to cache at all.
 		return files.Open(ctx, filename)
 	}
-
-	fmt.Println(filename)
 
 	h.RLock()
 	f, ok := h.cache[filename]
