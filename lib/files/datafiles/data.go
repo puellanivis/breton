@@ -17,45 +17,54 @@ import (
 type handler struct{}
 
 func init() {
-	files.RegisterScheme(&handler{}, "data")
+	files.RegisterScheme(handler{}, "data")
 }
 
 var b64enc = base64.StdEncoding
 
-func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return nil, files.PathError("create", uri.String(), os.ErrInvalid)
-}
-
-type withHeaders struct {
+type withHeader struct {
 	files.Reader
 	header http.Header
 }
 
-func (w *withHeaders) Header() http.Header {
+func (w *withHeader) Header() http.Header {
 	return w.header
 }
 
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, files.PathError("open", uri.String(), os.ErrInvalid)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  os.ErrInvalid,
+		}
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
-		if p, err := url.PathUnescape(path); err == nil {
-			path = p
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, &os.PathError{
+				Op:   "open",
+				Path: uri.String(),
+				Err:  err,
+			}
 		}
 	}
 
 	i := strings.IndexByte(path, ',')
 	if i < 0 {
-		return nil, files.PathError("open", uri.String(), os.ErrInvalid)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  os.ErrInvalid,
+		}
 	}
 
 	contentType, data := path[:i], []byte(path[i+1:])
-	var isBase64 bool
 
+	var isBase64 bool
 	if strings.HasSuffix(contentType, ";base64") {
 		contentType = strings.TrimSuffix(contentType, ";base64")
 		isBase64 = true
@@ -65,26 +74,27 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		contentType = "text/plain;charset=US-ASCII"
 	}
 
-	header := make(http.Header)
-	header.Set("Content-Type", contentType)
+	header := http.Header{
+		"Content-Type": []string{contentType},
+	}
 
 	if isBase64 {
 		b := make([]byte, b64enc.DecodedLen(len(data)))
 
 		n, err := b64enc.Decode(b, data)
 		if err != nil {
-			return nil, files.PathError("decode", uri.String(), err)
+			return nil, &os.PathError{
+				Op:   "decode_base64",
+				Path: uri.String(),
+				Err:  err,
+			}
 		}
 
 		data = b[:n]
 	}
 
-	return &withHeaders{
+	return &withHeader{
 		Reader: wrapper.NewReaderFromBytes(data, uri, time.Now()),
 		header: header,
 	}, nil
-}
-
-func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 }
