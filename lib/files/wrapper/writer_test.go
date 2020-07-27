@@ -7,7 +7,7 @@ import (
 )
 
 func TestImplementsFilesWriter(t *testing.T) {
-	var f files.Writer = new(Writer)
+	var f files.SyncWriter = new(Writer)
 
 	_ = f
 }
