@@ -72,6 +72,7 @@ func (h *handler) lookup(region string) (*region, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	h.rmap[region] = r
 
 	return r, nil
@@ -104,35 +105,47 @@ func (h *handler) getClient(ctx context.Context, bucket string) (*s3.S3, error) 
 	return r.cl, nil
 }
 
-func getBucketKey(op string, uri *url.URL) (bucket, key string, err error) {
+func getBucketKey(uri *url.URL) (bucket, key string, err error) {
 	if uri.Host == "" || uri.Path == "" {
-		return "", "", files.PathError(op, uri.String(), os.ErrInvalid)
+		return "", "", os.ErrInvalid
 	}
 
 	return uri.Host, uri.Path, nil
 }
 
-func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (h *handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host == "" {
-		return nil, files.PathError("list", uri.String(), os.ErrInvalid)
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  os.ErrInvalid,
+		}
 	}
 
 	bucket, key := uri.Host, strings.TrimPrefix(uri.Path, "/")
 
 	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
-		return nil, files.PathError("list", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	req := &s3.ListObjectsInput{
-		Bucket:    aws.String(bucket),
+		Bucket:    &bucket,
 		Delimiter: aws.String("/"),
-		Prefix:    aws.String(key),
+		Prefix:    &key,
 	}
 
 	res, err := cl.ListObjectsWithContext(ctx, req)
 	if err != nil {
-		return nil, files.PathError("list", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "list_objects",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	var fi []os.FileInfo

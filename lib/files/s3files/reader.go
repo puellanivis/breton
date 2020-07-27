@@ -3,6 +3,7 @@ package s3files
 import (
 	"context"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -13,14 +14,22 @@ import (
 )
 
 func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	bucket, key, err := getBucketKey("open", uri)
+	bucket, key, err := getBucketKey(uri)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	cl, err := h.getClient(ctx, bucket)
 	if err != nil {
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	req := &s3.GetObjectInput{
@@ -30,12 +39,16 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 	res, err := cl.GetObjectWithContext(ctx, req)
 	if err != nil {
-		return nil, files.PathError("read", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "get_object",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
-	var l int64
+	var sz int64
 	if res.ContentLength != nil {
-		l = *res.ContentLength
+		sz = *res.ContentLength
 	}
 
 	lm := time.Now()
@@ -43,5 +56,5 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		lm = *res.LastModified
 	}
 
-	return wrapper.NewReaderWithInfo(res.Body, wrapper.NewInfo(uri, int(l), lm)), nil
+	return wrapper.NewReaderWithInfo(res.Body, wrapper.NewInfo(uri, int(sz), lm)), nil
 }
