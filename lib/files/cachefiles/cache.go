@@ -44,24 +44,50 @@ func (h *FS) expire(filename string) {
 	delete(h.cache, filename)
 }
 
-func trimScheme(uri *url.URL) string {
-	u := *uri
-	u.Scheme = ""
+func resolveReference(uri *url.URL) (string, error) {
+	if uri.Host != "" || uri.User != nil {
+		return "", files.ErrURLCannotHaveAuthority
+	}
 
-	return u.String()
+	if uri.Path != "" {
+		return uri.Path, nil
+	}
+
+	path, err := url.PathUnescape(uri.Opaque)
+	if err != nil {
+		return "", files.ErrURLInvalid
+	}
+
+	return path, nil
 }
 
 // Create implements files.CreateFS.
 // At this time, it just returns the files.Create() from the wrapped url.
 func (h *FS) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return files.Create(ctx, trimScheme(uri))
+	filename, err := resolveReference(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
+
+	return files.Create(ctx, filename)
 }
 
 // Open implements files.FS.
 // It returns a buffered copy of the files.Reader returned from reading the uri escaped by the "cache:" scheme.
 // Any access within the next ExpireTime set by the context.Context (or 5 minutes by default) will return a new copy of a files.Reader, with the same content.
 func (h *FS) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	filename := trimScheme(uri)
+	filename, err := resolveReference(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
 
 	ctx, safe := isReentrySafe(ctx)
 	if !safe {
@@ -136,5 +162,14 @@ func (h *FS) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 // ReadDir implements files.ReadDirFS.
 // It does not cache anything and just returns the files.ReadDir() from the wrapped url.
 func (h *FS) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return files.ReadDir(ctx, trimScheme(uri))
+	filename, err := resolveReference(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
+
+	return files.ReadDir(ctx, filename)
 }

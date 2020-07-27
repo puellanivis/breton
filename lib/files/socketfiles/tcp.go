@@ -20,7 +20,7 @@ func (tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 		return nil, &os.PathError{
 			Op:   "open",
 			Path: uri.String(),
-			Err:  errInvalidURL,
+			Err:  files.ErrURLHostRequired,
 		}
 	}
 
@@ -50,7 +50,7 @@ func (tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		return nil, &os.PathError{
 			Op:   "create",
 			Path: uri.String(),
-			Err:  errInvalidURL,
+			Err:  files.ErrURLHostRequired,
 		}
 	}
 

@@ -27,12 +27,16 @@ var clipboards = make(map[string]clipboard)
 
 func getClip(uri *url.URL) (clipboard, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, os.ErrInvalid
+		return nil, files.ErrURLCannotHaveAuthority
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, files.ErrURLInvalid
+		}
 	}
 
 	clip := clipboards[path]
@@ -81,13 +85,17 @@ func (handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		return nil, &os.PathError{
 			Op:   "readdir",
 			Path: uri.String(),
-			Err:  os.ErrInvalid,
+			Err:  files.ErrURLCannotHaveAuthority,
 		}
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, files.ErrURLInvalid
+		}
 	}
 
 	clip := clipboards[path]

@@ -110,7 +110,7 @@ func (m aboutMap) ReadAll() ([]byte, error) {
 	for _, key := range keys {
 		uri := &url.URL{
 			Scheme: "about",
-			Opaque: key,
+			Opaque: url.PathEscape(key),
 		}
 
 		fmt.Fprintln(b, uri)
@@ -192,13 +192,21 @@ func (h handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 		return nil, &os.PathError{
 			Op:   "open",
 			Path: uri.String(),
-			Err:  os.ErrInvalid,
+			Err:  files.ErrURLCannotHaveAuthority,
 		}
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, &os.PathError{
+				Op:   "open",
+				Path: uri.String(),
+				Err:  files.ErrURLInvalid,
+			}
+		}
 	}
 
 	f, ok := about[path]
@@ -213,7 +221,7 @@ func (h handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	data, err := f.ReadAll()
 	if err != nil {
 		return nil, &os.PathError{
-			Op:   "open",
+			Op:   "read",
 			Path: uri.String(),
 			Err:  err,
 		}
@@ -227,13 +235,21 @@ func (h handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, erro
 		return nil, &os.PathError{
 			Op:   "readdir",
 			Path: uri.String(),
-			Err:  os.ErrInvalid,
+			Err:  files.ErrURLCannotHaveAuthority,
 		}
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, &os.PathError{
+				Op:   "open",
+				Path: uri.String(),
+				Err:  files.ErrURLInvalid,
+			}
+		}
 	}
 
 	if path == "" {

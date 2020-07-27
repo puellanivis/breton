@@ -16,9 +16,17 @@ func init() {
 }
 
 func (h unixHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+	if uri.Host != "" || uri.User != nil {
+		return nil, files.ErrURLCannotHaveAuthority
+	}
+
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, files.ErrURLInvalid
+		}
 	}
 	network := uri.Scheme
 
@@ -75,9 +83,17 @@ func (h unixHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 }
 
 func (h unixHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+	if uri.Host != "" || uri.User != nil {
+		return nil, files.ErrURLCannotHaveAuthority
+	}
+
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, files.ErrURLInvalid
+		}
 	}
 	network := uri.Scheme
 

@@ -106,8 +106,12 @@ func (h *handler) getClient(ctx context.Context, bucket string) (*s3.S3, error) 
 }
 
 func getBucketKey(uri *url.URL) (bucket, key string, err error) {
-	if uri.Host == "" || uri.Path == "" {
-		return "", "", os.ErrInvalid
+	if uri.Host == "" {
+		return "", "", files.ErrURLHostRequired
+	}
+
+	if uri.Path == "" {
+		return "", "", files.ErrURLPathRequired
 	}
 
 	return uri.Host, uri.Path, nil
@@ -118,7 +122,7 @@ func (h *handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, err
 		return nil, &os.PathError{
 			Op:   "readdir",
 			Path: uri.String(),
-			Err:  os.ErrInvalid,
+			Err:  files.ErrURLHostRequired,
 		}
 	}
 

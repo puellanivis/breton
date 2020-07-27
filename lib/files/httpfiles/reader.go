@@ -168,7 +168,7 @@ func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 		r.info = wrapper.NewInfo(uri, int(resp.ContentLength), t)
 
 		if err := getErr(resp); err != nil {
-			resp.Body.Close()
+			_ = files.Discard(resp.Body)
 
 			r.err = &os.PathError{
 				Op:   "open",

@@ -66,13 +66,7 @@ func (handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 			}
 		}
 
-		if err := files.Discard(resp.Body); err != nil {
-			return &os.PathError{
-				Op:   "discard",
-				Path: r.name,
-				Err:  err,
-			}
-		}
+		_ = files.Discard(resp.Body)
 
 		if err := getErr(resp); err != nil {
 			return &os.PathError{

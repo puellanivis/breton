@@ -29,7 +29,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 		cl, err := h.getClient(ctx, bucket)
 		if err != nil {
 			return &os.PathError{
-				Op:   "sync",
+				Op:   "write",
 				Path: path,
 				Err:  err,
 			}

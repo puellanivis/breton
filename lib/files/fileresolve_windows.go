@@ -2,7 +2,6 @@ package files
 
 import (
 	"net/url"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -10,24 +9,24 @@ import (
 
 func resolveFileURL(uri *url.URL) (string, error) {
 	if uri.User != nil {
-		return "", os.ErrInvalid
+		return "", ErrURLInvalid
 	}
 
-	if uri.Opaque != "" {
-		name := uri.Opaque
+	if name := uri.Opaque; name != "" {
 		if !path.IsAbs(name) {
-			return "", os.ErrInvalid
+			// a path in Opaque must start with `/` and not with `%2f`.
+			return "", ErrURLInvalid
 		}
 
 		name = strings.TrimPrefix(name, "/")
 
 		name, err := url.PathUnescape(name)
 		if err != nil {
-			return "", os.ErrInvalid
+			return "", ErrURLInvalid
 		}
 
 		if !filepath.IsAbs(name) {
-			return "", os.ErrInvalid
+			return "", ErrURLInvalid
 		}
 
 		return filepath.Clean(filepath.FromSlash(name)), nil
@@ -35,7 +34,7 @@ func resolveFileURL(uri *url.URL) (string, error) {
 
 	name := uri.Path
 	if !path.IsAbs(name) {
-		return "", os.ErrInvalid
+		return "", ErrURLInvalid
 	}
 
 	switch uri.Host {
@@ -43,7 +42,7 @@ func resolveFileURL(uri *url.URL) (string, error) {
 		name = strings.TrimPrefix(name, "/")
 
 		if !filepath.IsAbs(name) {
-			return "", os.ErrInvalid
+			return "", ErrURLInvalid
 		}
 
 		return filepath.Clean(filepath.FromSlash(name)), nil

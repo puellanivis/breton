@@ -2,12 +2,14 @@
 package home
 
 import (
-	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"os/user"
 	"path/filepath"
 	"sync"
+
+	"github.com/puellanivis/breton/lib/files"
 )
 
 type cache struct {
@@ -87,12 +89,16 @@ var users cache
 // for the specific default user if home:filename, or a specific user if home://user@/filename.
 func Filename(uri *url.URL) (string, error) {
 	if uri.Host != "" {
-		return "", os.ErrInvalid
+		return "", files.ErrURLNoHost
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return "", files.ErrURLInvalid
+		}
 	}
 
 	var base string
@@ -116,7 +122,7 @@ func Filename(uri *url.URL) (string, error) {
 	}
 
 	if base == "" {
-		return "", errors.New("could not find home directory")
+		return "", fmt.Errorf("could not find home directory: %w", os.ErrNotExist)
 	}
 
 	return filepath.Join(base, path), nil

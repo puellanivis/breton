@@ -16,7 +16,7 @@ func init() {
 
 func openFD(uri *url.URL) (*os.File, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, os.ErrInvalid
+		return nil, ErrURLCannotHaveAuthority
 	}
 
 	num := strings.TrimPrefix(uri.Path, "/")
@@ -24,19 +24,19 @@ func openFD(uri *url.URL) (*os.File, error) {
 		var err error
 		num, err = url.PathUnescape(uri.Opaque)
 		if err != nil {
-			return nil, os.ErrInvalid
+			return nil, ErrURLInvalid
 		}
 	}
 
 	fd, err := strconv.ParseUint(num, 0, strconv.IntSize)
 	if err != nil {
-		return nil, os.ErrInvalid
+		return nil, ErrURLInvalid
 	}
 
 	// Canonicalize the name.
 	uri = &url.URL{
 		Scheme: "fd",
-		Opaque: num,
+		Opaque: url.PathEscape(num),
 	}
 
 	return os.NewFile(uintptr(fd), uri.String()), nil

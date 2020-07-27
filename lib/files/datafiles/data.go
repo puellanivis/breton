@@ -36,7 +36,7 @@ func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 		return nil, &os.PathError{
 			Op:   "open",
 			Path: uri.String(),
-			Err:  os.ErrInvalid,
+			Err:  files.ErrURLCannotHaveAuthority,
 		}
 	}
 
@@ -58,7 +58,7 @@ func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 		return nil, &os.PathError{
 			Op:   "open",
 			Path: uri.String(),
-			Err:  os.ErrInvalid,
+			Err:  files.ErrURLInvalid,
 		}
 	}
 
