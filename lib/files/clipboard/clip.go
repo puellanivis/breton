@@ -46,7 +46,11 @@ func getClip(uri *url.URL) (clipboard, error) {
 func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	clip, err := getClip(uri)
 	if err != nil {
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	b, err := clip.Read()
@@ -60,7 +64,11 @@ func (handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 func (handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	clip, err := getClip(uri)
 	if err != nil {
-		return nil, files.PathError("create", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	return wrapper.NewWriter(ctx, uri, func(b []byte) error {
