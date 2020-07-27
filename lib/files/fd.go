@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -28,9 +27,9 @@ func openFD(uri *url.URL) (*os.File, error) {
 		}
 	}
 
-	fd, err := strconv.ParseUint(num, 0, strconv.IntSize)
+	fd, err := resolveFileHandle(num)
 	if err != nil {
-		return nil, ErrURLInvalid
+		return nil, err
 	}
 
 	// Canonicalize the name.

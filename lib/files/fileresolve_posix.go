@@ -5,7 +5,17 @@ package files
 import (
 	"net/url"
 	"path"
+	"strconv"
 )
+
+func resolveFileHandle(num string) (uintptr, error) {
+	fd, err := strconv.ParseUint(num, 0, strconv.IntSize)
+	if err != nil {
+		return uintptr(^fd), ErrURLInvalid
+	}
+
+	return uintptr(fd), nil
+}
 
 func resolveFileURL(uri *url.URL) (string, error) {
 	if uri.User != nil {
