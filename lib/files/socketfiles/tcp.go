@@ -12,35 +12,55 @@ import (
 type tcpHandler struct{}
 
 func init() {
-	files.RegisterScheme(&tcpHandler{}, "tcp")
+	files.RegisterScheme(tcpHandler{}, "tcp")
 }
 
-func (h *tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (tcpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host == "" {
-		return nil, files.PathError("open", uri.String(), errInvalidURL)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  errInvalidURL,
+		}
 	}
 
 	laddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	l, err := net.ListenTCP("tcp", laddr)
 	if err != nil {
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	return newStreamReader(ctx, l)
 }
 
-func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+func (tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	if uri.Host == "" {
-		return nil, files.PathError("create", uri.String(), errInvalidURL)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  errInvalidURL,
+		}
 	}
 
 	raddr, err := net.ResolveTCPAddr("tcp", uri.Host)
 	if err != nil {
-		return nil, files.PathError("create", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	q := uri.Query()
@@ -52,7 +72,11 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	if host != "" || port != "" {
 		laddr, err = net.ResolveTCPAddr("tcp", net.JoinHostPort(host, port))
 		if err != nil {
-			return nil, files.PathError("create", uri.String(), err)
+			return nil, &os.PathError{
+				Op:   "create",
+				Path: uri.String(),
+				Err:  err,
+			}
 		}
 	}
 
@@ -66,18 +90,22 @@ func (h *tcpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	}
 
 	if err := do(ctx, dial); err != nil {
-		return nil, files.PathError("create", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	sock, err := sockWriter(conn, laddr != nil, q)
 	if err != nil {
 		conn.Close()
-		return nil, files.PathError("create", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	return newStreamWriter(ctx, sock), nil
-}
-
-func (h *tcpHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 }
