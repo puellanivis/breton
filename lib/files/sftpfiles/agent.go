@@ -27,7 +27,7 @@ func (a *Agent) Close() error {
 func GetAgent() (*Agent, error) {
 	sock := os.Getenv("SSH_AUTH_SOCK")
 	if sock == "" {
-		// No agent setup, so return no agent and not error.
+		// No agent setup, so return no agent and no error.
 		return nil, nil
 	}
 

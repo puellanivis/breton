@@ -6,12 +6,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func noopOption() files.Option {
-	return func(_ files.File) (files.Option, error) {
-		return noopOption(), nil
-	}
-}
-
 func withAuths(auths []ssh.AuthMethod) files.Option {
 	type authSetter interface {
 		SetAuths([]ssh.AuthMethod) []ssh.AuthMethod
@@ -20,10 +14,11 @@ func withAuths(auths []ssh.AuthMethod) files.Option {
 	return func(f files.File) (files.Option, error) {
 		h, ok := f.(authSetter)
 		if !ok {
-			return noopOption(), nil
+			return nil, files.ErrNotSupported
 		}
 
 		save := h.SetAuths(auths)
+
 		return withAuths(save), nil
 	}
 }
@@ -37,10 +32,11 @@ func WithAuth(auth ssh.AuthMethod) files.Option {
 	return func(f files.File) (files.Option, error) {
 		h, ok := f.(authAdder)
 		if !ok {
-			return noopOption(), nil
+			return nil, files.ErrNotSupported
 		}
 
 		save := h.AddAuth(auth)
+
 		return withAuths(save), nil
 	}
 }
@@ -56,10 +52,11 @@ func IgnoreHostKeys(state bool) files.Option {
 	return func(f files.File) (files.Option, error) {
 		h, ok := f.(hostkeyIgnorer)
 		if !ok {
-			return noopOption(), nil
+			return nil, files.ErrNotSupported
 		}
 
 		save := h.IgnoreHostKeys(state)
+
 		return IgnoreHostKeys(save), nil
 	}
 }
@@ -72,10 +69,11 @@ func withHostKeyCallback(cb ssh.HostKeyCallback, algos []string) files.Option {
 	return func(f files.File) (files.Option, error) {
 		h, ok := f.(hostkeySetter)
 		if !ok {
-			return noopOption(), nil
+			return nil, files.ErrNotSupported
 		}
 
 		saveHK, saveAlgos := h.SetHostKeyCallback(cb, algos)
+
 		return withHostKeyCallback(saveHK, saveAlgos), nil
 	}
 }

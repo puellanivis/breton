@@ -56,13 +56,6 @@ func (w *writer) Seek(offset int64, whence int) (int64, error) {
 	return w.f.Seek(offset, whence)
 }
 
-func (w *writer) Sync() error {
-	for range w.loading {
-	}
-
-	return nil
-}
-
 func (w *writer) Close() error {
 	for range w.loading {
 	}
@@ -76,34 +69,26 @@ func (w *writer) Close() error {
 	return w.f.Close()
 }
 
-type noopSync struct {
-	*sftp.File
-}
-
-func (f noopSync) Sync() error {
-	return nil
-}
-
 func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	h := fs.getHost(uri)
+	h, u := fs.getHost(uri)
 
 	if cl := h.GetClient(); cl != nil {
 		f, err := cl.Create(uri.Path)
 		if err != nil {
-			return nil, files.PathError("create", uri.String(), err)
+			return nil, &os.PathError{
+				Op:   "create",
+				Path: u.String(),
+				Err:  err,
+			}
 		}
 
-		return noopSync{f}, nil
+		return f, nil
 	}
 
 	loading := make(chan struct{})
 
-	fixURL := *uri
-	fixURL.Host = h.uri.Host
-	fixURL.User = h.uri.User
-
 	w := &writer{
-		uri:  &fixURL,
+		uri:  u,
 		Host: h,
 
 		loading: loading,
@@ -115,19 +100,31 @@ func (fs *filesystem) Create(ctx context.Context, uri *url.URL) (files.Writer, e
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			w.err = files.PathError("connect", h.Name(), ctx.Err())
+			w.err = &os.PathError{
+				Op:   "connect",
+				Path: h.Name(),
+				Err:  ctx.Err(),
+			}
 			return
 		}
 
 		cl, err := h.Connect()
 		if err != nil {
-			w.err = files.PathError("connect", h.Name(), err)
+			w.err = &os.PathError{
+				Op:   "connect",
+				Path: h.Name(),
+				Err:  ctx.Err(),
+			}
 			return
 		}
 
 		f, err := cl.Create(uri.Path)
 		if err != nil {
-			w.err = files.PathError("create", w.Name(), err)
+			w.err = &os.PathError{
+				Op:   "create",
+				Path: u.String(),
+				Err:  err,
+			}
 			return
 		}
 

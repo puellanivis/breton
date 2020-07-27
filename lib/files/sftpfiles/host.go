@@ -3,9 +3,8 @@ package sftpfiles
 import (
 	"errors"
 	"net/url"
+	"os/user"
 	"sync"
-
-	"github.com/puellanivis/breton/lib/os/user"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -18,7 +17,8 @@ type Host struct {
 	conn *ssh.Client
 	cl   *sftp.Client
 
-	uri *url.URL
+	uri  *url.URL
+	name string
 
 	auths []ssh.AuthMethod
 
@@ -34,12 +34,12 @@ var (
 
 func getUser() *url.Userinfo {
 	userInit.Do(func() {
-		name, err := user.CurrentUsername()
+		u, err := user.Current()
 		if err != nil {
 			return
 		}
 
-		defaultUser = url.User(name)
+		defaultUser = url.User(u.Username)
 	})
 
 	return defaultUser
@@ -71,13 +71,22 @@ func NewHost(uri *url.URL) *Host {
 
 	return &Host{
 		uri:   uri,
+		name:  uri.String(),
 		auths: auths,
 	}
 }
 
 // Name returns an identifying name of the Host composed of the authority section of the URL: //user[:pass]@hostname:port
 func (h *Host) Name() string {
-	return h.uri.String()
+	return h.name
+}
+
+func (h *Host) getPath(uri *url.URL) *url.URL {
+	u := *uri
+	u.Host = h.uri.Host
+	u.User = h.uri.User
+
+	return &u
 }
 
 func (h *Host) close() error {
@@ -168,21 +177,34 @@ func (h *Host) Connect() (*sftp.Client, error) {
 }
 
 func (h *Host) cloneAuths() []ssh.AuthMethod {
-	return append([]ssh.AuthMethod{}, h.auths...)
+	return append([]ssh.AuthMethod(nil), h.auths...)
 }
 
 // addAuths is an internal convenience func to add any number of auths.
 func (h *Host) addAuths(auths ...ssh.AuthMethod) []ssh.AuthMethod {
-	return h.SetAuths(append(h.cloneAuths(), auths...))
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	clone := h.cloneAuths()
+
+	if len(auths) < 1 {
+		return clone
+	}
+
+	return h.setAuths(append(clone, auths...))
 }
 
 // AddAuth adds the given ssh.AuthMethod to the authorization methods for the Host, and return the previous value.
 func (h *Host) AddAuth(auth ssh.AuthMethod) []ssh.AuthMethod {
-	return h.addAuths(auth)
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	return h.setAuths(append(h.cloneAuths(), auth))
 }
 
-// SetAuths sets the slice of ssh.AuthMethod on the Host, and returns the previous value.
-func (h *Host) SetAuths(auths []ssh.AuthMethod) []ssh.AuthMethod {
+// setAuths sets the slice of ssh.AuthMethod on the Host, and returns the previous value.
+// It must be called under lock.
+func (h *Host) setAuths(auths []ssh.AuthMethod) []ssh.AuthMethod {
 	save := h.auths
 
 	h.auths = auths
@@ -190,9 +212,20 @@ func (h *Host) SetAuths(auths []ssh.AuthMethod) []ssh.AuthMethod {
 	return save
 }
 
+// SetAuths sets the slice of ssh.AuthMethod on the Host, and returns the previous value.
+func (h *Host) SetAuths(auths []ssh.AuthMethod) []ssh.AuthMethod {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	return h.setAuths(append([]ssh.AuthMethod(nil), auths...))
+}
+
 // IgnoreHostKeys sets a flag that Host should ignore Host keys when connecting.
 // THIS IS INSECURE.
 func (h *Host) IgnoreHostKeys(state bool) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	save := h.ignoreHostkey
 
 	h.ignoreHostkey = state
@@ -202,6 +235,9 @@ func (h *Host) IgnoreHostKeys(state bool) bool {
 
 // SetHostKeyCallback sets the current hostkey callback for the Host, and returns the previous value.
 func (h *Host) SetHostKeyCallback(cb ssh.HostKeyCallback, algos []string) (ssh.HostKeyCallback, []string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	saveHK, saveAlgos := h.hostkey, h.hostkeyAlgos
 
 	h.hostkey = cb
