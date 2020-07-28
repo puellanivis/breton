@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/puellanivis/breton/lib/files"
 	"github.com/puellanivis/breton/lib/files/wrapper"
 )
 
@@ -151,7 +150,11 @@ func newStreamReader(ctx context.Context, l net.Listener) (*streamReader, error)
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = files.PathError("open", uri.String(), ctx.Err())
+			r.err = &os.PathError{
+				Op:   "accept",
+				Path: uri.String(),
+				Err:  ctx.Err(),
+			}
 			return
 		}
 
@@ -165,7 +168,11 @@ func newStreamReader(ctx context.Context, l net.Listener) (*streamReader, error)
 		}
 
 		if err := do(ctx, accept); err != nil {
-			r.err = files.PathError("accept", uri.String(), err)
+			r.err = &os.PathError{
+				Op:   "accept",
+				Path: uri.String(),
+				Err:  err,
+			}
 			return
 		}
 

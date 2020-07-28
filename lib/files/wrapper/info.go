@@ -22,8 +22,10 @@ type Info struct {
 
 // NewInfo returns a new Info set with the url, size and time specified.
 func NewInfo(uri *url.URL, size int, t time.Time) *Info {
+	u := *uri
+
 	return &Info{
-		uri:  uri,
+		uri:  &u,
 		sz:   int64(size),
 		mode: os.FileMode(0644),
 		t:    t,
@@ -52,11 +54,30 @@ func (fi *Info) SetNameFromURL(uri *url.URL) {
 	fi.mu.Lock()
 	defer fi.mu.Unlock()
 
-	fi.uri = uri
+	u := *uri
+	fi.uri = &u
+
 	fi.name = ""
 }
 
-func (fi *Info) fixName() string {
+// Name returns the filename of the Info, if name == "" and there is a url,
+// then it renders the url, and returns that as the name.
+func (fi *Info) Name() string {
+	if fi == nil {
+		return ""
+	}
+
+	fi.mu.RLock()
+	name, uri := fi.name, fi.uri
+	fi.mu.RUnlock()
+
+	if name != "" || uri == nil {
+		return name
+	}
+
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
+
 	if fi.name != "" || fi.uri == nil {
 		// Nothing to fix.
 		// Likely, someone else already fixed the name while we were waiting on the mutex.
@@ -74,25 +95,33 @@ func (fi *Info) fixName() string {
 	return fi.name
 }
 
-// Name returns the filename of the Info, if name == "" and there is a url,
-// then it renders the url, and returns that as the name.
-func (fi *Info) Name() string {
+// URL returns the URL of the Info, if there is no URL yet,
+// then it will set the URL to be `&url.URL{ Path: name }`.
+func (fi *Info) URL() *url.URL {
 	if fi == nil {
-		return ""
+		return &url.URL{}
 	}
 
 	fi.mu.RLock()
-	name, uri := fi.name, fi.uri
+	uri := fi.uri
 	fi.mu.RUnlock()
 
-	if name == "" && uri != nil {
-		fi.mu.Lock()
-		defer fi.mu.Unlock()
-
-		return fi.fixName()
+	if uri != nil {
+		u := *uri
+		return &u
 	}
 
-	return name
+	fi.mu.Lock()
+	defer fi.mu.Unlock()
+
+	if fi.uri == nil {
+		fi.uri = &url.URL{
+			Path: fi.name,
+		}
+	}
+
+	u := *fi.uri
+	return &u
 }
 
 // Size returns the size declared in the Info.
@@ -102,9 +131,10 @@ func (fi *Info) Size() int64 {
 	}
 
 	fi.mu.RLock()
-	defer fi.mu.RUnlock()
+	sz := fi.sz
+	fi.mu.RUnlock()
 
-	return fi.sz
+	return sz
 }
 
 // SetSize sets a new size in the Info.
@@ -126,9 +156,10 @@ func (fi *Info) Mode() (mode os.FileMode) {
 	}
 
 	fi.mu.RLock()
-	defer fi.mu.RUnlock()
+	mode = fi.mode
+	fi.mu.RUnlock()
 
-	return fi.mode
+	return mode
 }
 
 // Chmod sets the os.FileMode to be returned from Mode().
@@ -151,9 +182,10 @@ func (fi *Info) ModTime() (t time.Time) {
 	}
 
 	fi.mu.RLock()
-	defer fi.mu.RUnlock()
+	t = fi.t
+	fi.mu.RUnlock()
 
-	return fi.t
+	return t
 }
 
 // SetModTime sets the modification time in the Info to the time.Time given.
@@ -171,9 +203,10 @@ func (fi *Info) IsDir() bool {
 	}
 
 	fi.mu.RLock()
-	defer fi.mu.RUnlock()
+	isDir := fi.mode&os.ModeDir != 0
+	fi.mu.RUnlock()
 
-	return fi.mode&os.ModeDir != 0
+	return isDir
 }
 
 // Sys returns the Info object itself, as it is already the underlying data source.

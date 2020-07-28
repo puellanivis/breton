@@ -2,15 +2,13 @@ package files
 
 import (
 	"context"
-	"io/ioutil"
-	"net/url"
 	"os"
-	"path/filepath"
 )
 
-// Open takes a Context and a filename (which may be a URL) and returns a
-// files.Reader which will read the contents of that filename or URL. All
-// errors and reversion functions returned by Option arguments are discarded.
+// Open takes a context and a filename (which may be a URL) and
+// returns a `files.Reader`, which will read the contents of that filename or URL.
+//
+// All errors and reversion functions returned by Option arguments are discarded.
 func Open(ctx context.Context, filename string, options ...Option) (Reader, error) {
 	f, err := open(ctx, filename)
 	if err != nil {
@@ -30,40 +28,19 @@ func open(ctx context.Context, filename string) (Reader, error) {
 		return os.Stdin, nil
 	}
 
-	if filepath.IsAbs(filename) {
-		return os.Open(filename)
+	uri := parsePath(ctx, filename)
+	if isPath(uri) {
+		return os.Open(uri.Path)
 	}
 
-	if uri, err := url.Parse(filename); err == nil {
-		uri = resolveFilename(ctx, uri)
-
-		if fs, ok := getFS(uri); ok {
-			return fs.Open(ctx, uri)
+	fsys, ok := getFS(uri)
+	if !ok {
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  ErrNotSupported,
 		}
 	}
 
-	return os.Open(filename)
-}
-
-// List takes a Context and a filename (which may be a URL) and returns a list
-// of os.FileInfo that describes the files contained in the directory or listing.
-func List(ctx context.Context, filename string) ([]os.FileInfo, error) {
-	switch filename {
-	case "", "-", "/dev/stdin":
-		return os.Stdin.Readdir(0)
-	}
-
-	if filepath.IsAbs(filename) {
-		return ioutil.ReadDir(filename)
-	}
-
-	if uri, err := url.Parse(filename); err == nil {
-		uri = resolveFilename(ctx, uri)
-
-		if fs, ok := getFS(uri); ok {
-			return fs.List(ctx, uri)
-		}
-	}
-
-	return ioutil.ReadDir(filename)
+	return fsys.Open(ctx, uri)
 }

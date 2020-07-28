@@ -7,7 +7,7 @@ import (
 )
 
 func TestImplementsFilesReader(t *testing.T) {
-	var f files.Reader = new(Reader)
+	var f files.SeekReader = new(Reader)
 
 	_ = f
 }

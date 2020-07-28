@@ -15,16 +15,13 @@ func Unmarshal(data []byte, v interface{}) error {
 	return json.Unmarshal(data, v)
 }
 
-// ReadFrom will ReadAndClose the given io.ReadCloser and unmarshal that data into v as per json.Unmarshal.
-func ReadFrom(r io.ReadCloser, v interface{}) error {
+// ReadFrom will read the whole of io.Reader into memory.
+// It will then close the reader, if it implements io.Closer.
+// Finally it will unmarshal that data into v as per json.Unmarshal.
+func ReadFrom(r io.Reader, v interface{}) error {
 	data, err := files.ReadFrom(r)
 	if err != nil {
 		return err
-	}
-
-	if len(data) < 1 {
-		v = nil
-		return nil
 	}
 
 	return json.Unmarshal(data, v)
@@ -40,29 +37,24 @@ func Read(ctx context.Context, filename string, v interface{}) error {
 	return ReadFrom(f, v)
 }
 
-// Marshal is a wrapper around encoding/json.Marshal that will optionally apply
-// Indent or Compact options.
+// Marshal is a wrapper around encoding/json.Marshal,
+// that will optionally apply Indent, EscapeHTML, or Compact options.
 func Marshal(v interface{}, opts ...Option) ([]byte, error) {
+	b := new(bytes.Buffer)
+
 	c := &config{
-		escapeHTML: true,
+		Encoder: json.NewEncoder(b),
 	}
 
 	for _, opt := range opts {
-		_ = opt(c)
+		opt(c)
 	}
-
-	b := new(bytes.Buffer)
-	enc := json.NewEncoder(b)
 
 	if c.prefix != "" || c.indent != "" {
-		enc.SetIndent(c.prefix, c.indent)
+		c.SetIndent(c.prefix, c.indent)
 	}
 
-	if !c.escapeHTML {
-		enc.SetEscapeHTML(c.escapeHTML)
-	}
-
-	if err := enc.Encode(v); err != nil {
+	if err := c.Encode(v); err != nil {
 		return nil, err
 	}
 
@@ -71,14 +63,17 @@ func Marshal(v interface{}, opts ...Option) ([]byte, error) {
 		if err := json.Compact(buf, b.Bytes()); err != nil {
 			return nil, err
 		}
-		b = buf
+
+		return buf.Bytes(), nil
 	}
 
 	return b.Bytes(), nil
 }
 
-// WriteTo writes a value marshalled as JSON to the the given io.WriteCloser.
-func WriteTo(w io.WriteCloser, v interface{}, opts ...Option) error {
+// WriteTo marshals v as per json.Marshal,
+// it then writes that data to the the given io.Writer.
+// Finally, it will close it, if it implements io.Closer.
+func WriteTo(w io.Writer, v interface{}, opts ...Option) error {
 	b, err := Marshal(v, opts...)
 	if err != nil {
 		return err
@@ -87,7 +82,7 @@ func WriteTo(w io.WriteCloser, v interface{}, opts ...Option) error {
 	return files.WriteTo(w, b)
 }
 
-// Write writes a marshaled JSON to a filename with the given Context.
+// Write writes a marshaled JSON output to the given filename.
 func Write(ctx context.Context, filename string, v interface{}, opts ...Option) error {
 	f, err := files.Create(ctx, filename)
 	if err != nil {

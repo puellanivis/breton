@@ -4,12 +4,18 @@ import (
 	"context"
 	"net/url"
 	"os"
-	"path/filepath"
 )
 
-// Create takes a context and a filename (which may be a URL) and returns a
-// files.Writer that allows writing data to that local filename or URL. All
-// errors and reversion functions returned by Option arguments are discarded.
+// CreateFS defines an extention interface on FS, which also provides an ability to create a new file for read/write.
+type CreateFS interface {
+	FS
+	Create(ctx context.Context, uri *url.URL) (Writer, error)
+}
+
+// Create takes a context and a filename (which may be a URL) and
+// returns a files.Writer that allows writing data to that local filename or URL.
+//
+// All errors and reversion functions returned by Option arguments are discarded.
 func Create(ctx context.Context, filename string, options ...Option) (Writer, error) {
 	f, err := create(ctx, filename)
 	if err != nil {
@@ -31,17 +37,30 @@ func create(ctx context.Context, filename string) (Writer, error) {
 		return os.Stderr, nil
 	}
 
-	if filepath.IsAbs(filename) {
+	uri := parsePath(ctx, filename)
+	if isPath(uri) {
 		return os.Create(filename)
 	}
 
-	if uri, err := url.Parse(filename); err == nil {
-		uri = resolveFilename(ctx, uri)
-
-		if fs, ok := getFS(uri); ok {
-			return fs.Create(ctx, uri)
+	fsys, ok := getFS(uri)
+	if !ok {
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  ErrNotSupported,
 		}
 	}
 
-	return os.Create(filename)
+	switch fsys := fsys.(type) {
+	case CreateFS:
+		return fsys.Create(ctx, uri)
+
+		// case OpenFileFS: // implement
+	}
+
+	return nil, &os.PathError{
+		Op:   "create",
+		Path: filename,
+		Err:  ErrNotSupported,
+	}
 }

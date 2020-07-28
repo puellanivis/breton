@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"syscall"
+	"strings"
 	"time"
 
 	"github.com/puellanivis/breton/lib/files"
@@ -20,41 +20,60 @@ import (
 type handler struct{}
 
 func init() {
-	files.RegisterScheme(&handler{}, "about")
+	files.RegisterScheme(handler{}, "about")
 }
 
-func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return nil, files.PathError("create", uri.String(), os.ErrInvalid)
+type reader interface {
+	ReadAll() ([]byte, error)
 }
 
-type fn func() ([]byte, error)
-
-func blank() ([]byte, error) {
-	return nil, nil
+type lister interface {
+	ReadDir() ([]os.FileInfo, error)
 }
 
-func notfound() ([]byte, error) {
-	return nil, os.ErrNotExist
-}
+type stringFunc func() string
 
-var errUnresolvable = errors.New("unresolvable address")
-
-func unresolvable() ([]byte, error) {
-	return nil, errUnresolvable
-}
-
-func version() ([]byte, error) {
-	return append([]byte(process.Version()), '\n'), nil
+func (f stringFunc) ReadAll() ([]byte, error) {
+	return append([]byte(f()), '\n'), nil
 }
 
 var (
-	aboutMap = map[string]fn{
+	blank   stringFunc = func() string { return "" }
+	version stringFunc = func() string { return process.Version() }
+	now     stringFunc = func() string { return time.Now().Truncate(0).String() }
+)
+
+type errorURL struct {
+	error
+}
+
+func (e errorURL) ReadAll() ([]byte, error) {
+	return nil, e.error
+}
+
+func (e errorURL) ReadDir() ([]os.FileInfo, error) {
+	return nil, e.error
+}
+
+// ErrNoSuchHost defines an error, where a DNS host lookup failed to resolve.
+var ErrNoSuchHost = errors.New("no such host")
+
+var (
+	notfound     = errorURL{os.ErrNotExist}
+	unresolvable = errorURL{ErrNoSuchHost}
+)
+
+type aboutMap map[string]reader
+
+var (
+	about = aboutMap{
 		"":              version,
 		"blank":         blank,
 		"cache":         blank,
 		"invalid":       notfound,
 		"html-kind":     unresolvable,
 		"legacy-compat": unresolvable,
+		"now":           now,
 		"plugins":       plugins,
 		"srcdoc":        unresolvable,
 		"version":       version,
@@ -64,113 +83,204 @@ var (
 func init() {
 	// if aboutMap references about, then about references aboutMap
 	// and go errors with "initialization loop"
-	aboutMap["about"] = about
+	about["about"] = about
 }
 
-func listOf(list []string) ([]byte, error) {
+func (m aboutMap) keys() []string {
+	var list []string
+
+	for key := range m {
+		if key == "" || strings.HasPrefix(key, ".") {
+			continue
+		}
+
+		list = append(list, key)
+	}
+
 	sort.Strings(list)
+
+	return list
+}
+
+func (m aboutMap) ReadAll() ([]byte, error) {
+	keys := m.keys()
 
 	b := new(bytes.Buffer)
 
-	for _, item := range list {
-		fmt.Fprintln(b, item)
+	for _, key := range keys {
+		uri := &url.URL{
+			Scheme: "about",
+			Opaque: url.PathEscape(key),
+		}
+
+		fmt.Fprintln(b, uri)
 	}
 
 	return b.Bytes(), nil
 }
 
-func plugins() ([]byte, error) {
-	return listOf(files.RegisteredSchemes())
-}
+func (m aboutMap) ReadDir() ([]os.FileInfo, error) {
+	keys := m.keys()
 
-func about() ([]byte, error) {
-	var list []string
+	var infos []os.FileInfo
 
-	for name := range aboutMap {
-		uri := &url.URL{
-			Scheme: "about",
-			Opaque: name,
+	for _, key := range keys {
+		f := m[key]
+
+		data, err := f.ReadAll()
+		if err != nil {
+			// skip errorURL endpoints.
+			continue
 		}
 
-		list = append(list, uri.String())
+		uri := &url.URL{
+			Path: key,
+		}
+
+		info := wrapper.NewInfo(uri, len(data), time.Now())
+
+		if _, ok := f.(lister); ok {
+			info.Chmod(info.Mode() | os.ModeDir)
+		}
+
+		infos = append(infos, info)
 	}
 
-	return listOf(list)
+	return infos, nil
 }
 
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+type schemeList struct{}
+
+func (schemeList) ReadAll() ([]byte, error) {
+	schemes := files.RegisteredSchemes()
+
+	b := new(bytes.Buffer)
+
+	for _, scheme := range schemes {
+		uri := &url.URL{
+			Scheme: scheme,
+		}
+
+		fmt.Fprintln(b, uri)
+	}
+
+	return b.Bytes(), nil
+}
+
+func (schemeList) ReadDir() ([]os.FileInfo, error) {
+	schemes := files.RegisteredSchemes()
+
+	var infos []os.FileInfo
+
+	for _, scheme := range schemes {
+		uri := &url.URL{
+			Path: scheme,
+		}
+
+		infos = append(infos, wrapper.NewInfo(uri, 0, time.Now()))
+	}
+
+	return infos, nil
+}
+
+var (
+	plugins schemeList
+)
+
+func (h handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, files.PathError("open", uri.String(), os.ErrInvalid)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  files.ErrURLCannotHaveAuthority,
+		}
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, &os.PathError{
+				Op:   "open",
+				Path: uri.String(),
+				Err:  files.ErrURLInvalid,
+			}
+		}
 	}
 
-	f, ok := aboutMap[path]
+	f, ok := about[path]
 	if !ok {
-		return nil, files.PathError("open", uri.String(), os.ErrNotExist)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  os.ErrNotExist,
+		}
 	}
 
-	data, err := f()
+	data, err := f.ReadAll()
 	if err != nil {
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "read",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	return wrapper.NewReaderFromBytes(data, uri, time.Now()), nil
 }
 
-func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (h handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host != "" || uri.User != nil {
-		return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  files.ErrURLCannotHaveAuthority,
+		}
 	}
 
 	path := uri.Path
 	if path == "" {
-		path = uri.Opaque
-	}
-
-	if f, ok := aboutMap[path]; !ok {
-		return nil, files.PathError("readdir", uri.String(), os.ErrNotExist)
-
-	} else if f != nil {
-		if _, err := f(); err != nil {
-			return nil, files.PathError("readdir", uri.String(), err)
-		}
-	}
-
-	if path != "about" && path != "" {
-		return nil, files.PathError("readdir", uri.String(), syscall.ENOTDIR)
-	}
-
-	var list []string
-	for name := range aboutMap {
-		list = append(list, name)
-	}
-	sort.Strings(list)
-
-	var ret []os.FileInfo
-
-	for _, name := range list {
-		f := aboutMap[name]
-
-		uri := &url.URL{
-			Scheme: "about",
-			Opaque: name,
-		}
-
-		if f == nil {
-			continue
-		}
-
-		data, err := f()
+		var err error
+		path, err = url.PathUnescape(uri.Opaque)
 		if err != nil {
-			continue
+			return nil, &os.PathError{
+				Op:   "open",
+				Path: uri.String(),
+				Err:  files.ErrURLInvalid,
+			}
 		}
-
-		ret = append(ret, wrapper.NewInfo(uri, len(data), time.Now()))
 	}
 
-	return ret, nil
+	if path == "" {
+		path = "about"
+	}
+
+	f, ok := about[path]
+	if !ok {
+		return nil, &os.PathError{
+			Op:   "readdir",
+			Path: uri.String(),
+			Err:  os.ErrNotExist,
+		}
+	}
+
+	if f, ok := f.(lister); ok {
+		infos, err := f.ReadDir()
+		if err != nil {
+			return nil, &os.PathError{
+				Op:   "readdir",
+				Path: uri.String(),
+				Err:  err,
+			}
+		}
+
+		return infos, nil
+	}
+
+	return nil, &os.PathError{
+		Op:   "readdir",
+		Path: uri.String(),
+		Err:  files.ErrNotDirectory,
+	}
 }

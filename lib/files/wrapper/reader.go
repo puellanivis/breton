@@ -15,7 +15,6 @@ type Reader struct {
 
 	fi os.FileInfo
 	r  io.Reader
-	s  io.Seeker
 }
 
 // NewReaderWithInfo returns a new Reader with the given FileInfo.
@@ -54,16 +53,11 @@ func (r *Reader) Seek(offset int64, whence int) (int64, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if r.s == nil {
-		switch s := r.r.(type) {
-		case io.Seeker:
-			r.s = s
-		default:
-			return 0, os.ErrInvalid
-		}
+	if s, ok := r.r.(io.Seeker); ok {
+		return s.Seek(offset, whence)
 	}
 
-	return r.s.Seek(offset, whence)
+	return 0, os.ErrInvalid
 }
 
 // Close recovers resources assigned in the Reader.
@@ -73,17 +67,15 @@ func (r *Reader) Close() error {
 
 	var err error
 
-	switch c := r.r.(type) {
-	case nil:
-		err = os.ErrClosed
+	if r.r == nil {
+		return os.ErrClosed
+	}
 
-	case io.Closer:
+	if c, ok := r.r.(io.Closer); ok {
 		err = c.Close()
 	}
 
-	r.s = nil
 	r.r = nil
-	r.fi = nil
 
 	return err
 }

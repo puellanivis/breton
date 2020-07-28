@@ -70,12 +70,16 @@ func (r *reader) Close() error {
 }
 
 func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	h := fs.getHost(uri)
+	h, u := fs.getHost(uri)
 
 	if cl := h.GetClient(); cl != nil {
-		f, err := cl.Open(uri.Path)
+		f, err := cl.Open(u.Path)
 		if err != nil {
-			return nil, files.PathError("open", uri.String(), err)
+			return nil, &os.PathError{
+				Op:   "open",
+				Path: u.String(),
+				Err:  err,
+			}
 		}
 
 		return f, nil
@@ -83,12 +87,8 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 
 	loading := make(chan struct{})
 
-	fixURL := *uri
-	fixURL.Host = h.uri.Host
-	fixURL.User = h.uri.User
-
 	r := &reader{
-		uri:  &fixURL,
+		uri:  u,
 		Host: h,
 
 		loading: loading,
@@ -100,19 +100,31 @@ func (fs *filesystem) Open(ctx context.Context, uri *url.URL) (files.Reader, err
 		select {
 		case loading <- struct{}{}:
 		case <-ctx.Done():
-			r.err = files.PathError("connect", h.Name(), ctx.Err())
+			r.err = &os.PathError{
+				Op:   "connect",
+				Path: h.Name(),
+				Err:  ctx.Err(),
+			}
 			return
 		}
 
 		cl, err := h.Connect()
 		if err != nil {
-			r.err = files.PathError("connect", h.Name(), err)
+			r.err = &os.PathError{
+				Op:   "connect",
+				Path: h.Name(),
+				Err:  err,
+			}
 			return
 		}
 
-		f, err := cl.Open(uri.Path)
+		f, err := cl.Open(u.Path)
 		if err != nil {
-			r.err = files.PathError("open", r.Name(), err)
+			r.err = &os.PathError{
+				Op:   "open",
+				Path: u.String(),
+				Err:  err,
+			}
 			return
 		}
 

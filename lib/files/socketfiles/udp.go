@@ -12,22 +12,34 @@ import (
 type udpHandler struct{}
 
 func init() {
-	files.RegisterScheme(&udpHandler{}, "udp")
+	files.RegisterScheme(udpHandler{}, "udp")
 }
 
-func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host == "" {
-		return nil, files.PathError("open", uri.String(), errInvalidURL)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  files.ErrURLHostRequired,
+		}
 	}
 
 	laddr, err := net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	conn, err := net.ListenUDP("udp", laddr)
 	if err != nil {
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	// Maybe we asked for an arbitrary port,
@@ -37,20 +49,32 @@ func (h *udpHandler) Open(ctx context.Context, uri *url.URL) (files.Reader, erro
 	sock, err := sockReader(conn, uri.Query())
 	if err != nil {
 		conn.Close()
-		return nil, files.PathError("open", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	return newDatagramReader(ctx, sock), nil
 }
 
-func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+func (udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	if uri.Host == "" {
-		return nil, files.PathError("create", uri.String(), errInvalidURL)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  files.ErrURLHostRequired,
+		}
 	}
 
 	raddr, err := net.ResolveUDPAddr("udp", uri.Host)
 	if err != nil {
-		return nil, files.PathError("create", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	q := uri.Query()
@@ -62,7 +86,11 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	if host != "" || port != "" {
 		laddr, err = net.ResolveUDPAddr("udp", net.JoinHostPort(host, port))
 		if err != nil {
-			return nil, files.PathError("create", uri.String(), err)
+			return nil, &os.PathError{
+				Op:   "create",
+				Path: uri.String(),
+				Err:  err,
+			}
 		}
 	}
 
@@ -76,18 +104,22 @@ func (h *udpHandler) Create(ctx context.Context, uri *url.URL) (files.Writer, er
 	}
 
 	if err := do(ctx, dial); err != nil {
-		return nil, files.PathError("create", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	sock, err := sockWriter(conn, laddr != nil, q)
 	if err != nil {
 		conn.Close()
-		return nil, files.PathError("create", uri.String(), err)
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
 
 	return newDatagramWriter(ctx, sock), nil
-}
-
-func (h *udpHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	return nil, files.PathError("readdir", uri.String(), os.ErrInvalid)
 }

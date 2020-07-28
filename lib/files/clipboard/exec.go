@@ -24,7 +24,7 @@ func newExecClip(name string, target ...string) {
 	clipboards[name] = &execClip{
 		name: &url.URL{
 			Scheme: "clipboard",
-			Opaque: name,
+			Opaque: url.PathEscape(name),
 		},
 		paste: append(pasteCmd, append(selParam, target...)...),
 		copy:  append(copyCmd, append(selParam, target...)...),

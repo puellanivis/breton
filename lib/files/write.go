@@ -5,15 +5,23 @@ import (
 	"io"
 )
 
-// WriteTo will write the given data to the io.WriteCloser and Close the writer.
-func WriteTo(w io.WriteCloser, data []byte) error {
+// WriteTo will write the given data to the io.Writer,
+// it will then Close the writer if it implements io.Closer.
+//
+// Note: this function will return io.ErrShortWrite,
+// if the amount written is less than the data given as input.
+func WriteTo(w io.Writer, data []byte) error {
 	n, err := w.Write(data)
 	if err == nil && n < len(data) {
 		err = io.ErrShortWrite
 	}
-	if err1 := w.Close(); err == nil {
-		err = err1
+
+	if c, ok := w.(io.Closer); ok {
+		if err2 := c.Close(); err == nil {
+			err = err2
+		}
 	}
+
 	return err
 }
 

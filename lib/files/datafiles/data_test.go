@@ -14,139 +14,112 @@ type headerer interface {
 	Header() http.Header
 }
 
-func TestDataURL(t *testing.T) {
-	uri, err := url.Parse("data:,ohai%2A")
-	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
+var testHandler handler
+
+func TestDataURLs(t *testing.T) {
+	type test struct {
+		name                string
+		input               string
+		expected            []byte
+		expectedContentType string
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+	tests := []test{
+		{
+			name:     "correctly encoded text with default media type",
+			input:    "data:,ohai%2A",
+			expected: []byte("ohai*"),
+		},
+		{
+			name:     "correctly encoded text with media type",
+			input:    "data:type/subtype;foo=bar,ohai%2A",
+			expected: []byte("ohai*"),
 
-	f, err := (&handler{}).Open(ctx, uri)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-	defer f.Close()
+			expectedContentType: "type/subtype;foo=bar",
+		},
+		{
+			name:     "correctly encoded base64 text with default media type",
+			input:    "data:;base64,b2hhaSo=",
+			expected: []byte("ohai*"),
+		},
+		{
+			name:     "correctly encoded base64 binary data with default media type",
+			input:    "data:;base64,ohai+/Z=",
+			expected: []byte{162, 22, 162, 251, 246},
+		},
+		{
+			name:     "correctly encoded base64 with media type",
+			input:    "data:type/subtype;foo=bar;base64,b2hhaSo=",
+			expected: []byte("ohai*"),
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
+			expectedContentType: "type/subtype;foo=bar",
+		},
+		{
+			name:     "incorrectly encoded base64 directive is actually media type",
+			input:    "data:base64,b2hhaSo=",
+			expected: []byte("b2hhaSo="),
 
-	expected := []byte("ohai*")
-
-	if !bytes.Equal(b, expected) {
-		t.Errorf("got wrong content for data:,ohai%%2A got %v, wanted %v", b, expected)
-	}
-
-	h, ok := f.(headerer)
-	if !ok {
-		t.Fatalf("returned files.Reader does not implement interface{ Header() (http.Header, error}")
-	}
-
-	header := h.Header()
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-
-	expectedContentType := "text/plain;charset=US-ASCII"
-	if got := header.Get("Content-Type"); got != expectedContentType {
-		t.Errorf("unexpected Content-Type header, got %q, wanted %q", got, expectedContentType)
-	}
-}
-
-func TestDataURLBadBase64(t *testing.T) {
-	uri, err := url.Parse("data:base64,b2hhaSo=")
-	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
+			expectedContentType: "base64",
+		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			uri, err := url.Parse(tt.input)
+			if err != nil {
+				t.Fatal("unexpected error:", err)
+			}
 
-	f, err := (&handler{}).Open(ctx, uri)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-	defer f.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			defer cancel()
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
+			f, err := testHandler.Open(ctx, uri)
+			if err != nil {
+				t.Fatal("unexpected error:", err)
+			}
+			defer f.Close()
 
-	expected := []byte("b2hhaSo=")
+			b, err := ioutil.ReadAll(f)
+			if err != nil {
+				t.Fatal("unexpected error:", err)
+			}
 
-	if !bytes.Equal(b, expected) {
-		t.Errorf("got wrong content for data:base64,b2hhaSo= got %v, wanted %v", b, expected)
-	}
-}
+			if !bytes.Equal(b, tt.expected) {
+				t.Errorf("got wrong content for %q got %q, wanted %q", tt.input, b, tt.expected)
+			}
 
-func TestDataURLSimpleBase64(t *testing.T) {
-	uri, err := url.Parse("data:;base64,b2hhaSo=")
-	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
-	}
+			h, ok := f.(headerer)
+			if !ok {
+				t.Fatalf("returned files.Reader does not implement interface{ Header() http.Header }")
+			}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+			header := h.Header()
+			if err != nil {
+				t.Fatal("unexpected error:", err)
+			}
 
-	f, err := (&handler{}).Open(ctx, uri)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-	defer f.Close()
+			expectedContentType := "text/plain;charset=US-ASCII"
+			if tt.expectedContentType != "" {
+				expectedContentType = tt.expectedContentType
+			}
 
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-
-	expected := []byte("ohai*")
-
-	if !bytes.Equal(b, expected) {
-		t.Errorf("got wrong content for data:base64,b2hhaSo= got %v, wanted %v", b, expected)
-	}
-}
-
-func TestDataURLComplexBase64(t *testing.T) {
-	uri, err := url.Parse("data:;base64,ohai+/Z=")
-	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	f, err := (&handler{}).Open(ctx, uri)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-	defer f.Close()
-
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-
-	expected := []byte{162, 22, 162, 251, 246}
-
-	if !bytes.Equal(b, expected) {
-		t.Errorf("got wrong content for data:base64,ohai+/Z= got %v, wanted %v", b, expected)
+			if got := header.Get("Content-Type"); got != expectedContentType {
+				t.Errorf("Content-Type header was %q, expected %q", got, expectedContentType)
+			}
+		})
 	}
 }
 
 func TestDataURLNoComma(t *testing.T) {
 	uri, err := url.Parse("data:ohai%2A")
 	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
+		t.Fatal("unexpected error:", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	f, err := (&handler{}).Open(ctx, uri)
+	f, err := testHandler.Open(ctx, uri)
 	if err == nil {
 		f.Close()
 		t.Fatal("expected error but got none")
@@ -156,13 +129,13 @@ func TestDataURLNoComma(t *testing.T) {
 func TestDataURLWithHost(t *testing.T) {
 	uri, err := url.Parse("data://host/,ohai%2A")
 	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
+		t.Fatal("unexpected error:", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	f, err := (&handler{}).Open(ctx, uri)
+	f, err := testHandler.Open(ctx, uri)
 	if err == nil {
 		f.Close()
 		t.Fatal("expected error but got none")
@@ -172,58 +145,15 @@ func TestDataURLWithHost(t *testing.T) {
 func TestDataURLWithUser(t *testing.T) {
 	uri, err := url.Parse("data://user@/,ohai%2A")
 	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
+		t.Fatal("unexpected error:", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	f, err := (&handler{}).Open(ctx, uri)
+	f, err := testHandler.Open(ctx, uri)
 	if err == nil {
 		f.Close()
 		t.Fatal("expected error but got none")
-	}
-}
-
-func TestDataWithHeader(t *testing.T) {
-	uriString := "data:type/subtype;foo=bar;base64,b2hhaSo="
-	uri, err := url.Parse(uriString)
-	if err != nil {
-		t.Fatal("unexpected error parsing constant URL", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	f, err := (&handler{}).Open(ctx, uri)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-	defer f.Close()
-
-	b, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-
-	expected := []byte("ohai*")
-
-	if !bytes.Equal(b, expected) {
-		t.Errorf("got wrong content for %s got %v, wanted %v", uriString, b, expected)
-	}
-
-	h, ok := f.(headerer)
-	if !ok {
-		t.Fatalf("returned files.Reader does not implement interface{ Header() (http.Header, error}")
-	}
-
-	header := h.Header()
-	if err != nil {
-		t.Fatal("unexpected error", err)
-	}
-
-	expectedContentType := "type/subtype;foo=bar"
-	if got := header.Get("Content-Type"); got != expectedContentType {
-		t.Errorf("unexpected Content-Type header, got %q, wanted %q", got, expectedContentType)
 	}
 }

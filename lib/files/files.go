@@ -84,22 +84,33 @@ import (
 	"os"
 )
 
-// File defines an interface that abstracts the concept of files to allow for multiple types implementation, beyond the local filesystem.
+// File defines an interface that abstracts the central core concepts of files, for broad implementation.
 type File interface {
 	io.Closer
 	Name() string
 	Stat() (os.FileInfo, error)
 }
 
-// Reader defines a files.File that is also an io.ReadSeeker
+// Reader defines an extension interface on files.File that is also an io.Reader.
 type Reader interface {
 	File
-	io.ReadSeeker
+	io.Reader
 }
 
-// Writer defines a files.File that is also an io.Writer with a Sync() function.
+// SeekReader defines an extension interface on files.Reader that is also an io.Seeker
+type SeekReader interface {
+	Reader
+	io.Seeker
+}
+
+// Writer defines an extention interface on files.File that is also an io.Writer.
 type Writer interface {
 	File
 	io.Writer
+}
+
+// SyncWriter defines an extension interface on files.Writer that also supports Sync().
+type SyncWriter interface {
+	Writer
 	Sync() error
 }

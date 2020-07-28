@@ -9,44 +9,43 @@ import (
 // WithForm returns a files.Option that that will add to the underlying HTTP
 // request the url.Values given as a POST request. (A GET request can always
 // be composed through the URL string itself.
-func WithForm(vals url.Values) files.Option {
-	body := []byte(vals.Encode())
+func WithForm(form url.Values) files.Option {
+	body := []byte(form.Encode())
 	return WithContent("POST", "application/x-www-form-urlencoded", body)
 }
 
 // WithContent returns a files.Option that will set the Method, Body and
 // Content-Type of the underlying HTTP request to the given values.
 func WithContent(method, contentType string, data []byte) files.Option {
-	type methodSetter interface {
-		SetMethod(string) string
-	}
+	data = append([]byte(nil), data...)
 
-	type ctypeSetter interface {
-		SetContentType(string) string
-	}
-
-	type bodySetter interface {
-		SetBody([]byte) []byte
+	type contentSetter interface {
+		SetMethod(string) (string, error)
+		SetContentType(string) (string, error)
+		SetBody([]byte) ([]byte, error)
 	}
 
 	return func(f files.File) (files.Option, error) {
-		var methodSave, ctypeSave string
-		var dataSave []byte
+		if f, ok := f.(contentSetter); ok {
+			methodSave, err := f.SetMethod(method)
+			if err != nil {
+				return nil, err
+			}
 
-		if r, ok := f.(methodSetter); ok {
-			methodSave = r.SetMethod(method)
+			ctypeSave, err := f.SetContentType(contentType)
+			if err != nil {
+				return nil, err
+			}
+
+			dataSave, err := f.SetBody(data)
+			if err != nil {
+				return nil, err
+			}
+
+			return WithContent(methodSave, ctypeSave, dataSave), nil
 		}
 
-		if r, ok := f.(ctypeSetter); ok {
-			ctypeSave = r.SetContentType(contentType)
-		}
-
-		if r, ok := f.(bodySetter); ok {
-			dataSave = r.SetBody(data)
-		}
-
-		// option is not reversible
-		return WithContent(methodSave, ctypeSave, dataSave), nil
+		return nil, files.ErrNotSupported
 	}
 }
 
@@ -54,17 +53,20 @@ func WithContent(method, contentType string, data []byte) files.Option {
 // underlying HTTP request to be the given value.
 func WithMethod(method string) files.Option {
 	type methodSetter interface {
-		SetMethod(string) string
+		SetMethod(string) (string, error)
 	}
 
 	return func(f files.File) (files.Option, error) {
-		var save string
+		if f, ok := f.(methodSetter); ok {
+			save, err := f.SetMethod(method)
+			if err != nil {
+				return nil, err
+			}
 
-		if r, ok := f.(methodSetter); ok {
-			save = r.SetMethod(method)
+			return WithMethod(save), nil
 		}
 
-		return WithMethod(save), nil
+		return nil, files.ErrNotSupported
 	}
 }
 
@@ -74,16 +76,19 @@ func WithMethod(method string) files.Option {
 // during the eventual commit of the request at Sync() or Close().)
 func WithContentType(contentType string) files.Option {
 	type ctypeSetter interface {
-		SetContentType(string) string
+		SetContentType(string) (string, error)
 	}
 
 	return func(f files.File) (files.Option, error) {
-		var save string
+		if f, ok := f.(ctypeSetter); ok {
+			save, err := f.SetContentType(contentType)
+			if err != nil {
+				return nil, err
+			}
 
-		if r, ok := f.(ctypeSetter); ok {
-			save = r.SetContentType(contentType)
+			return WithContentType(save), nil
 		}
 
-		return WithContentType(save), nil
+		return nil, files.ErrNotSupported
 	}
 }

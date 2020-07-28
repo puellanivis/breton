@@ -3,29 +3,48 @@ package files
 import (
 	"context"
 	"net/url"
+	"reflect"
 	"runtime"
 	"testing"
 )
+
+func TestInvalidURLAsSimplePath(t *testing.T) {
+	path := parsePath(context.Background(), ":/foo")
+	expect := &url.URL{
+		Path: ":/foo",
+	}
+
+	if !reflect.DeepEqual(path, expect) {
+		t.Errorf("parsePath returned %#v, expected %#v", path, expect)
+	}
+}
 
 func TestPathWindows(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		return
 	}
 
-	p := makePath("C:\\")
-	if !isPath(p) {
-		t.Fatalf("makePath returned something not an isPath, got %#v", p)
+	ctx := context.Background()
+
+	root := parsePath(ctx, "C:\\")
+	expect := &url.URL{
+		Path: "C:\\",
 	}
 
-	if path := getPath(p); path != "C:\\" {
-		t.Errorf("getPath(makePath) not inverting, got %s", path)
+	if !reflect.DeepEqual(root, expect) {
+		t.Fatalf("parsePath returned %#v, expected: %#v", root, expect)
 	}
 
-	ctx := WithRootURL(context.Background(), p)
+	ctx = WithRootURL(ctx, root)
 
-	filename := makePath("filename")
-	if path := resolveFilename(ctx, filename); getPath(path) != "C:\\filename" {
-		t.Errorf("resolveFilename with %q and %q gave %#v instead", filename, p, path)
+	filename := parsePath(ctx, "filename")
+
+	expect = &url.URL{
+		Path: "C:\\filename",
+	}
+
+	if !reflect.DeepEqual(filename, expect) {
+		t.Errorf("resolveFilename returned %#v, expected: %#v", filename, expect)
 	}
 }
 
@@ -34,52 +53,48 @@ func TestPathPOSIX(t *testing.T) {
 		return
 	}
 
-	p := makePath("/asdf")
-	if !isPath(p) {
-		t.Fatalf("makePath returned something not an isPath, got %#v", p)
+	ctx := context.Background()
+
+	root := parsePath(ctx, "/tmp")
+	expect := &url.URL{
+		Path: "/tmp",
 	}
 
-	if path := getPath(p); path != "/asdf" {
-		t.Errorf("getPath(makePath) not inverting, got %s", path)
+	if !reflect.DeepEqual(root, expect) {
+		t.Fatalf("parsePath returned %#v, expected: %#v", root, expect)
 	}
 
-	ctx := WithRootURL(context.Background(), p)
+	ctx = WithRootURL(ctx, root)
 
-	filename := makePath("filename")
-	if path := resolveFilename(ctx, filename); getPath(path) != "/asdf/filename" {
-		t.Errorf("resolveFilename with %q and %q gave %#v instead", filename, p, path)
+	filename := parsePath(ctx, "filename")
+
+	expect = &url.URL{
+		Path: "/tmp/filename",
+	}
+
+	if !reflect.DeepEqual(filename, expect) {
+		t.Errorf("resolveFilename returned %#v, expected: %#v", filename, expect)
 	}
 }
 
 func TestPathURL(t *testing.T) {
-	p, err := url.Parse("scheme://username:password@hostname:12345/path/?query#fragment")
-	if err != nil {
-		t.Fatal(err)
+	ctx := context.Background()
+
+	path := "scheme://username:password@hostname:12345/path/?query#fragment"
+
+	root := parsePath(ctx, path)
+	expect := path
+
+	if got := root.String(); got != expect {
+		t.Fatalf("parsePath returned %q, expected: %q", root, expect)
 	}
 
-	if isPath(p) {
-		t.Fatalf("url.Parse with scheme returned something that is an isPath, got %#v", p)
-	}
+	ctx = WithRootURL(ctx, root)
 
-	ctx := WithRootURL(context.Background(), p)
+	filename := parsePath(ctx, "filename?newquery#newfragment")
+	expect = "scheme://username:password@hostname:12345/path/filename?newquery#newfragment"
 
-	filename := makePath("filename")
-	if path := resolveFilename(ctx, filename); path.String() != "scheme://username:password@hostname:12345/path/filename" {
-		t.Errorf("resolveFilename with %q and %q gave %#v instead", filename, p, path)
-	}
-
-	p, err = url.Parse("file:///c:/Windows/")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if isPath(p) {
-		t.Fatalf("url.Parse with scheme returned something that is an isPath, got %#v", p)
-	}
-
-	ctx = WithRootURL(context.Background(), p)
-
-	if path := resolveFilename(ctx, filename); path.String() != "file:///c:/Windows/filename" {
-		t.Errorf("resolveFilename with %q and %q gave %#v instead", filename, p, path)
+	if got := filename.String(); got != expect {
+		t.Errorf("resolveFilename returned %q, expected: %q", filename, expect)
 	}
 }
