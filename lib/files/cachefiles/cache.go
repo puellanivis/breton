@@ -71,18 +71,18 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 	}
 
 	h.RLock()
-	f, ok := h.cache[filename]
+	f := h.cache[filename]
 	h.RUnlock()
 
-	if ok {
+	if f != nil {
 		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
 	}
 
 	h.Lock()
 	defer h.Unlock()
 
-	f, ok = h.cache[filename]
-	if ok {
+	f = h.cache[filename]
+	if f != nil {
 		// We have to test existance again.
 		// Maybe another goroutine already did our work.
 		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
