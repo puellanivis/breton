@@ -51,11 +51,6 @@ func trimScheme(uri *url.URL) string {
 	return u.String()
 }
 
-// Create implements the files.FileStore Create. At this time, it just returns the files.Create() from the wrapped url.
-func (h *FileStore) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
-	return files.Create(ctx, trimScheme(uri))
-}
-
 // Open implements the files.FileStore Open. It returns a buffered copy of the files.Reader returned from reading the uri escaped by the "cache:" scheme. Any access within the next ExpireTime set by the context.Context (5 minutes by default) will return a new copy of an bytes.Reader of the same buffer.
 func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	h.Lock()
@@ -131,6 +126,11 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 	}()
 
 	return wrapper.NewReaderWithInfo(bytes.NewReader(data), info), nil
+}
+
+// Create implements the files.FileStore Create. At this time, it just returns the files.Create() from the wrapped url.
+func (h *FileStore) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+	return files.Create(ctx, trimScheme(uri))
 }
 
 // List implements the files.FileStore List. It does not cache anything and just returns the files.List() from the wrapped url.
