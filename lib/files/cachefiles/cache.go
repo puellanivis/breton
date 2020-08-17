@@ -20,7 +20,7 @@ type line struct {
 
 // FileStore is a caching structure that holds copies of the content of files.
 type FileStore struct {
-	sync.RWMutex
+	mu sync.RWMutex
 
 	cache map[string]*line
 }
@@ -41,8 +41,8 @@ func init() {
 }
 
 func (h *FileStore) expire(filename string) {
-	h.Lock()
-	defer h.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	delete(h.cache, filename)
 }
@@ -56,9 +56,6 @@ func trimScheme(uri *url.URL) string {
 
 // Open implements the files.FileStore Open. It returns a buffered copy of the files.Reader returned from reading the uri escaped by the "cache:" scheme. Any access within the next ExpireTime set by the context.Context (5 minutes by default) will return a new copy of an bytes.Reader of the same buffer.
 func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	h.Lock()
-	defer h.Unlock()
-
 	filename := trimScheme(uri)
 
 	ctx, reentrant := isReentrant(ctx)
@@ -68,16 +65,16 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 		return files.Open(ctx, filename)
 	}
 
-	h.RLock()
+	h.mu.RLock()
 	f := h.cache[filename]
-	h.RUnlock()
+	h.mu.RUnlock()
 
 	if f != nil {
 		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
 	}
 
-	h.Lock()
-	defer h.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	f = h.cache[filename]
 	if f != nil {
