@@ -56,9 +56,6 @@ func trimScheme(uri *url.URL) string {
 
 // Open implements the files.FileStore Open. It returns a buffered copy of the files.Reader returned from reading the uri escaped by the "cache:" scheme. Any access within the next ExpireTime set by the context.Context (5 minutes by default) will return a new copy of an bytes.Reader of the same buffer.
 func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
-	h.Lock()
-	defer h.Unlock()
-
 	filename := trimScheme(uri)
 
 	ctx, reentrant := isReentrant(ctx)
