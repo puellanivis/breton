@@ -78,8 +78,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 
 	f = h.cache[filename]
 	if f != nil {
-		// We have to test existance again.
-		// Maybe another goroutine already did our work.
+		// Another goroutine already did our work.
 		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
 	}
 
@@ -90,7 +89,10 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 
 	info, err := raw.Stat()
 	if err != nil {
-		info = nil // safety guard
+		// Just in case, if we return an err != nil,
+		// we want to be absolutely sure we don‘t try and use the returned `info`.
+		// Instead, we will make up our own.
+		info = nil
 	}
 
 	data, err := files.ReadFrom(raw)
