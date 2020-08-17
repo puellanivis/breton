@@ -64,7 +64,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 	ctx, reentrant := isReentrant(ctx)
 	if reentrant {
 		// We are in a reentrant caching scenario.
-		// Continuing will deadlock, so we won‘t even try to cache at all.
+		// Continuing will deadlock, so we won’t even try to cache at all.
 		return files.Open(ctx, filename)
 	}
 
