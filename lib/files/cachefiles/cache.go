@@ -20,7 +20,7 @@ type line struct {
 
 // FileStore is a caching structure that holds copies of the content of files.
 type FileStore struct {
-	sync.RWMutex
+	mu sync.RWMutex
 
 	cache map[string]*line
 }
@@ -41,8 +41,8 @@ func init() {
 }
 
 func (h *FileStore) expire(filename string) {
-	h.Lock()
-	defer h.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	delete(h.cache, filename)
 }
@@ -65,16 +65,16 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 		return files.Open(ctx, filename)
 	}
 
-	h.RLock()
+	h.mu.RLock()
 	f := h.cache[filename]
-	h.RUnlock()
+	h.mu.RUnlock()
 
 	if f != nil {
 		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
 	}
 
-	h.Lock()
-	defer h.Unlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	f = h.cache[filename]
 	if f != nil {
