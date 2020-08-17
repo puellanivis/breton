@@ -14,8 +14,7 @@ import (
 )
 
 type line struct {
-	os.FileInfo
-
+	info os.FileInfo
 	data []byte
 }
 
@@ -28,9 +27,7 @@ type FileStore struct {
 
 // New returns a new caching FileStore, which can be registered into lib/files
 func New() *FileStore {
-	return &FileStore{
-		cache: make(map[string]*line),
-	}
+	return &FileStore{}
 }
 
 // Default is the default cache attached to the "cache" Scheme
@@ -48,11 +45,10 @@ func (h *FileStore) expire(filename string) {
 }
 
 func trimScheme(uri *url.URL) string {
-	if uri.Scheme == "" {
-		return uri.String()
-	}
+	u := *uri
+	u.Scheme = ""
 
-	return uri.String()[len(uri.Scheme)+1:]
+	return u.String()
 }
 
 // Create implements the files.FileStore Create. At this time, it just returns the files.Create() from the wrapped url.
@@ -67,51 +63,75 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 
 	filename := trimScheme(uri)
 
-	f, ok := h.cache[filename]
-
-	if !ok {
-		if _, ok := ctx.Deadline(); !ok {
-			// default 5 minute expire time
-			d := 5 * time.Minute
-			if t, ok := GetExpire(ctx); ok {
-				d = t
-			}
-
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithTimeout(ctx, d)
-			defer cancel()
-		}
-
-		raw, err := files.Open(ctx, filename)
-		if err != nil {
-			return nil, err
-		}
-
-		data, err := files.ReadFrom(raw)
-		if err != nil {
-			return nil, err
-		}
-
-		info, err := raw.Stat()
-		if err != nil {
-			info = wrapper.NewInfo(uri, len(data), time.Now())
-		}
-
-		f = &line{
-			data:     data,
-			FileInfo: info,
-		}
-
-		h.cache[filename] = f
-
-		go func() {
-			defer h.expire(filename)
-
-			<-ctx.Done()
-		}()
+	ctx, reentrant := isReentrant(ctx)
+	if reentrant {
+		// We are in a reentrant caching scenario.
+		// Continuing will deadlock, so we won‘t even try to cache at all.
+		return files.Open(ctx, filename)
 	}
 
-	return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.FileInfo), nil
+	h.RLock()
+	f, ok := h.cache[filename]
+	h.RUnlock()
+
+	if ok {
+		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
+	}
+
+	// default 5 minute expiration
+	expiration := 5 * time.Minute
+	if d, ok := GetExpire(ctx); ok {
+		expiration = d
+	}
+
+	h.Lock()
+	defer h.Unlock()
+
+	f, ok = h.cache[filename]
+	if ok {
+		// We have to test existance again.
+		// Maybe another goroutine already did our work.
+		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
+	}
+
+	raw, err := files.Open(ctx, filename)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := raw.Stat()
+	if err != nil {
+		info = nil // safety guard
+	}
+
+	data, err := files.ReadFrom(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	if info == nil {
+		info = wrapper.NewInfo(uri, len(data), time.Now())
+	}
+
+	f = &line{
+		data: data,
+		info: info,
+	}
+
+	if h.cache == nil {
+		h.cache = make(map[string]*line)
+	}
+
+	h.cache[filename] = f
+
+	timer := time.NewTimer(expiration)
+
+	go func() {
+		<-timer.C
+		h.expire(filename)
+	}()
+
+	return wrapper.NewReaderWithInfo(bytes.NewReader(data), info), nil
 }
 
 // List implements the files.FileStore List. It does not cache anything and just returns the files.List() from the wrapped url.
