@@ -78,12 +78,6 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 		return wrapper.NewReaderWithInfo(bytes.NewReader(f.data), f.info), nil
 	}
 
-	// default 5 minute expiration
-	expiration := 5 * time.Minute
-	if d, ok := GetExpire(ctx); ok {
-		expiration = d
-	}
-
 	h.Lock()
 	defer h.Unlock()
 
@@ -124,6 +118,11 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 
 	h.cache[filename] = f
 
+	// default 5 minute expiration
+	expiration := 5 * time.Minute
+	if d, ok := GetExpire(ctx); ok {
+		expiration = d
+	}
 	timer := time.NewTimer(expiration)
 
 	go func() {
