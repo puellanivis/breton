@@ -26,12 +26,15 @@ type FileStore struct {
 }
 
 // New returns a new caching FileStore, which can be registered into lib/files
+//
+// Deprecated: Now that we use sensible defaults, and lazy initialization,
+// a simple &cachefiles.FileStore{} or new(cachefiles.FileStore) is enough now.
 func New() *FileStore {
 	return &FileStore{}
 }
 
 // Default is the default cache attached to the "cache" Scheme
-var Default = New()
+var Default = new(FileStore)
 
 func init() {
 	files.RegisterScheme(Default, "cache")
