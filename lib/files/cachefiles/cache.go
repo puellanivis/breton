@@ -92,7 +92,7 @@ func (h *FileStore) Open(ctx context.Context, uri *url.URL) (files.Reader, error
 
 	info, err := raw.Stat()
 	if err != nil {
-		// Just in case, if we return an err != nil,
+		// Just in case, if we got an err != nil return,
 		// we want to be absolutely sure we don‘t try and use the returned `info`.
 		// Instead, we will make up our own.
 		info = nil
