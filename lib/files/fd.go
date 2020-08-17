@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 	"os"
-	"strconv"
+	"strings"
 )
 
 type descriptorHandler struct{}
@@ -13,29 +13,69 @@ func init() {
 	RegisterScheme(&descriptorHandler{}, "fd")
 }
 
-func (h *descriptorHandler) open(uri *url.URL) (*os.File, error) {
-	fd, err := strconv.ParseUint(filename(uri), 0, 64)
+func openFD(uri *url.URL) (*os.File, error) {
+	if uri.Host != "" || uri.User != nil {
+		return nil, os.ErrInvalid
+	}
+
+	num := strings.TrimPrefix(uri.Path, "/")
+	if num == "" {
+		var err error
+		num, err = url.PathUnescape(uri.Opaque)
+		if err != nil {
+			return nil, os.ErrInvalid
+		}
+	}
+
+	fd, err := resolveFileHandle(num)
 	if err != nil {
 		return nil, err
+	}
+
+	// Canonicalize the name.
+	uri = &url.URL{
+		Scheme: "fd",
+		Opaque: url.PathEscape(num),
 	}
 
 	return os.NewFile(uintptr(fd), uri.String()), nil
 }
 
-func (h *descriptorHandler) Open(ctx context.Context, uri *url.URL) (Reader, error) {
-	return h.open(uri)
-}
-
-func (h *descriptorHandler) Create(ctx context.Context, uri *url.URL) (Writer, error) {
-	return h.open(uri)
-}
-
-func (h *descriptorHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
-	f, err := h.open(uri)
+func (*descriptorHandler) Open(ctx context.Context, uri *url.URL) (Reader, error) {
+	f, err := openFD(uri)
 	if err != nil {
-		return nil, err
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
 	}
-	defer f.Close()
+
+	return f, nil
+}
+
+func (*descriptorHandler) Create(ctx context.Context, uri *url.URL) (Writer, error) {
+	f, err := openFD(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "create",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
+
+	return f, nil
+}
+
+func (*descriptorHandler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+	f, err := openFD(uri)
+	if err != nil {
+		return nil, &os.PathError{
+			Op:   "open",
+			Path: uri.String(),
+			Err:  err,
+		}
+	}
 
 	return f.Readdir(0)
 }
