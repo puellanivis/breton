@@ -1,14 +1,9 @@
 package files
 
 import (
-	"errors"
 	"os"
 	"time"
 )
-
-// ErrNotSupported should be returned when a specific file.File given to an
-// Option does not support the Option specified.
-var ErrNotSupported = errors.New("option not supported")
 
 // Option is a function that applies a specific option to a files.File, it
 // returns an Option and and error. If error is not nil, then the Option
