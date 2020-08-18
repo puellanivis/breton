@@ -23,9 +23,9 @@ func WriteTo(w io.Writer, data []byte) error {
 	return err
 }
 
-// Write writes the entire content of data to the file at the given filename.
-func Write(ctx context.Context, filename string, data []byte) error {
-	f, err := Create(ctx, filename)
+// Write writes the entire content of data to the resource at the given URL.
+func Write(ctx context.Context, url string, data []byte) error {
+	f, err := Create(ctx, url)
 	if err != nil {
 		return err
 	}

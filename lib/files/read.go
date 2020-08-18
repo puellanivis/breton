@@ -36,9 +36,9 @@ func Discard(r io.Reader) error {
 	return err
 }
 
-// Read reads the entire content of the file at the given filename into a byte-slice which it returns.
-func Read(ctx context.Context, filename string) ([]byte, error) {
-	f, err := Open(ctx, filename)
+// Read reads the entire content of the resource at the given URL into a byte-slice.
+func Read(ctx context.Context, url string) ([]byte, error) {
+	f, err := Open(ctx, url)
 	if err != nil {
 		return nil, err
 	}
