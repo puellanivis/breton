@@ -5,21 +5,27 @@ import (
 	"io"
 )
 
-// WriteTo will write the given data to the io.WriteCloser and Close the writer.
-func WriteTo(w io.WriteCloser, data []byte) error {
+// WriteTo writes the entire content of data to an io.Writer.
+// If the Writer also implements io.Closer, it will also Close it.
+func WriteTo(w io.Writer, data []byte) error {
 	n, err := w.Write(data)
+
 	if err == nil && n < len(data) {
 		err = io.ErrShortWrite
 	}
-	if err1 := w.Close(); err == nil {
-		err = err1
+
+	if c, ok := w.(io.Closer); ok {
+		if err2 := c.Close(); err == nil {
+			err = err2
+		}
 	}
+
 	return err
 }
 
-// Write will Create the given filename with the Context, and write the given data to it.
-func Write(ctx context.Context, filename string, data []byte) error {
-	f, err := Create(ctx, filename)
+// Write writes the entire content of data to the resource at the given URL.
+func Write(ctx context.Context, url string, data []byte) error {
+	f, err := Create(ctx, url)
 	if err != nil {
 		return err
 	}
