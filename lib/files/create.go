@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 )
 
-// Create takes a context and a filename (which may be a URL) and returns a
-// files.Writer that allows writing data to that local filename or URL. All
-// errors and reversion functions returned by Option arguments are discarded.
+// Create creates a new file at the given filename, and
+// returns a files.Writer, which can be used to write contents to that filename.
+//
+// All errors and reversion functions returned by Option arguments are discarded.
 func Create(ctx context.Context, filename string, options ...Option) (Writer, error) {
 	f, err := create(ctx, filename)
 	if err != nil {
