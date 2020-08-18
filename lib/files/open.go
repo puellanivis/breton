@@ -3,7 +3,9 @@ package files
 import (
 	"context"
 	"io/ioutil"
+	"net/url"
 	"os"
+	"path/filepath"
 )
 
 // Open opens the file at the given filename, and
@@ -29,16 +31,19 @@ func open(ctx context.Context, filename string) (Reader, error) {
 		return os.Stdin, nil
 	}
 
-	uri := parsePath(ctx, filename)
-	if isPath(uri) {
+	if filepath.IsAbs(filename) {
 		return os.Open(filename)
 	}
 
-	if fs, ok := getFS(uri); ok {
-		return fs.Open(ctx, uri)
+	if uri, err := url.Parse(filename); err == nil {
+		uri = resolveFilename(ctx, uri)
+
+		if fs, ok := getFS(uri); ok {
+			return fs.Open(ctx, uri)
+		}
 	}
 
-	return nil, ErrNotSupported
+	return os.Open(filename)
 }
 
 // ReadDir reads the directory at the given filename, and
@@ -49,16 +54,19 @@ func ReadDir(ctx context.Context, filename string) ([]os.FileInfo, error) {
 		return os.Stdin.Readdir(0)
 	}
 
-	uri := parsePath(ctx, filename)
-	if isPath(uri) {
+	if filepath.IsAbs(filename) {
 		return ioutil.ReadDir(filename)
 	}
 
-	if fs, ok := getFS(uri); ok {
-		return fs.List(ctx, uri)
+	if uri, err := url.Parse(filename); err == nil {
+		uri = resolveFilename(ctx, uri)
+
+		if fs, ok := getFS(uri); ok {
+			return fs.List(ctx, uri)
+		}
 	}
 
-	return nil, ErrNotSupported
+	return ioutil.ReadDir(filename)
 }
 
 // List reads the directory at the given filename, and
