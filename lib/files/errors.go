@@ -24,7 +24,7 @@ var (
 	// ErrNotSupported should be returned, if a particular feature or option is not supported.
 	ErrNotSupported = errors.New("not supported")
 
-	// ErrNotDirectory should be returned, if a request is made to ReadDir a non-directory.
+	// ErrNotDirectory should be returned, if a request is made to ReadDir with a non-directory.
 	ErrNotDirectory = syscall.ENOTDIR
 )
 
