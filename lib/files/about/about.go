@@ -93,10 +93,10 @@ func init() {
 type handler struct{}
 
 func init() {
-	files.RegisterScheme(&handler{}, "about")
+	files.RegisterScheme(handler{}, "about")
 }
 
-func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
+func (h handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	return nil, &os.PathError{
 		Op:   "create",
 		Path: uri.String(),
@@ -104,7 +104,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 	}
 }
 
-func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
+func (h handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) {
 	if uri.Host != "" || uri.User != nil {
 		return nil, &os.PathError{
 			Op:   "open",
@@ -147,11 +147,11 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 	return wrapper.NewReaderFromBytes(data, uri, time.Now()), nil
 }
 
-func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (h handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	return h.ReadDir(ctx, uri)
 }
 
-func (h *handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
+func (h handler) ReadDir(ctx context.Context, uri *url.URL) ([]os.FileInfo, error) {
 	if uri.Host != "" || uri.User != nil {
 		return nil, &os.PathError{
 			Op:   "readdir",
