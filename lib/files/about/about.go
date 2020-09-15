@@ -85,8 +85,8 @@ var (
 )
 
 func init() {
-	// if aboutMap references about, then about references aboutMap
-	// and go errors with "initialization loop"
+	// During initialization about is not allowed to reference about,
+	// else Go errors with "initialization loop".
 	about["about"] = about
 }
 
