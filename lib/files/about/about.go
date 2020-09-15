@@ -90,11 +90,11 @@ func init() {
 	about["about"] = about
 }
 
-type handler struct{}
-
 func init() {
 	files.RegisterScheme(handler{}, "about")
 }
+
+type handler struct{}
 
 func (h handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error) {
 	return nil, &os.PathError{
