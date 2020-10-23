@@ -34,12 +34,14 @@ RUN mkdir -p /usr/bin && \
 	chmod 755 /usr/bin/protoc
 
 # Here we pull down packages which are nearly universally a good idea to have.
-# * protoc	because protobuffers are a good language-neutral data-storage definition language.
+# * protoc-gen-go	because protobuffers are a good language-neutral data-storage definition language.
+# * protoc-gen-go-grpc	because gRPC is a good language-interop RPC, and this is the new package to build it.
 # * goimports	permits us to use goimports.
 # * godoc	go stopped bundling godoc with the central binary, so we have to grab it ourselves.
-# * golint	permits us to use golinter.
+# * golint	permits us to use golinter. (Now deprecated.)
 RUN go get -v -u \
-	github.com/golang/protobuf/protoc-gen-go \
+	google.golang.org/protobuf/cmd/protoc-gen-go  \
+	google.golang.org/grpc/cmd/protoc-gen-go-grpc \
 	golang.org/x/tools/cmd/goimports \
 	golang.org/x/tools/cmd/godoc \
 	golang.org/x/lint/golint # new intentionally last
