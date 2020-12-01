@@ -131,7 +131,6 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		Prefix:    aws.String(key),
 	}
 
-	type StatusCoder interface{ StatusCode() int }
 	res, err := cl.ListObjectsWithContext(ctx, req)
 	if err != nil {
 		return nil, files.PathError("list", uri.String(), normalizeError(err))
