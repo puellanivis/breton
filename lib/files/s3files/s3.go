@@ -3,6 +3,7 @@ package s3files
 
 import (
 	"context"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -130,9 +131,10 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 		Prefix:    aws.String(key),
 	}
 
+	type StatusCoder interface{ StatusCode() int }
 	res, err := cl.ListObjectsWithContext(ctx, req)
 	if err != nil {
-		return nil, files.PathError("list", uri.String(), err)
+		return nil, files.PathError("list", uri.String(), normalizeError(err))
 	}
 
 	var fi []os.FileInfo
@@ -162,4 +164,19 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 	}
 
 	return fi, nil
+}
+
+func normalizeError(err error) error {
+	type StatusCoder interface{ StatusCode() int }
+
+	if sc, ok := err.(StatusCoder); ok {
+		switch sc.StatusCode() {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return os.ErrPermission
+		case http.StatusNotFound:
+			return os.ErrNotExist
+		}
+	}
+
+	return err
 }
