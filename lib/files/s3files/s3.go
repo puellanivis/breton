@@ -168,14 +168,17 @@ func (h *handler) List(ctx context.Context, uri *url.URL) ([]os.FileInfo, error)
 func normalizeError(err error) error {
 	type StatusCoder interface{ StatusCode() int }
 
-	if sc, ok := err.(StatusCoder); ok {
-		switch sc.StatusCode() {
-		case http.StatusUnauthorized, http.StatusForbidden:
-			return os.ErrPermission
-		case http.StatusNotFound:
-			return os.ErrNotExist
-		}
+	sc, ok := err.(StatusCoder)
+	if !ok {
+		return err
 	}
 
-	return err
+	switch sc.StatusCode() {
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return os.ErrPermission
+	case http.StatusNotFound:
+		return os.ErrNotExist
+	default:
+		return err
+	}
 }
