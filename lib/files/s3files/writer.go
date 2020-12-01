@@ -32,7 +32,7 @@ func (h *handler) Create(ctx context.Context, uri *url.URL) (files.Writer, error
 
 		_, err = cl.PutObjectWithContext(ctx, req)
 		if err != nil {
-			return files.PathError("sync", uri.String(), err)
+			return files.PathError("sync", uri.String(), normalizeError(err))
 		}
 
 		return nil

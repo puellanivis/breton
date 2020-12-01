@@ -30,7 +30,7 @@ func (h *handler) Open(ctx context.Context, uri *url.URL) (files.Reader, error) 
 
 	res, err := cl.GetObjectWithContext(ctx, req)
 	if err != nil {
-		return nil, files.PathError("read", uri.String(), err)
+		return nil, files.PathError("read", uri.String(), normalizeError(err))
 	}
 
 	var l int64
