@@ -1,12 +1,20 @@
 .PHONY: all clean install container push
+
 TIMESTAMP:=$(shell date +"%Y%m%d.%H%M")
+
 ifneq "$(DOCKER_REGISTRY)" ""
 #REGISTRY:=$(DOCKER_REGISTRY)/
 endif
+
 PROJECT:=$(shell basename "${PWD}")
 USER   :=$(shell id -un | tr '[:upper:]' '[:lower:]' | grep -o '[^\\]*$$')
 REPO   :=${REGISTRY}${USER}/${PROJECT}
 BUILDNO:=$(shell docker images ${REPO} | grep -c ${TIMESTAMP})
+
+BUILDTAG:=
+ifneq "$(BUILDNO)" "0"
+BUILDTAG:=-$(BUILDNO)
+endif
 
 all: container
 
@@ -18,7 +26,7 @@ install:
 	cp masher $(HOME)/bin/
 
 container:
-	docker build --rm --network=host --build-arg PROJECT=${PROJECT} -t ${REPO}:${TIMESTAMP}-${BUILDNO} -t ${REPO}:latest .
+	docker build --rm --network=host --build-arg PROJECT=${PROJECT} -t ${REPO}:${TIMESTAMP}${BUILDTAG} -t ${REPO}:latest .
 
 push:
 	[ -n "${BRANCH}" ] && docker push ${REPO}:${BRANCH} || true
