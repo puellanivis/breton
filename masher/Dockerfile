@@ -1,6 +1,6 @@
 # This docker image builds upon the golang docker image to support a more automated process for building
 # golang files.
-FROM golang:1.15
+FROM golang:1.16
 MAINTAINER Cassondra Foesch <puellanivis@gmail.com>
 
 # Setup various environment and argument settings which define the building environment.
@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # However, I don’t think it makes sense to use older version, better to be able to advance as it releases outselves.
 RUN mkdir -p /usr/bin && \
 	cd /usr && \
-	curl -sS -L https://github.com/google/protobuf/releases/download/v3.13.0/protoc-3.13.0-linux-x86_64.zip | \
+	curl -sS -L https://github.com/google/protobuf/releases/download/v3.15.5/protoc-3.15.5-linux-x86_64.zip | \
 		bsdtar -xvf- --exclude=readme.txt && \
 	chmod 755 /usr/bin/protoc
 
