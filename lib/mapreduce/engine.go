@@ -108,8 +108,7 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		}
 	}
 
-	var reducerMutex sync.Mutex
-	pool := newThreadPool(threads)
+	pool := newSemaphore(threads)
 	chain := newExecChain(e.conf.ordered)
 
 	var wg sync.WaitGroup
@@ -135,33 +134,30 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 		}
 		last = end
 
-		ready, next := chain.next()
+		link := chain.next()
 
-		go func() {
-			defer func() {
-				wg.Done()
-				if next != nil {
-					close(next)
-				}
-			}()
+		doMap := func(ctx context.Context) (interface{}, error) {
+			sem := pool.get()
+			defer sem.done()
 
 			rng := Range{
 				Start: start,
 				End:   end,
 			}
 
-			if err := pool.wait(ctx); err != nil {
-				errch <- err
-				return
+			if err := sem.wait(ctx); err != nil {
+				return nil, err
 			}
 
-			out, err := e.m.Map(ctx, rng)
+			return e.m.Map(ctx, rng)
+		}
+
+		go func() {
+			defer wg.Done()
+			defer link.done()
+
+			out, err := doMap(ctx)
 			if err != nil {
-				errch <- err
-				return
-			}
-
-			if err := pool.done(ctx); err != nil {
 				errch <- err
 				return
 			}
@@ -170,22 +166,9 @@ func (e *engine) run(ctx context.Context, rng Range) <-chan error {
 				return
 			}
 
-			select {
-			case <-ready:
-			case <-ctx.Done():
-				errch <- ctx.Err()
+			if err := link.wait(ctx); err != nil {
+				errch <- err
 				return
-			}
-
-			reducerMutex.Lock()
-			defer reducerMutex.Unlock()
-
-			// Our context may have expired waiting for mutex, so check again.
-			select {
-			case <-ctx.Done():
-				errch <- ctx.Err()
-				return
-			default:
 			}
 
 			if err := e.r.Reduce(ctx, out); err != nil {

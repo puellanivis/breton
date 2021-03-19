@@ -2,6 +2,7 @@ package mapreduce
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"sort"
 	"strings"
@@ -23,6 +24,30 @@ func (sc *StringCollector) Reduce(ctx context.Context, in interface{}) error {
 
 func (sc *StringCollector) reset() {
 	sc.a = nil
+}
+
+func (sc *StringCollector) collect() []rune {
+	var r []rune
+
+	for _, a := range sc.a {
+		for _, s := range a {
+			r = append(r, []rune(s)...)
+		}
+	}
+
+	return r
+}
+
+func (sc *StringCollector) String() string {
+	return string(sc.collect())
+}
+
+func (sc *StringCollector) sortAndCollect() string {
+	r := sc.collect()
+
+	sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
+
+	return string(r)
 }
 
 var (
@@ -54,43 +79,32 @@ var (
 	testInput  = strings.Split(testString, "")
 )
 
-func TestMapReduceOverSlice(t *testing.T) {
+func TestUnorderedMapReduceOverSlice(t *testing.T) {
 	DefaultThreadCount = -1
 
 	sc := &StringCollector{}
-	mr := New(stringReceiver, sc, WithThreadCount(1))
+	mr := New(stringReceiver, sc, WithThreadCount(1), WithOrdering(false))
 	ctx := context.Background()
 
-	f := func(n int) {
-		sc.reset()
+	for n := -1; n <= len(testInput)+1; n++ {
+		n := n
 
-		for err := range mr.Run(ctx, testInput, WithThreadCount(n), WithMapperCount(n), WithOrdering(false)) {
-			t.Errorf("%d mappers: %+v", n, err)
-		}
+		t.Run(fmt.Sprint(n), func(t *testing.T) {
+			sc.reset()
 
-		if n > 0 && len(sc.a) != n {
-			t.Log(n, sc.a)
-			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
-		}
-
-		var r []rune
-		for _, v := range sc.a {
-			for _, s := range v {
-				r = append(r, []rune(s)...)
+			for err := range mr.Run(ctx, testInput, WithThreadCount(n), WithMapperCount(n)) {
+				t.Errorf("unexpected error: %+v", err)
 			}
-		}
 
-		sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
-		got := string(r)
+			if n > 0 && len(sc.a) != n {
+				t.Log(n, sc.a)
+				t.Errorf("wrong number of mappers ran: got %d, but expected %d", len(sc.a), n)
+			}
 
-		if got != testString {
-			t.Logf("mapreduce([]string, %d): %q", n, got)
-			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
-		}
-	}
-
-	for i := -1; i <= len(testInput)+1; i++ {
-		f(i)
+			if got := sc.sortAndCollect(); got != testString {
+				t.Errorf("mapreduce did not process all elements: got %q, but expected %q", got, testString)
+			}
+		})
 	}
 }
 
@@ -122,47 +136,34 @@ func TestOrderedMapReduceOverSlice(t *testing.T) {
 	})
 
 	sc := &StringCollector{}
-	mr := New(unorderedStringReceiver, sc, WithThreadCount(1), WithOrdering(true))
+	mr := New(unorderedStringReceiver, sc, WithThreadCount(maxN), WithMapperCount(maxN), WithOrdering(true))
 	ctx := context.Background()
 
-	// the WithOrdering(false) here should override the default WithOrder(true) set on the mapreduce.New()
+	// Here we are running a precondition test, to make sure that WithOrdering(false) will fail the test.
+	// The WithOrdering(false) here should override the default WithOrder(true) set on the mapreduce.New()
 	wg.Add(maxN - 1)
-	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN), WithOrdering(false)) {
+	for err := range mr.Run(ctx, testInput, WithOrdering(false)) {
 		t.Errorf("%d mappers: %+v", maxN, err)
 	}
 
 	t.Log("ordering=false", maxN, sc.a)
 
-	var r []rune
-	for _, v := range sc.a {
-		for _, s := range v {
-			r = append(r, []rune(s)...)
-		}
+	if sc.String() == testString {
+		t.Fatalf("testing relies on an unordered MapReduce producing an unordered collection.")
 	}
+	// This concludes the precondition testing.
 
-	if string(r) == testString {
-		t.Fatalf("testing relies upon runtime.Gosched() producing a non-ordered slice collection.")
-	}
-
-	sc.a = nil
+	sc.reset()
 
 	wg.Add(maxN - 1)
-	for err := range mr.Run(ctx, testInput, WithThreadCount(maxN), WithMapperCount(maxN)) {
+	for err := range mr.Run(ctx, testInput) {
 		t.Errorf("%d mappers: %+v", maxN, err)
 	}
 
 	t.Log("ordering=true", maxN, sc.a)
 
-	r = nil
-	for _, v := range sc.a {
-		for _, s := range v {
-			r = append(r, []rune(s)...)
-		}
-	}
-
-	got := string(r)
-	if got != testString {
-		t.Fatalf("an ordered MapReduce should have returned an ordered slice collection, expected %q, got %q", testString, got)
+	if got := sc.String(); got != testString {
+		t.Fatalf("an ordered MapReduce should produce an ordered collection: got %q, but expected %q", got, testString)
 	}
 }
 
@@ -181,31 +182,24 @@ func TestMapReduceOverMap(t *testing.T) {
 	}
 
 	for n := -1; n <= len(testInput)+1; n++ {
-		sc.a = nil
+		n := n
 
-		for err := range mr.Run(ctx, m, WithThreadCount(n), WithMapperCount(n)) {
-			t.Errorf("%d mappers: %+v", n, err)
-		}
+		t.Run(fmt.Sprint(n), func(t *testing.T) {
+			sc.reset()
 
-		if n > 0 && len(sc.a) != n {
-			t.Log(n, sc.a)
-			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
-		}
-
-		var r []rune
-		for _, v := range sc.a {
-			for _, s := range v {
-				r = append(r, []rune(s)...)
+			for err := range mr.Run(ctx, m, WithThreadCount(n), WithMapperCount(n)) {
+				t.Errorf("unexpected error: %+v", err)
 			}
-		}
 
-		sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
-		got := string(r)
+			if n > 0 && len(sc.a) != n {
+				t.Log(n, sc.a)
+				t.Errorf("wrong number of mappers ran: got %d, but expected %d", len(sc.a), n)
+			}
 
-		if got != testString {
-			t.Logf("mapreduce(map[string]int, %d): %q", n, got)
-			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
-		}
+			if got := sc.sortAndCollect(); got != testString {
+				t.Errorf("mapreduce did not process all elements: got %q, but expected %q", got, testString)
+			}
+		})
 	}
 }
 
@@ -216,47 +210,36 @@ func TestMapReduceOverChannel(t *testing.T) {
 	mr := New(chanReceiver, sc, WithThreadCount(1))
 	ctx := context.Background()
 
-	f := func(n int) {
-		sc.a = nil
+	for n := -1; n <= len(testInput)+1; n++ {
+		n := n
 
-		ch := make(chan string)
+		t.Run(fmt.Sprint(n), func(t *testing.T) {
+			sc.reset()
 
-		errch := mr.Run(ctx, ch, WithThreadCount(n), WithMapperCount(n))
+			ch := make(chan string)
 
-		go func() {
-			defer close(ch)
+			errch := mr.Run(ctx, ch, WithThreadCount(n), WithMapperCount(n))
 
-			for _, s := range testInput {
-				ch <- s
+			go func() {
+				defer close(ch)
+
+				for _, s := range testInput {
+					ch <- s
+				}
+			}()
+
+			for err := range errch {
+				t.Errorf("unexpected error: %+v", err)
 			}
-		}()
 
-		for err := range errch {
-			t.Errorf("%d mappers: %+v", n, err)
-		}
-
-		if n > 0 && len(sc.a) != n {
-			t.Log(n, sc.a)
-			t.Errorf("wrong number of mappers ran, expected %d, but got %d", n, len(sc.a))
-		}
-
-		var r []rune
-		for _, v := range sc.a {
-			for _, s := range v {
-				r = append(r, []rune(s)...)
+			if n > 0 && len(sc.a) != n {
+				t.Log(n, sc.a)
+				t.Errorf("wrong number of mappers ran: got %d, but expected %d", len(sc.a), n)
 			}
-		}
 
-		sort.Slice(r, func(i, j int) bool { return r[i] < r[j] })
-		got := string(r)
-
-		if got != testString {
-			t.Logf("mapreduce(chan string, %d): %q", n, got)
-			t.Errorf("mapreduce over map with %d mappers did not process all elements, expected %q got %q ", n, testString, got)
-		}
-	}
-
-	for i := -1; i <= len(testInput)+1; i++ {
-		f(i)
+			if got := sc.sortAndCollect(); got != testString {
+				t.Errorf("mapreduce did not process all elements: got %q, but expected %q", got, testString)
+			}
+		})
 	}
 }
