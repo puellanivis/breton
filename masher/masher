@@ -182,7 +182,7 @@ if [[ $? -eq 0 ]]; then
 		HASHID=$(git rev-parse --short HEAD)
 		HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
 		BRANCH=$(basename ${HEAD})
-		BUILD_VERSION=$(git describe --tag --abbrev=2 2> /dev/null)
+		BUILD_VERSION=$(git describe --tag --abbrev=0 2> /dev/null)
 	;;
 	esac
 else
