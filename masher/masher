@@ -1,27 +1,27 @@
 #!/bin/bash
 
-if ! which docker > /dev/null 2>&1 ; then
-	echo Please install docker >&2
+if ! type -p docker > /dev/null 2>&1 ; then
+	echo "Please install docker" >&2
 	exit 1
 fi
 
 if [[ -z ${MASHER_ROOT} ]]; then
-	echo Please setup build environment >&2
+	echo "Please setup build environment" >&2
 	exit 1
 fi
 
 if [[ -n ${bamboo_DOCKER_REGISTRY} ]]; then
-	DOCKER_REGISTRY=${bamboo_DOCKER_REGISTRY}
+	DOCKER_REGISTRY="${bamboo_DOCKER_REGISTRY}"
 	PROD="true"
 fi
 
 if [[ -n ${bamboo_docker_registry} ]]; then
-	DOCKER_REGISTRY=${bamboo_docker_registry}
+	DOCKER_REGISTRY="${bamboo_docker_registry}"
 	PROD="true"
 fi
 
-PROJECT=${PWD##*/}
-REGISTRY=${DOCKER_REGISTRY}
+PROJECT="${PWD##*/}"
+REGISTRY="${DOCKER_REGISTRY}"
 
 RUNAS="${UID}"
 if [[ -n ${DOCKER_MACHINE_NAME} ]]; then
@@ -32,13 +32,13 @@ DARWIN=""
 LINUX=""
 OPENBSD=""
 WINDOWS=""
-if [[ -n "${MASHALL}" ]]; then
+if [[ -n ${MASHALL} ]]; then
 	DARWIN="--darwin"
 	LINUX="--linux"
 	WINDOWS="--windows"
 	OPENBSD="--openbsd"
 else
-	case ${OSTYPE} in
+	case "${OSTYPE}" in
 	darwin*)
 		DARWIN="--darwin"
 	;;
@@ -64,7 +64,7 @@ while [[ $# -gt 0 ]]; do
 	key="$1"
 	val="${key#*=}"
 
-	case $key in
+	case "$key" in
 	--image=*)
 		IMAGE="$val"
 	;;
@@ -74,6 +74,9 @@ while [[ $# -gt 0 ]]; do
 
 	--darwin)
 		DARWINFLAG="--darwin"
+	;;
+	--debian)
+		LINUXFLAG="--deb"
 	;;
 	--linux)
 		LINUXFLAG="--linux"
@@ -140,12 +143,13 @@ while [[ $# -gt 0 ]]; do
 		FLAGS="-it"	
 		TEST="--notest"
 	;;
+
 	--)
 		shift
 		break
 	;;
 	--*)
-		echo "unknown flag $1" >&2
+		echo "unknown flag $key" >&2
 		exit 1
 	;;
 	*)
@@ -164,45 +168,45 @@ if [[ -n ${PROD} ]]; then
 	TEST="--notest"
 fi
 
-if [[ -n $REGISTRY ]]; then
+if [[ -n ${REGISTRY} ]]; then
 	REGISTRY="${REGISTRY%/}/"
 fi
 
-if ! which git > /dev/null 2>&1 ; then
-	echo Please install git >&2
+if ! type -p git > /dev/null 2>&1 ; then
+	echo "Please install git" >&2
 	exit 1
 fi
 
-inrepo=$(git rev-parse --is-inside-work-tree 2>&1)
+inrepo="$( git rev-parse --is-inside-work-tree 2>&1 )"
 if [[ $? -eq 0 ]]; then
 	case "$inrepo" in
 	fatal*) BRANCH="local" ;;
 	false*) BRANCH="local" ;;
 	*)
-		HASHID=$(git rev-parse --short HEAD)
-		HEAD=$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)
-		BRANCH=$(basename ${HEAD})
-		BUILD_VERSION=$(git describe --tag --abbrev=0 2> /dev/null)
+		HASHID="$(git rev-parse --short HEAD)"
+		HEAD="$(git symbolic-ref HEAD 2>> /dev/null || git rev-parse HEAD)"
+		BRANCH="$(basename ${HEAD})"
+		BUILD_VERSION="$(git describe --tag --abbrev=0 2> /dev/null)"
 	;;
 	esac
 else
 	BRANCH="local"
 fi
 
-if [[ -z $IMAGE ]]; then
+if [[ -z ${IMAGE} ]]; then
 	IMAGE="$(echo "${USER}" | tr '[:upper:]' '[:lower:]' | grep -o '[^\\]*$')/masher"
 
 	IMAGE="${IMAGE}:latest"
 fi
 
-if [[ (-n "$DARWINFLAG") || (-n "$LINUXFLAG") || (-n "$OPENBSDFLAG") || (-n "$WINDOWSFLAG") ]]; then
+if [[ -n "${DARWINFLAG}${LINUXFLAG}${OPENBSDFLAG}${WINDOWSFLAG}" ]]; then
 	LINUX="$LINUXFLAG"
 	DARWIN="$DARWINFLAG"
 	OPENBSD="$OPENBSDFLAG"
 	WINDOWS="$WINDOWSFLAG"
 fi
 
-if [[ (-n "$PROD") && ( $BRANCH = "testing" ) ]]; then
+if [[ ( -n ${PROD} ) && ( ${BRANCH} = "testing" ) ]]; then
 	# if we're building prod in the testing branch, just build
 	# the linux binary, it's the quickest, and a good test.
 	# if that works, then it will move up the branches, which will
@@ -212,40 +216,39 @@ if [[ (-n "$PROD") && ( $BRANCH = "testing" ) ]]; then
 	WINDOWS=""
 fi
 
-if which go > /dev/null 2>&1 ; then
+if type -p go > /dev/null 2>&1 ; then
 	GO_VERSION="$(go version)"
-	GO_VERSION=${GO_VERSION#go version go}
-	GO_VERSION=${GO_VERSION%% *}
+	GO_VERSION="${GO_VERSION#go version go}"
+	GO_VERSION="${GO_VERSION%% *}"
 
-	if [[ "$LINUX" != "--deb" ]]; then
-		echo Found Local Go Version: $GO_VERSION
-		case $GO_VERSION in
-			1.16|1.16.*|1.16[a-z]*)
-				LOCALTEST="true"
+	if [[ ${LINUX} != "--deb" ]]; then
+		echo "Found local Go version: ${GO_VERSION}"
+
+		case "${GO_VERSION}" in
+		1.17|1.17.*|1.17[a-z]*)
+			LOCALTEST="true"
+		;;
 		esac
 	fi
 fi
 
-if [[ ("$LOCALTEST" == "true") && ("$TEST" != "--notest") ]] ; then
+if [[ ( ${LOCALTEST} == "true" ) && ( ${TEST} != "--notest" ) ]] ; then
 	if ls *.go > /dev/null 2>&1 ; then
 		echo running \'go test\' locally first...
 		go test || exit 1
 	fi
 fi
 
-MASHER_ROOT=${MASHER_ROOT%/}
+MASHER_ROOT="${MASHER_ROOT%/}"
 PRJPATH="${PWD##*${MASHER_ROOT}/}"
 BASE="${PWD%$PRJPATH}"
 
-if [[ -z $BASE ]] ; then
+if [[ -z ${BASE} ]] ; then
 	BASE="${PWD}"
 	PRJPATH=""
 fi
 
-case $BASE in
-	*/) ;;
-	*) BASE="$BASE/"
-esac
+BASE="${BASE%/}/"
 
 NAME="masher-${PROJECT}"
 if [[ -z ${ESCAPE} ]]; then
@@ -257,32 +260,32 @@ if [[ -z ${ESCAPE} ]]; then
 	NAME=${NAME%-}
 fi
 
-echo "NAME='$NAME'"
-echo "BASE='$BASE'"
-echo "PRJPATH='$PRJPATH'"
-echo "PROJECT='$PROJECT'"
-echo "BRANCH='$BRANCH'"
-echo "HASHID='$HASHID'"
-if [[ -n "$BUILD_VERSION" ]]; then
-	echo "BUILD_VERSION='$BUILD_VERSION'"
-	BUILD_VERSION="--buildver=$BUILD_VERSION"
+echo "NAME='${NAME}'"
+echo "BASE='${BASE}'"
+echo "PRJPATH='${PRJPATH}'"
+echo "PROJECT='${PROJECT}'"
+echo "BRANCH='${BRANCH}'"
+echo "HASHID='${HASHID}'"
+if [[ -n ${BUILD_VERSION} ]]; then
+	echo "BUILD_VERSION='${BUILD_VERSION}'"
+	BUILD_VERSION="--buildver=${BUILD_VERSION}"
 fi
-if [[ -n "$GOPRIVATE" ]]; then
-	echo "PRIVATE='$GOPRIVATE'"
-	PRIVATE="--private=$GOPRIVATE"
+if [[ -n ${GOPRIVATE} ]]; then
+	echo "PRIVATE='${GOPRIVATE}'"
+	PRIVATE="--private=${GOPRIVATE}"
 fi
 
-TIMESTAMP=$(date -u +"%Y%m%d.%H%M%S")
+TIMESTAMP="$(date -u +"%Y%m%d.%H%M%S")"
 
-echo Using image: $IMAGE
-echo /bin/mash.sh $ESCAPE $DARWIN $LINUX $OPENBSD $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE $BUILD_VERSION --timestamp=$TIMESTAMP --id=$HASHID $@
+echo Using image: ${IMAGE}
+echo /bin/mash.sh ${ESCAPE} ${DARWIN} ${LINUX} ${OPENBSD} ${WINDOWS} ${TEST} ${PROTO} ${BUILD} ${CACHE} ${PRIVATE} ${BUILD_VERSION} --timestamp=${TIMESTAMP} --id=${HASHID} $@
 
 DOCKER_VERSION="$(docker --version)"
-DOCKER_VERSION=${DOCKER_VERSION%%,*}
-DOCKER_VERSION=${DOCKER_VERSION##* }
-echo Found Docker Version: $DOCKER_VERSION
+DOCKER_VERSION="${DOCKER_VERSION%%,*}"
+DOCKER_VERSION="${DOCKER_VERSION##* }"
+echo Found Docker version: ${DOCKER_VERSION}
 
-case $DOCKER_VERSION in
+case "${DOCKER_VERSION}" in
 1.?|1.?.*) ;;
 *)
 	READONLY="--read-only"
@@ -291,18 +294,18 @@ case $DOCKER_VERSION in
 esac
 
 EXEC="exec"
-if [[ (-r Dockerfile.tmpl) && (-r Makefile) ]]; then
+if [[ ( -r Dockerfile.tmpl ) && ( -r Makefile ) ]]; then
 	# Unless we've been told not to do docker, and if we are going
 	# to build the linux binaries, we don't want to `exec` the `docker run`.
-	if [[ ($NODOCKER != "true") && (-n $LINUX) ]]; then
+	if [[ ( ${NODOCKER} != "true" ) && ( -n ${LINUX} ) ]]; then
 		unset EXEC
 	fi
 fi
 
-[[ -n $MASHER_PREFIX ]] && PREFIX="/${MASHER_PREFIX#/}"
+[[ -n ${MASHER_PREFIX} ]] && PREFIX="/${MASHER_PREFIX#/}"
 SRCROOT="/mash${PREFIX}/${MASHER_ROOT%/}"
 
-[[ -n $MASHER_LIBS ]] || MASHER_LIBS="lib"
+[[ -n ${MASHER_LIBS} ]] || MASHER_LIBS="lib"
 LIBS=""
 
 # go env GOCACHE
@@ -316,7 +319,7 @@ CACHE="--cache=${SRCROOT}/.mash/cache"
 # godep stuff
 DEP_CACHE=""
 if [[ -r Gopkg.toml ]]; then
-	[[ -d ${BASE}/.mash/dep ]] || mkdir ${BASE}/.mash/dep
+	[[ -d ${BASE}/.mash/dep ]] || mkdir "${BASE}/.mash/dep"
 	DEP_CACHE="--volume ${BASE}/.mash/dep:/go/pkg/dep:rw"
 fi
 
@@ -347,18 +350,18 @@ for p in $MASHER_LIBS; do
 done
 IFS="${SAVE_IFS}"
 
-if [[ ( -r debian/control ) ]]; then
+if [[ -r debian/control ]]; then
 	if [[ -r ./.gitignore ]]; then
 		grep -qFx -e "debian/whoami" ./.gitignore || echo "debian/whoami" >> ./.gitignore
 	fi
 
-	printf "$(git config user.name) <$(git config user.email)>" > debian/whoami
+	echo "$(git config user.name) <$(git config user.email)>" > debian/whoami
 fi
 
 case ${OSTYPE} in
 cygwin*)
 	[[ -n ${ESCAPE} ]] && EXEC="${EXEC} winpty"
-	BASE="$(cygpath -w $BASE)"
+	BASE="$( cygpath -w "${BASE}" )"
 ;;
 esac
 
@@ -375,7 +378,7 @@ ${EXEC} docker run ${FLAGS} --rm \
 	$LIBS \
 	--workdir "${SRCROOT}/${PRJPATH}" \
 	${IMAGE} \
-	/bin/mash.sh $ESCAPE $DARWIN $LINUX $OPENBSD $WINDOWS $TEST $PROTO $BUILD $CACHE $PRIVATE $BUILD_VERSION --timestamp=$TIMESTAMP --id=$HASHID "$@" || exit 1
+	/bin/mash.sh ${ESCAPE} ${DARWIN} ${LINUX} ${OPENBSD} ${WINDOWS} ${TEST} ${PROTO} ${BUILD} ${CACHE} ${PRIVATE} ${BUILD_VERSION} --timestamp="${TIMESTAMP}" --id="${HASHID}" "$@" || exit 1
 
 if [[ $PROD == "true" ]]; then
 	make push || exit 1

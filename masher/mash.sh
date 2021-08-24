@@ -1,78 +1,79 @@
 #!/bin/bash
 
-while [[ "$#" -gt 0 ]]; do
+while [[ $# -gt 0 ]]; do
 	key="$1"
 	val="${key#*=}"
 
-	case $key in
-		--cache=*)
-			export GOCACHE="$val"
-		;;
-		--buildver=*)
-			BUILDVER="$val"
-		;;
-		--timestamp=*)
-			TIMESTAMP="$val"
-		;;
-		--id=*)
-			ID="$val"
-		;;
-		--private=*)
-			export GOPRIVATE="$val"
-		;;
+	case "$key" in
+	--cache=*)
+		export GOCACHE="$val"
+	;;
+	--buildver=*)
+		BUILDVER="$val"
+	;;
+	--timestamp=*)
+		TIMESTAMP="$val"
+	;;
+	--id=*)
+		ID="$val"
+	;;
+	--private=*)
+		export GOPRIVATE="$val"
+	;;
 
-		--linux)
-			LINUX="true"
-		;;
-		--darwin)
-			DARWIN="true"
-		;;
-		--openbsd)
-			OPENBSD="true"
-		;;
-		--windows)
-			WINDOWS="true"
-		;;
+	--linux)
+		LINUX="true"
+	;;
+	--darwin)
+		DARWIN="true"
+	;;
+	--openbsd)
+		OPENBSD="true"
+	;;
+	--windows)
+		WINDOWS="true"
+	;;
 
-		--allprotos)
-			ALLPROTOS="true"
-		;;
-		--proto)
-			NOTESTING="true"
-			NOBUILD="true"
-		;;
+	--allprotos)
+		ALLPROTOS="true"
+	;;
+	--proto)
+		NOTESTING="true"
+		NOBUILD="true"
+	;;
 
-		--test)
-			TESTING="true"
-		;;
-		--notest)
-			NOTESTING="true"
-		;;
-		--nobuild)
-			NOBUILD="true"
-		;;
+	--test)
+		TESTING="true"
+	;;
+	--notest)
+		NOTESTING="true"
+	;;
+	--nobuild)
+		NOBUILD="true"
+	;;
 
-		--deb)
-			DEB="true"
-		;;
-		--nodeb)
-			DEB="false"
-		;;
+	--deb)
+		DEB="true"
+	;;
+	--nodeb)
+		DEB="false"
+	;;
 
-		--)
-			shift
-			break
-		;;
-		--shell)
-			ESCAPE="true"
-		;;
-		--*)
-			echo "$0:" "unknown flag $1" 1>&2
-			exit 1
-		;;
-		*)
-			break
-		;;
+	--shell)
+		ESCAPE="true"
+	;;
+
+	--)
+		shift
+		break
+	;;
+	--*)
+		echo "$0: unknown flag $key" 1>&2
+		exit 1
+	;;
+	*)
+		break
+	;;
 	esac
 	shift
 done
@@ -88,53 +89,47 @@ if [[ $ESCAPE == "true" ]]; then
 fi
 
 case "${LINUX}${DARWIN}${OPENBSD}${WINDOWS}" in
-	"")
-		[[ $DEB == "" ]] && LINUX="true"
-	;;
-	truetrue*)
-		TESTING="true"
+"")
+	if [[ -n $DEB ]]; then
+		LINUX="true"
+	else
+		NOCOMPILE="true"
+	fi
+;;
+truetrue*)
+	TESTING="true"
 esac
-
-[[ "${LINUX}${DARWIN}${OPENBSD}${WINDOWS}" == "" ]] && NOCOMPILE="true"
 
 if which go > /dev/null 2>&1 ; then
         GO_VERSION="$(go version)"
         GO_VERSION=${GO_VERSION#go version go}
         GO_VERSION=${GO_VERSION%% *}
-        [[ -z "$NOCOMPILE" ]] && echo Building with Go Version: $GO_VERSION
+        [[ -z $NOCOMPILE ]] && echo "Building with Go Version: $GO_VERSION"
 fi
 
 if ! ls *.go > /dev/null 2>&1 ; then
 	NOGOFILES=true
 fi
 
-PROTOC_FLAGS="--proto_path=./proto --proto_path=/go/src --go_out=plugins=grpc:proto/"
+PROTOC_FLAGS="--go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative"
 
 if [[ -n $ALLPROTOS ]]; then
 	if [[ -n $NOGOFILES ]]; then
-		echo Building all subdir protos
-		protos=$(find . -type d -name proto)
-		proto_prefix=""
+		echo "Building all subdir protos"
+		protos=$( find . -type f -name "*.proto" -exec dirname \{\} \; | sort -u )
 	else
-		echo Building go dependency protos
-		protos=$(go list -f "{{.Deps}}" | grep -o -e " [^\.\/ ]*/[^ ]*/proto\> | sort -u")
-		proto_prefix=/go/src
+		echo "Building go dependency protos"
+		protos=$( go list -f "{{range .Deps}}{{println}}{{end}}" | grep "/proto$" | sort -u )
 	fi
 
 	for proto in $protos; do
-		protopath=${proto_prefix}${proto%/*}
-		for protofile in $( find $protopath/proto -maxdepth 1 -name "*.proto" ); do
-			echo Building all protos: $protofile
-			( cd $protopath ; protoc ${PROTOC_FLAGS} ${protofile#$protopath/} ) || exit 1
-		done
+		echo "Building proto: $proto"
+		protoc ${PROTOC_FLAGS} "${proto#./}/"*.proto || exit 1
 	done
+
 elif [[ -d "proto" ]]; then
-	echo Building local protos
-	protopath=${PWD}
-	for protofile in $( find $protopath/proto -maxdepth 1 -name "*.proto" ); do
-		echo Building proto: $protofile
-		( cd $protopath ; protoc ${PROTOC_FLAGS} ${protofile#$protopath/} ) || exit 1
-	done
+	echo "Building local proto"
+	protoc ${PROTOC_FLASG} proto/*.proto
 fi
 
 
@@ -145,37 +140,41 @@ if [[ -n $NOGOFILES ]]; then
 		exec ./test.sh
 	fi
 
-	echo No go files found, not building
+	echo "No go files found, not building"
 	exit 0
 fi
 
 if [[ ("$TESTING" == "true") && ("$NOTESTING" != "true") ]]; then
-	echo testing...
+	echo "Testing..."
 	go test || exit 1
 fi
 
 PACKAGE=`go list -f {{.Name}}`
 if [[ $PACKAGE != "main" ]]; then
-	echo This is not a package main go project.
+	echo "This is not a package main go project."
 
 	if [[ $PROD == "true" ]]; then
-		echo Building is being aborted.
+		echo "Building is being aborted."
 		exit 1
 	fi
 
-	echo Building is being skipped.
+	echo "Building is being skipped."
 	exit 0
 fi
 
 if [[ $VENDOR != "true" && $NOCOMPILE != "true" ]]; then
-	echo getting dependencies...
-	if [[ -r Gopkg.toml ]]; then
+	echo "Getting dependencies..."
+	if [[ -r go.mod ]]; then
+		echo "Using go modules..."
+
+	elif [[ -r Gopkg.toml ]]; then
 		DEP_UP=""
 		if [[ -r Gopkg.lock ]]; then
 			DEP_UP="-update"
 		fi
 
 		dep ensure $DEP_UP
+
 	else
 		go get -v -d || exit 1
 	fi
@@ -193,13 +192,14 @@ fi
 
 PROJECT="${PWD##*/}"
 if [[ -n $BUILDSTAMP ]]; then
-	DEPS=$( go list -f "{{.Deps}}" | grep -c -e "\<lib/util\>" )
 	LDFLAGS="-ldflags=-X main.VersionBuild=$BUILDSTAMP -X main.Buildstamp=$BUILDSTAMP"
-	if [[ $BUILDVER != "" ]]; then
+	if [[ -n $BUILDVER ]]; then
 		LDFLAGS="$LDFLAGS -X main.Version=$BUILDVER"
 	fi
-	if [[ $DEPS -ne 0 ]]; then
-		LDFLAGS="$LDFLAGS -X github.com/puellanivis/breton/lib/util.BUILD=$BUILDSTAMP"
+
+	LIB_UTIL_DEP=$( go list -f "{{range .Deps}}{{println}}{{end}}" | grep -e "\<breton/lib/util\>" | head -n1 )
+	if [[ -n $LIB_UTIL_DEP ]]; then
+		LDFLAGS="$LDFLAGS -X ${LIB_UTIL_DEP}.BUILD=$BUILDSTAMP"
 	fi
 fi
 
@@ -211,51 +211,75 @@ fi
 
 if [[ $LINUX == "true" ]]; then
 	OUT="bin/linux.x86_64"
-	echo Compiling ${OUT}/${PROJECT}
+	echo "Compiling ${OUT}/${PROJECT}"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
 	GOOS=linux GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 
-	[[ "$DEB" != "false" ]] && DEB="true"
+	[[ ( ${DEB} != "false" ) && ( -d debian )  ]] && DEB="true"
 fi
 
 if [[ $DARWIN == "true" ]]; then
 	OUT="bin/darwin.x86_64"
-	echo Compiling ${OUT}/${PROJECT}
+	echo "Compiling ${OUT}/${PROJECT}"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
 	GOOS=darwin GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 fi
 
 if [[ $OPENBSD == "true" ]]; then
 	OUT="bin/openbsd.x86_64"
-	echo Compiling ${OUT}/${PROJECT}
+	echo "Compiling ${OUT}/${PROJECT}"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
 	GOOS=openbsd GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 fi
 
 if [[ $WINDOWS == "true" ]]; then
 	OUT="bin/windows.x86_64"
-	echo Compiling ${OUT}/${PROJECT}.exe
+	echo "Compiling ${OUT}/${PROJECT}.exe"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
 	GOOS=windows GOARCH=amd64 go build -o "${OUT}/${PROJECT}.exe" "${LDFLAGS}" || exit 1
 fi
 
-if [[ ( $DEB == "true" ) && ( -r debian/control ) && ( -x bin/linux.x86_64/${PROJECT} ) ]]; then
-	VERSION=${BUILDSTAMP}
-	BIN_VERSION="$(./bin/linux.x86_64/${PROJECT} --version)"
-	[[ -n $BIN_VERSION ]] && echo BIN_VERSION=\"$BIN_VERSION\"
+if [[ ( $DEB == "true" ) && ( -x bin/linux.x86_64/${PROJECT} ) ]]; then
+	[ -d debian ] || mkdir debian
+
+	echo "Building debian package..."
+
+	VERSION="${BUILDSTAMP}"
+	BIN_VERSION="$( ./bin/linux.x86_64/${PROJECT} --version )"
+	[[ -n $BIN_VERSION ]] && echo "BIN_VERSION=\"$BIN_VERSION\""
 	case "${BIN_VERSION}" in
 	*\ v*)
-		VERSION=$(echo "${BIN_VERSION}" | cut -d" " -f2)
-		VERSION=${VERSION#v}
+		VERSION="$( echo "${BIN_VERSION}" | cut -d" " -f2 )"
+		VERSION="${VERSION#v}"
 	;;
 	esac
-	echo VERSION=${VERSION}
+	echo "VERSION=${VERSION}"
 	ARCH="amd64" # TODO(puellanivis): this shouldn’t be baked in, but it’s already baked in all over, already.
 
 	if [[ -r ./.gitignore ]]; then
 		grep -qFx -e "build" ./.gitignore || echo "build" >> ./.gitignore
 		grep -qFx -e "debian/changelog.gz" -e "*.gz" ./.gitignore || echo "debian/changelog.gz" >> ./.gitignore
 		grep -qFx -e "*.deb" ./.gitignore || echo "*.deb" >> ./.gitignore
+	fi
+
+	WHOAMI="nobody <nobody@example.com>"
+	[[ -r debian/whoami ]] && WHOAMI="$(cat debian/whoami)"
+
+	ORIGIN_URL="$( git remote get-url origin )"
+
+
+	if [[ ! -r debian/control ]]; then
+		cat <<EOF > debian/control
+Source: @@PROJECT@@
+Section: unknown
+Priority: optional
+Maintainer: $WHOAMI
+Homepage: $ORIGIN_URL
+Package: @@PROJECT@@
+Architecture: @@ARCH@@
+Version: @@VERSION@@
+Description: TODO
+EOF
 	fi
 
 	install -d build/DEBIAN
@@ -273,11 +297,41 @@ if [[ ( $DEB == "true" ) && ( -r debian/control ) && ( -x bin/linux.x86_64/${PRO
 		fi
 	done
 
-	DEB_PACKAGE=$(grep "^Package: " build/DEBIAN/control | cut -d" " -f2 )
+	DEB_PACKAGE="$( grep "^Package: " build/DEBIAN/control | cut -d" " -f2 )"
 
 	# install copyright and changelog documentation
-	install -d build/usr/share/doc/${DEB_PACKAGE}
-	install -m644 debian/copyright build/usr/share/doc/${DEB_PACKAGE}/
+	install -d "build/usr/share/doc/${DEB_PACKAGE}"
+
+	if [[ ! -r debian/copyright ]]; then
+		if [[ -r LICENSE ]]; then
+			LICENSE="LICENSE"
+		elif [[ -r LICENSE.md ]]; then
+			LICENSE="LICENSE.md"
+		fi
+
+		YEARS="$( date +%Y )"
+		ORIGIN_URL="$( git remote get-url origin )"
+
+		if [[ -n $LICENSE ]]; then (
+			cat <<EOF
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: $PROJECT
+Upstream-Contact: $WHOAMI
+Source: $ORIGIN_URL
+
+Files: *
+Copyright: $YEAR $WHOAMI
+License: LICENSE
+
+License: LICENSE
+EOF
+			awk '!NF{$0="."}1' "$LICENSE"
+		) > debian/copyright; fi
+	fi
+
+	if [[ -r debian/copyright ]]; then
+		install -m644 debian/copyright "build/usr/share/doc/${DEB_PACKAGE}/"
+	fi
 
 	if [[ -r CHANGELOG ]]; then
 		# if CHANGELOG is newer than changelog.gz, then compress it and write it to changelog.gz
@@ -285,17 +339,22 @@ if [[ ( $DEB == "true" ) && ( -r debian/control ) && ( -x bin/linux.x86_64/${PRO
 			gzip -9 -c CHANGELOG > debian/changelog.gz
 		fi
 	else
-		WHOAMI="nobody <nobody@example.com>"
-		[[ -r debian/whoami ]] && WHOAMI="$(cat debian/whoami)"
 
 		# if changelog.gz does not exist, then make it with a bare-minimum changelog gzip file.
-		printf "${DEB_PACKAGE} (${VERSION}) unstable; urgency=low\n\n  * No information.\n\n -- ${WHOAMI}  $(date -R)\n" | gzip -9 > debian/changelog.gz
+		cat <<EOF | gzip -9 > debian/changelog.gz
+${DEB_PACKAGE} (${VERSION}) unstable; urgency=low
+
+  * No information.
+
+ -- ${WHOAMI}  $(date -R)
+EOF
 	fi
-	install -m644 debian/changelog.gz build/usr/share/doc/${DEB_PACKAGE}/changelog.Debian.gz
+
+	install -m644 debian/changelog.gz "build/usr/share/doc/${DEB_PACKAGE}/changelog.Debian.gz"
 
 	# install binary
 	install -d build/usr/bin
-	install -m755 bin/linux.x86_64/${PROJECT} build/usr/bin/${PROJECT}
+	install -m755 "bin/linux.x86_64/${PROJECT}" "build/usr/bin/${PROJECT}"
 
 	if [[ ( -n ${DEB_PACKAGE} ) && ( -n ${VERSION} ) && ( -n ${ARCH} ) ]]; then
 		DEB_FILE="${DEB_PACKAGE}_${VERSION}_${ARCH}.deb"
@@ -307,4 +366,4 @@ if [[ ( $DEB == "true" ) && ( -r debian/control ) && ( -x bin/linux.x86_64/${PRO
 	fi
 fi
 
-echo Complete
+echo "Complete"
