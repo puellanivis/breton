@@ -3,60 +3,74 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-/*	Package gnuflag implements command-line flag parsing compatible with GNU longopts.
+/*
+Package gnuflag implements command-line flag parsing compatible with GNU longopts.
 
-	Usage:
+Usage:
 
-	Define flags using flag.String(), Bool(), Int(), etc.
+Define flags using flag.String(), Bool(), Int(), etc.
 
-	This declares an integer flag, --flagname, with short flagname -f stored in the pointer ip, with type *int.
-		import flag "github.com/puellanivis/breton/lib/gnuflag"
-		var ip = flag.Int("flagname", 1234, "help message for flagname", flag.WithShort('f'))
-	Or you can create custom flags that satisfy the Value interface (with
-	pointer receivers) and couple them to flag parsing by
-		flag.Var(&flagVal, "name", "help message for flagname")
-	For such flags, the default value is just the initial value of the variable.
+This declares an integer flag, --flagname, with short flagname -f stored in the pointer ip, with type *int.
 
-	After all flags are defined, call
-		flag.Parse()
-	to parse the command line into the defined flags.
+	import flag "github.com/puellanivis/breton/lib/gnuflag"
+	var ip = flag.Int("flagname", 1234, "help message for flagname", flag.WithShort('f'))
 
-	Flags may then be used directly. If you're using the flags themselves,
-	they are all pointers; if you bind to variables, they're values.
-		fmt.Println("ip has value ", *ip)
-		fmt.Println("flagvar has value ", flagvar)
+Or you can create custom flags that satisfy the Value interface (with
+pointer receivers) and couple them to flag parsing by
 
-	After parsing, the arguments following the flags are available as the
-	slice flag.Args() or individually as flag.Arg(i).
-	The arguments are indexed from 0 through flag.NArg()-1.
+	flag.Var(&flagVal, "name", "help message for flagname")
 
-	Command line flag syntax:
-		-f    --flag
-		-f=x  --flag=x
-		-f x  --flag x  // non-boolean flags only
-	One minus sign signifies a short flag, while two indicates a long name.
-	The last form is not permitted for boolean flags because the
-	meaning of the commands
-		cmd --flag *
-		cmd -f *
-	where * is a Unix shell wildcard, will change if there is a file
-	called 0, false, etc.  You must use the --flag=false or -f=false
-	form to turn off a boolean flag.
+For such flags, the default value is just the initial value of the variable.
 
-	Flag parsing stops just before the first non-flag argument
-	("-" is a non-flag argument) or just after the terminator "--".
+After all flags are defined, call
 
-	Integer flags accept 1234, 0664, 0x1234 and may be negative.
-	Boolean flags may be:
-		1, 0, t, f, T, F, true, false, TRUE, FALSE, True, False
-	Duration flags accept any input valid for time.ParseDuration.
+	flag.Parse()
 
-	The default set of command-line flags is controlled by
-	top-level functions.  The FlagSet type allows one to define
-	independent sets of flags, such as to implement subcommands
-	in a command-line interface. The methods of FlagSet are
-	analogous to the top-level functions for the command-line
-	flag set.
+to parse the command line into the defined flags.
+
+Flags may then be used directly. If you're using the flags themselves,
+they are all pointers; if you bind to variables, they're values.
+
+	fmt.Println("ip has value ", *ip)
+	fmt.Println("flagvar has value ", flagvar)
+
+After parsing, the arguments following the flags are available as the
+slice flag.Args() or individually as flag.Arg(i).
+The arguments are indexed from 0 through flag.NArg()-1.
+
+Command line flag syntax:
+
+	-f    --flag
+	-f=x  --flag=x
+	-f x  --flag x  // non-boolean flags only
+
+One minus sign signifies a short flag, while two indicates a long name.
+The last form is not permitted for boolean flags because the
+meaning of the commands
+
+	cmd --flag *
+	cmd -f *
+
+where * is a Unix shell wildcard, will change if there is a file
+called 0, false, etc.  You must use the --flag=false or -f=false
+form to turn off a boolean flag.
+
+Flag parsing stops just before the first non-flag argument
+("-" is a non-flag argument) or just after the terminator "--".
+
+Integer flags accept 1234, 0664, 0x1234 and may be negative.
+Boolean flags may be:
+
+	1, 0, t, f, T, F, true, false, TRUE, FALSE, True, False
+
+Duration flags accept any input valid for time.ParseDuration.
+
+The default set of command-line flags is controlled by
+top-level functions.  The FlagSet type allows one to define
+independent sets of flags, such as to implement subcommands
+in a command-line interface. The methods of FlagSet are
+analogous to the top-level functions for the command-line
+flag set.
 */
 package gnuflag
 
@@ -407,11 +421,15 @@ func (f *FlagSet) PrintDefaults() {
 // a usage message showing the default settings of all defined
 // command-line flags.
 // For an integer-valued flag named "flag" with short-name "f", the default output has the form:
+//
 //	--flag | -f <int>
 //		usage-message-for-flag (default 42)
+//
 // For an integer-valued flag named "f" (automatically short) the default output has the form:
+//
 //	-f <int>
 //		usage-message-for-f (default 42)
+//
 // The usage message will appear on a separate line for anything but
 // a bool flag with a one-byte name. For bool flags, the type is
 // omitted and if the flag name is one byte the usage message appears
@@ -421,8 +439,11 @@ func (f *FlagSet) PrintDefaults() {
 // string; the first such item in the message is taken to be a parameter
 // name to show in the message and the back quotes are stripped from
 // the message when displayed. For instance, given
+//
 //	flag.String("I", "", "search `directory` for include files")
+//
 // the output will be
+//
 //	-I <directory>
 //		search directory for include files.
 func PrintDefaults() {
@@ -547,6 +568,7 @@ func (f *FlagSet) setShort(flag *Flag, name rune) {
 // Copy copies an existing flag into this FlagSet.
 // This uses the already given name, short, usage, and default.
 // It will panic if you attempt to copy a Flag into a FlagSet where the name or short name already exist.
+//
 //	fs := flag.NewFlagSet("example", flag.ExitOnError)
 //	fs.Copy(flag.Lookup("output"))
 func (f *FlagSet) Copy(flag *Flag) {
@@ -556,6 +578,7 @@ func (f *FlagSet) Copy(flag *Flag) {
 
 // CopyFrom does a lookup of the flagname on the given FlagSet, and the Copies that flag into this Flagset.
 // It will panic if you attempt to copy a Flag into a FlagSet where the name or short name already exist.
+//
 //	fs := flag.NewFlagSet("example", flag.ExitOnError)
 //	fs.CopyFrom(flag.CommandLine, "output")
 func (f *FlagSet) CopyFrom(from *FlagSet, name string) {

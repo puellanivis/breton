@@ -6,6 +6,7 @@
 // So, after Up has been called at least once, only the first Down will return true, and vice-versa.
 //
 // Usage is pretty basic:
+//
 //	// a zero-value Edge starts in state Down
 //	var e edge.Edge
 //
@@ -36,6 +37,7 @@
 //
 // This is also useful for marking a data-set as dirty, while only locking
 // individual data elements:
+//
 //	var dirty edge.Edge
 //	t := time.NewTicker(5 * time.Second)
 //
@@ -46,7 +48,6 @@
 //			}
 //		}
 //	}()
-//
 package edge // import "github.com/puellanivis/breton/lib/sync/edge"
 
 import (

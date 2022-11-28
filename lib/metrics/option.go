@@ -54,6 +54,7 @@ func WithRegistry(registry *prometheus.Registry) Option {
 }
 
 // LinearBuckets defines a series of linear buckets defined by:
+//
 //	for i from 0 to count: a_i = start + width × i
 //
 // (Caller MUST NOT pass a count <= 0)
@@ -62,7 +63,8 @@ func LinearBuckets(start, width float64, count uint) Option {
 }
 
 // ExponentialBuckets defines a series of exponential buckets defined by:
-// 	for i from 0 to count: a_i = start × factor^i
+//
+//	for i from 0 to count: a_i = start × factor^i
 //
 // (Caller MUST NOT pass a count <= 0, start <= 0, or factor <= 1)
 func ExponentialBuckets(start, factor float64, count uint) Option {

@@ -85,7 +85,7 @@ func (p RuneSliceSlice) Radix() { radix(p) }
 // RuneSlices sorts a slice of []runes in increasing order.
 func RuneSlices(a [][]rune) { radix(RuneSliceSlice(a)) }
 
-//SearchRuneSlices searches for x in a sorted slice of []runes and returns the index
+// SearchRuneSlices searches for x in a sorted slice of []runes and returns the index
 // as specified by sort.Search.  The return value is the index to insert x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchRuneSlices(a [][]rune, x []rune) int {

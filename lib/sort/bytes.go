@@ -70,7 +70,7 @@ func (p ByteSliceSlice) SearchFor(x interface{}) int { return SearchByteSlices(p
 // ByteSlices sorts a slice of []bytes in increasing order.
 func ByteSlices(a [][]byte) { radix(ByteSliceSlice(a)) }
 
-//SearchByteSlices searches for x in a sorted slice of []bytes and returns the index
+// SearchByteSlices searches for x in a sorted slice of []bytes and returns the index
 // as specified by sort.Search.  The return value is the index to insert x if x is not present (it could be len(a)).
 // The slice must be sorted in ascending order.
 func SearchByteSlices(a [][]byte, x []byte) int {

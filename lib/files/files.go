@@ -1,7 +1,7 @@
 // Package files implements an abstraction of accessing data via URL/URIs.
 //
-//
 // The basic usage of the library is fairly straight-forward:
+//
 //	import (
 //		"context"
 //		"fmt"
@@ -76,7 +76,6 @@
 //		return err
 //	}
 //	// no need to close here.
-//
 package files
 
 import (

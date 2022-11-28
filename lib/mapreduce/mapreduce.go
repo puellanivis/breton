@@ -14,12 +14,13 @@ var DefaultThreadCount = runtime.NumCPU()
 // A Mapper processes across a set of data.
 //
 // The mapreduce package will call a Mapper with one of:
-//	* a subslice from a slice;
-//	* a slice of MapKey values in the type the MapKeys are (i.e. not reflect.Value);
-//	* a receive-only channel;
-//	* a disjoin sub-range of a Range struct from this package.
+//   - a subslice from a slice;
+//   - a slice of MapKey values in the type the MapKeys are (i.e. not reflect.Value);
+//   - a receive-only channel;
+//   - a disjoin sub-range of a Range struct from this package.
 //
 // Examples:
+//
 //	mr.Run(ctx, []string{ ... })          -> mapper.Map(ctx, slice[i:j:j])
 //	mr.Run(ctx, map[string]int{})         -> mapper.Map(ctx, []string{ /* subset of key values here */ })
 //	mr.Run(ctx, (chan string)(ch))        -> mapper.Map(ctx, (<-chan string)(ch))
@@ -157,10 +158,10 @@ func (mr *MapReduce) engine() *engine {
 // and which is closed upon completion of all Mappers and Reducers.
 //
 // Run can be called with any of:
-//	* a slice or array of any type, where each Mapper will be called with a subslice of the data,
-//	* a map of any type, where each Mapper will be called with a slice of a subset of the keys of that map,
-//	* a channel of any type, where each Mapper will be called with a receive-only copy of that channel
-//	* a Range struct from this package, where each Mapper will receive a disjoint sub-range of that Range.
+//   - a slice or array of any type, where each Mapper will be called with a subslice of the data,
+//   - a map of any type, where each Mapper will be called with a slice of a subset of the keys of that map,
+//   - a channel of any type, where each Mapper will be called with a receive-only copy of that channel
+//   - a Range struct from this package, where each Mapper will receive a disjoint sub-range of that Range.
 //
 // Any pointer or interface will be dereferenced until Run reaches a concrete type.
 // A call to Run that is done on a slice, or map of length 0 (zero), completes immediately with no error.
