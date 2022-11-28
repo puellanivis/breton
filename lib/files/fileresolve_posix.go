@@ -1,3 +1,4 @@
+//go:build dragonflybsd || freebsd || linux || netbsd || openbsd || solaris || darwin
 // +build dragonflybsd freebsd linux netbsd openbsd solaris darwin
 
 package files

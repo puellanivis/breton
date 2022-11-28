@@ -2,6 +2,7 @@
 // The above line skips linter because we use functions with the name Id instead of ID, but the linter refuses to allow this.
 // Wraps the golang standard library, unless it's Windows, then use NetLookup instead of DomainLookup first.
 
+//go:build !windows
 // +build !windows
 
 package user
