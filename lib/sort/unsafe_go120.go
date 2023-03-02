@@ -1,6 +1,3 @@
-//go:build !go1.20
-// +build !go1.20
-
 package sort
 
 import (
@@ -9,13 +6,13 @@ import (
 	_ "unsafe" // this is to explicitly signal this file is unsafe.
 )
 
-//go:linkname pdqsort sort.pdqsort
-func pdqsort(data sort.Interface, a, b, maxDepth int)
+//go:linkname heapSort sort.heapSort
+func heapSort(data sort.Interface, a, b int)
 
 // quickSort is just an aliased call into pdqsort,
 // this means sort.go doesn’t need to be different between go1.19 and earlier.
-func quickSort(data sort.Interface, a, b, maxDepth int) {
-	pdqsort(data, a, b, maxDepth/2)
+func quickSort(data sort.Interface, a, b, _ int) {
+	heapSort(data, a, b)
 }
 
 // maxDepth returns a threashold at which quicksort should switch to heapsort.
