@@ -1,5 +1,8 @@
 #!/bin/bash
 
+ARCH="amd64"
+ARCH_DIR="x86_64"
+
 while [[ $# -gt 0 ]]; do
 	key="$1"
 	val="${key#*=}"
@@ -21,6 +24,10 @@ while [[ $# -gt 0 ]]; do
 		export GOPRIVATE="$val"
 	;;
 
+	--arm64)
+		ARCH="arm64"
+		ARCH_DIR="arm64"
+	;;
 	--linux)
 		LINUX="true"
 	;;
@@ -210,42 +217,42 @@ if [[ -r ./.gitignore ]]; then
 fi
 
 if [[ $LINUX == "true" ]]; then
-	OUT="bin/linux.x86_64"
+	OUT="bin/linux.${ARCH_DIR}"
 	echo "Compiling ${OUT}/${PROJECT}"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
-	GOOS=linux GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
+	GOOS=linux GOARCH=$ARCH go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 
 	[[ ( ${DEB} != "false" ) && ( -d debian )  ]] && DEB="true"
 fi
 
 if [[ $DARWIN == "true" ]]; then
-	OUT="bin/darwin.x86_64"
+	OUT="bin/darwin.${ARCH_DIR}"
 	echo "Compiling ${OUT}/${PROJECT}"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
-	GOOS=darwin GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
+	GOOS=darwin GOARCH=$ARCH go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 fi
 
 if [[ $OPENBSD == "true" ]]; then
-	OUT="bin/openbsd.x86_64"
+	OUT="bin/openbsd.${ARCH_DIR}"
 	echo "Compiling ${OUT}/${PROJECT}"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
-	GOOS=openbsd GOARCH=amd64 go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
+	GOOS=openbsd GOARCH=$ARCH go build -o "${OUT}/${PROJECT}" "${LDFLAGS}" || exit 1
 fi
 
 if [[ $WINDOWS == "true" ]]; then
-	OUT="bin/windows.x86_64"
+	OUT="bin/windows.${ARCH_DIR}"
 	echo "Compiling ${OUT}/${PROJECT}.exe"
 	[ -d "$OUT" ] || mkdir -p $OUT || exit 1
-	GOOS=windows GOARCH=amd64 go build -o "${OUT}/${PROJECT}.exe" "${LDFLAGS}" || exit 1
+	GOOS=windows GOARCH=$ARCH go build -o "${OUT}/${PROJECT}.exe" "${LDFLAGS}" || exit 1
 fi
 
-if [[ ( $DEB == "true" ) && ( -x bin/linux.x86_64/${PROJECT} ) ]]; then
+if [[ ( $DEB == "true" ) && ( -x bin/linux.${ARCH_DIR}/${PROJECT} ) ]]; then
 	[ -d debian ] || mkdir debian
 
 	echo "Building debian package..."
 
 	VERSION="${BUILDSTAMP}"
-	BIN_VERSION="$( ./bin/linux.x86_64/${PROJECT} --version )"
+	BIN_VERSION="$( ./bin/linux.${ARCH_DIR}/${PROJECT} --version )"
 	[[ -n $BIN_VERSION ]] && echo "BIN_VERSION=\"$BIN_VERSION\""
 	case "${BIN_VERSION}" in
 	*\ v*)
@@ -254,7 +261,6 @@ if [[ ( $DEB == "true" ) && ( -x bin/linux.x86_64/${PROJECT} ) ]]; then
 	;;
 	esac
 	echo "VERSION=${VERSION}"
-	ARCH="amd64" # TODO(puellanivis): this shouldn’t be baked in, but it’s already baked in all over, already.
 
 	if [[ -r ./.gitignore ]]; then
 		grep -qFx -e "build" ./.gitignore || echo "build" >> ./.gitignore
@@ -354,7 +360,7 @@ EOF
 
 	# install binary
 	install -d build/usr/bin
-	install -m755 "bin/linux.x86_64/${PROJECT}" "build/usr/bin/${PROJECT}"
+	install -m755 "bin/linux.${ARCH_DIR}/${PROJECT}" "build/usr/bin/${PROJECT}"
 
 	if [[ ( -n ${DEB_PACKAGE} ) && ( -n ${VERSION} ) && ( -n ${ARCH} ) ]]; then
 		DEB_FILE="${DEB_PACKAGE}_${VERSION}_${ARCH}.deb"
