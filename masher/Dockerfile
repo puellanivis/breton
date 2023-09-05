@@ -1,6 +1,6 @@
 # This docker image builds upon the golang docker image to support a more automated process for building
 # golang files.
-FROM golang:1.20
+FROM golang:1.21
 MAINTAINER Cassondra Foesch <puellanivis@gmail.com>
 
 # Setup various environment and argument settings which define the building environment.
@@ -29,7 +29,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # However, I don’t think it makes sense to use older version, better to be able to advance as it releases outselves.
 RUN mkdir -p /usr/bin && \
 	cd /usr && \
-	curl -sS -L https://github.com/protocolbuffers/protobuf/releases/download/v22.0/protoc-22.0-linux-x86_64.zip | \
+	curl -sS -L https://github.com/protocolbuffers/protobuf/releases/download/v24.2/protoc-24.2-linux-x86_64.zip | \
 		bsdtar -xvf- --exclude=readme.txt && \
 	chmod 755 /usr/bin/protoc
 
@@ -39,7 +39,7 @@ RUN mkdir -p /usr/bin && \
 # * goimports	permits us to use goimports.
 # * godoc	go stopped bundling godoc with the central binary, so we have to grab it ourselves.
 # * golint	permits us to use golinter. (Now deprecated.)
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.1 && \
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.31.0 && \
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0 && \
 	go install golang.org/x/tools/cmd/goimports@latest && \
 	go install golang.org/x/tools/cmd/godoc@latest && \
