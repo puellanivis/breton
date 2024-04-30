@@ -240,7 +240,7 @@ if type -p go > /dev/null 2>&1 ; then
 		echo "Found local Go version: ${GO_VERSION}"
 
 		case "${GO_VERSION}" in
-		1.21|1.21.*|1.21[a-z]*)
+		1.22|1.22.*|1.22[a-z]*)
 			LOCALTEST="true"
 		;;
 		esac
